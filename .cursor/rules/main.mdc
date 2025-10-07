@@ -1,0 +1,878 @@
+---
+alwaysApply: true
+---
+Claude Agent Rules for My Next.js Fitness App
+
+🧠 General Philosophy
+
+
+
+
+
+Always prioritize clarity, modularity, and developer experience.
+
+
+
+Follow convention over configuration where applicable.
+
+
+
+If unsure about implementation choices, ask for clarification or default to modern best practices.
+
+
+
+Optimize for performance by using React.memo, useCallback, and useMemo where appropriate to prevent unnecessary re-renders, especially in components like charts or lists.
+
+
+
+Ensure accessibility by using semantic HTML, ARIA attributes, and testing with screen readers. All interactive elements must be keyboard-navigable.
+
+
+
+📦 Project Stack
+
+
+
+
+
+Framework: Next.js 14+ (App Router)
+
+
+
+Language: TypeScript (strict mode)
+
+
+
+Styling: TailwindCSS
+
+
+
+UI Kit: shadcn/ui
+
+
+
+DB: Prisma + PostgreSQL
+
+
+
+Auth: Supabase (preferred) or NextAuth
+
+
+
+State Management: useState, context, Zustand if needed
+
+
+
+Charts: Recharts
+
+
+
+Deployment: Vercel
+
+
+
+Error Tracking: Use Sentry or LogRocket for monitoring runtime errors and user interactions in production.
+
+
+
+Analytics: Use Vercel Analytics or Mixpanel for tracking user interactions and feature usage, ensuring GDPR/CCPA compliance.
+
+
+
+📁 Folder Structure Rules
+
+/app
+  /dashboard
+  /workouts
+    /[id]
+  /nutrition
+  /progress
+  /profile
+/components
+/lib
+/types
+/utils
+/prisma
+/public
+  /images
+  /fonts
+/tests
+  /unit
+  /e2e
+
+
+
+
+
+Store static assets like images and fonts in /public. Reference them using /images/filename.png in code or Tailwind config.
+
+
+
+🧩 Component Rules
+
+
+
+
+
+Use function components with arrow syntax.
+
+
+
+Always define props via TypeScript interfaces.
+
+
+
+Co-locate small UI components in the page folder when scoped.
+
+
+
+Reuse components like <WorkoutCard />, <WorkoutForm />, <StatsChart />.
+
+
+
+Document reusable components with JSDoc or a /components/README.md file, including props, usage examples, and any dependencies.
+
+
+
+Destructure props in the component function signature for clarity, e.g., ({ workout, onClick }: WorkoutCardProps).
+
+
+
+🔒 Auth Rules (Supabase)
+
+
+
+
+
+Use Supabase Auth for user management.
+
+
+
+Use the @supabase/auth-helpers-nextjs library.
+
+
+
+Wrap protected pages with createServerComponentClient() or createMiddlewareClient() to get the session.
+
+
+
+Store and access auth tokens securely via Supabase helpers.
+
+
+
+Redirect unauthenticated users to /login.
+
+
+
+Use supabase.auth.getUser() for client-side session awareness.
+
+
+
+Handle session refresh using Supabase’s built-in refresh tokens. Ensure client-side session checks (supabase.auth.getSession()) are performed on app load or route changes.
+
+
+
+Implement role-based access control (RBAC) using Supabase RLS policies or middleware to restrict features based on user roles (e.g., admin, coach, user).
+
+
+
+🚀 Vercel Deployment Best Practices
+
+Environment Variables
+
+
+
+
+
+Set all environment variables in Vercel dashboard:
+
+
+
+
+
+DATABASE_URL
+
+
+
+NEXT_PUBLIC_SUPABASE_URL
+
+
+
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+
+
+SUPABASE_SERVICE_ROLE_KEY (for server-side operations)
+
+
+
+OPENAI_API_KEY (if using AI features)
+
+Supabase Configuration
+
+
+
+
+
+Update Supabase Auth settings for production:
+
+
+
+
+
+Site URL: https://your-domain.vercel.app
+
+
+
+Redirect URLs: https://your-domain.vercel.app/auth/callback
+
+
+
+Add localhost URLs for development
+
+Database Setup
+
+
+
+
+
+Use Vercel Postgres or external PostgreSQL (Supabase, Neon, etc.).
+
+
+
+Run Prisma migrations on deployment.
+
+
+
+Set up database connection pooling for production.
+
+Build Optimization
+
+
+
+
+
+Use @vercel/og for dynamic OG images.
+
+
+
+Implement proper caching strategies.
+
+
+
+Use Vercel Edge Functions for serverless API routes.
+
+
+
+Use Incremental Static Regeneration (ISR) for pages with infrequently changing data, such as /progress or /profile, to improve performance while keeping content fresh.
+
+
+
+Use Vercel preview deployments for testing pull requests and staging environments. Ensure environment variables are configured for preview branches.
+
+Security
+
+
+
+
+
+Enable Row Level Security (RLS) in Supabase.
+
+
+
+Use environment variables for all secrets.
+
+
+
+Implement proper CORS policies.
+
+
+
+Set up proper CSP headers.
+
+
+
+🔐 API + DB Rules
+
+
+
+
+
+Use Prisma for all database access. Don't write raw SQL.
+
+
+
+Always validate user inputs with Zod in API routes.
+
+
+
+Organize logic-heavy endpoints under /lib/ when possible.
+
+
+
+Use the Supabase session context to scope data per user.
+
+
+
+Version API endpoints (e.g., /api/v1/workouts) to support future changes without breaking existing clients.
+
+
+
+Implement pagination for list-based API endpoints (e.g., /api/workouts) using skip and take in Prisma queries to handle large datasets efficiently.
+
+
+
+🔧 Form Handling Rules
+
+
+
+
+
+Use React Hook Form + Zod for form validation.
+
+
+
+Wrap form components with error and loading states.
+
+
+
+Use onSubmit with async/await, not .then().
+
+
+
+Debounce real-time form inputs or search fields using a library like lodash.debounce to reduce API calls and improve performance.
+
+
+
+Ensure forms are accessible with proper <label> tags, ARIA attributes for errors, and focus management for usability.
+
+
+
+💅 UI/UX Standards
+
+
+
+
+
+Use shadcn/ui for all inputs, buttons, modals, etc.
+
+
+
+Always use Tailwind utility classes for layout/styling.
+
+
+
+Ensure components are responsive using Tailwind breakpoints.
+
+
+
+Use icons from lucide-react.
+
+
+
+Prefer semantic HTML: <section>, <nav>, <form>, etc.
+
+
+
+Support dark mode by using Tailwind’s dark: prefix and testing components in both light and dark themes.
+
+
+
+Use skeleton UI (e.g., via shadcn/ui or custom Tailwind classes) for loading states in data-heavy components like lists or charts.
+
+
+
+🧠 AI Integration (Future Rule Set)
+
+
+
+
+
+AI features should be modular and opt-in.
+
+
+
+Prompt templates should live in /lib/prompts/.
+
+
+
+Use OpenAI API via /lib/openai.ts or similar.
+
+
+
+Abstract AI calls into reusable functions, e.g., aiCoach.getWorkoutPlan(userData).
+
+
+
+Implement rate limiting or caching (e.g., via Redis or Vercel KV) for OpenAI API calls to manage costs and avoid rate limits.
+
+
+
+Version prompt templates in /lib/prompts/ (e.g., v1-workout-plan.ts) to track changes and ensure reproducibility.
+
+
+
+🧱 Scaling Rules for AI Assistance (Advanced)
+
+As the app becomes more complex, Claude should follow these guiding rules to reduce future refactoring and confusion:
+
+1. Respect the Source of Truth
+
+
+
+
+
+Always reference prisma/schema.prisma, not inferred field names.
+
+
+
+Use exported types from /types or Prisma Client instead of any.
+
+
+
+Do not assume routes or folders exist — check structure or ask.
+
+2. State and Data Discipline
+
+
+
+
+
+Favor local state or context over prop drilling.
+
+
+
+Use Zod schemas for API input validation and form parsing.
+
+
+
+Add comments when state flows across more than one component.
+
+3. Avoid Logic Duplication
+
+
+
+
+
+Do not rewrite logic already in /lib/ or /utils/ — import it instead.
+
+
+
+If logic looks similar to an existing function, ask the dev or reuse it.
+
+4. Stick to the UI Design System
+
+
+
+
+
+Use shadcn/ui components.
+
+
+
+Never use raw HTML inputs or create custom styles unless instructed.
+
+
+
+Reuse existing components like WorkoutCard, StatRow, UserPanel.
+
+5. Add Error Handling and Feedback
+
+
+
+
+
+Always wrap async actions in try/catch blocks.
+
+
+
+Display UI feedback (e.g., toast) for form success/failure.
+
+
+
+Log and handle edge cases: no data, API failure, invalid auth, etc.
+
+6. Ask When Ambiguous
+
+If you're not sure:
+
+
+
+
+
+What the route should be called
+
+
+
+Where logic belongs
+
+
+
+What props a component expects
+
+
+
+Ask for clarification or refer to the Claude Prompt Templates.
+
+
+
+📊 Testing & Quality Rules
+
+
+
+
+
+Use ESLint and Prettier.
+
+
+
+Use Jest + React Testing Library for unit tests.
+
+
+
+Use Playwright for e2e tests (post-MVP).
+
+
+
+Include tests for form validation and critical feature flows.
+
+
+
+Aim for at least 80% test coverage for critical components and API routes, using Jest for unit tests and Playwright for e2e tests.
+
+
+
+Mock external services (e.g., Supabase, OpenAI) in tests using libraries like msw or custom mocks to avoid hitting real APIs.
+
+
+
+✍️ Naming Conventions
+
+
+
+
+
+
+
+Entity
+
+
+
+Convention
+
+
+
+
+
+Components
+
+
+
+PascalCase.tsx
+
+
+
+
+
+Variables
+
+
+
+camelCase
+
+
+
+
+
+DB Models
+
+
+
+PascalCase (Prisma)
+
+
+
+
+
+Routes
+
+
+
+kebab-case folders
+
+
+
+
+
+API handlers
+
+
+
+REST-style or POST /api/logWorkout
+
+
+
+
+
+Constants
+
+
+
+UPPER_SNAKE_CASE (e.g., API_BASE_URL)
+
+
+
+
+
+Custom Hooks
+
+
+
+usePascalCase (e.g., useWorkoutData)
+
+
+
+⚠️ Avoid
+
+
+
+
+
+No inline CSS or styled-components.
+
+
+
+No use of any in TypeScript.
+
+
+
+No console logs in production code.
+
+
+
+No logic in page.tsx files – isolate to helpers or components.
+
+
+
+Avoid adding new third-party dependencies unless explicitly justified or approved to prevent dependency bloat.
+
+
+
+Avoid client-side fetching of sensitive data (e.g., user profiles) when server-side rendering or API routes can be used.
+
+
+
+✅ Output Formatting for Claude (in Cursor)
+
+
+
+
+
+Always include:
+
+
+
+
+
+The filename
+
+
+
+The relative path (e.g., app/workouts/page.tsx)
+
+
+
+A brief summary of what the code does
+
+
+
+Use proper code blocks:
+
+// app/workouts/page.tsx
+// Displays the list of workouts and a button to start a new one
+
+
+
+When updating existing files, provide minimal diffs by only including changed lines or sections to simplify code reviews.
+
+
+
+For significant changes, include a comment or changelog section at the top of the file explaining what was added, modified, or removed.
+
+
+
+📣 Claude Should Ask:
+
+
+
+"Would you like me to scaffold the route/component/API as a placeholder or build it to completion with logic and UI?"
+
+
+
+"Should this form be part of the dashboard, a modal, or on its own page?"
+
+
+
+"What data source or model should this component pull from (e.g., Workout, Stat, UserGoal)?"
+
+
+
+📋 Claude Prompt Templates
+
+🧱 Scaffold a Page
+
+Create a new page component for the route `/workouts`. It should:
+- Display a list of recent workouts from the database (via Prisma).
+- Include a button at the top to "Start New Workout".
+- Use a shadcn `Button` and layout with Tailwind.
+- Use `getServerSideProps` (if Pages Router) or async server component (if App Router).
+
+🧪 Create a Form with Validation
+
+Build a `WorkoutForm.tsx` component. It should:
+- Allow users to add a workout with date, type (Push/Pull/Legs), and notes.
+- Use React Hook Form + Zod for validation.
+- Display inline errors.
+- Use `shadcn/ui` components for inputs and submit button.
+- On submit, send data to `/api/workouts` via POST.
+
+🔐 Protect a Page with Auth (Supabase)
+
+Wrap the `/dashboard` page so it only renders if the user is authenticated via Supabase.
+- If not authenticated, redirect to `/login`.
+- Use `createServerComponentClient()` to get the user session.
+- Access user info from `session.user` and show a greeting.
+
+🔎 Create a Reusable Component
+
+Create a `WorkoutCard.tsx` component that accepts the following props:
+- `workout: Workout` (a Prisma object)
+- Displays date, workout type, number of exercises
+- Has a "View Details" button linking to `/workouts/[id]`
+- Tailwind styled, responsive, and uses `Card` from shadcn/ui
+
+📊 Generate a Progress Chart
+
+Create a chart component using Recharts that shows weight over time.
+- Pulls `Stat` data (date, weight) from props.
+- X-axis: date; Y-axis: weight (lbs).
+- Title: "Weight Progress"
+- Responsive and styled with Tailwind.
+
+🧠 AI Feature (OpenAI Integration)
+
+Create a function in `/lib/openai.ts` that takes the user's recent stats and workout history and returns a suggested workout plan.
+- Use the OpenAI Chat API (GPT-4 or GPT-3.5).
+- Prompt should include user's goals, weight trend, last 3 workouts.
+- Return structured JSON with recommended workout name, exercises, reps/sets.
+- Add basic error handling.
+
+⚙️ Add API Endpoint
+
+Create a `POST /api/workouts` API route to create a new workout entry.
+- Accepts workout data from the frontend.
+- Validates input using Zod.
+- Saves the entry using Prisma.
+- Returns success or error response as JSON.
+
+🧪 Unit Test a Component
+
+Write a Jest test for the `WorkoutCard.tsx` component.
+- Mock a sample `Workout` object.
+- Check that the workout type and date appear.
+- Confirm the "View Details" button renders and links correctly.
+
+🧩 Update an Existing Component
+
+Update the `WorkoutCard.tsx` component to:
+- Add a new prop for displaying workout duration.
+- Update the UI to show duration in a `StatRow` component.
+- Ensure TypeScript types are updated in `/types`.
+- Use Tailwind and `shadcn/ui` for styling.
+- Include tests for the new prop in `/tests/unit/WorkoutCard.test.tsx`.
+
+🗄️ Create or Update a Prisma Schema
+
+Update `prisma/schema.prisma` to add a new model or field:
+- Add a `Goal` model with fields for `id`, `userId`, `type`, `target`, and `createdAt`.
+- Generate and apply migrations using `npx prisma migrate dev`.
+- Update related API routes and types in `/types`.
+- Include RLS policies in Supabase for the new model.
+
+
+
+🔍 Claude AI Code Review Checklist
+
+When reviewing code (Claude- or dev-generated), ensure the following:
+
+
+
+
+
+✅ TypeScript safe (no any, proper interfaces used)
+
+
+
+✅ Follows project conventions (folder, filename, naming, etc.)
+
+
+
+✅ Uses shadcn/ui and Tailwind appropriately
+
+
+
+✅ Logic is isolated from page.tsx where possible
+
+
+
+✅ Includes try/catch for async calls
+
+
+
+✅ Includes Zod validation where inputs exist
+
+
+
+✅ Avoids hardcoded values when database or state can be used
+
+
+
+✅ Reuses functions or components (don't duplicate logic)
+
+
+
+✅ Provides descriptive prop names and comments for non-obvious logic
+
+
+
+✅ Provides fallback UI states (loading, empty, error)
+
+
+
+✅ Prompts are clearly defined in /lib/prompts/ if AI is involved
+
+
+
+✅ Code avoids performance bottlenecks (e.g., excessive API calls, unoptimized loops, or large state updates)
+
+
+
+✅ No unnecessary dependencies are introduced, and existing dependencies align with the project’s package.json
+
+
+
+🌍 Additional Considerations
+
+
+
+
+
+Prepare for internationalization by structuring strings in a way that supports next-intl or similar libraries (e.g., avoid hardcoded text in components).
+
+
+
+Support offline functionality for critical features (e.g., workout logging) using service workers or local storage, syncing data when online.
+
+
+
+Follow a consistent commit message format (e.g., feat: add workout form validation, fix: resolve auth redirect bug) and use feature branches for development.
