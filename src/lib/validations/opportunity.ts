@@ -18,6 +18,9 @@ export const opportunityCreateSchema = z.object({
     "closedWon",
     "closedLost",
   ]),
+  forecastCategory: z.enum(["pipeline", "bestCase", "forecast"]).optional().nullable(),
+  riskNotes: z.string().max(2000).optional().nullable(),
+  notes: z.string().max(5000).optional().nullable(),
   ownerId: z.string().min(1),
 }).refine((data) => data.account || data.accountId, {
   message: "Either account name or accountId must be provided",

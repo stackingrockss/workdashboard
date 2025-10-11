@@ -39,19 +39,24 @@ export async function POST(req: NextRequest) {
       accountId = account.id;
     }
 
+    const createData = {
+      name: data.name,
+      accountName: data.account ?? undefined,
+      amountArr: data.amountArr,
+      probability: data.probability,
+      nextStep: data.nextStep ?? undefined,
+      closeDate: data.closeDate ? new Date(data.closeDate) : undefined,
+      quarter: data.quarter ?? undefined,
+      stage: data.stage,
+      forecastCategory: data.forecastCategory ?? undefined,
+      riskNotes: data.riskNotes ?? undefined,
+      notes: data.notes ?? undefined,
+      ownerId: data.ownerId,
+      ...(accountId ? { accountId } : {}),
+    };
+
     const created = await prisma.opportunity.create({
-      data: {
-        name: data.name,
-        accountName: data.account,
-        accountId: accountId,
-        amountArr: data.amountArr,
-        probability: data.probability,
-        nextStep: data.nextStep ?? undefined,
-        closeDate: data.closeDate ? new Date(data.closeDate) : undefined,
-        quarter: data.quarter ?? undefined,
-        stage: data.stage,
-        owner: { connect: { id: data.ownerId } },
-      },
+      data: createData,
       include: {
         owner: true,
         account: true,

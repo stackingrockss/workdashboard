@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -31,6 +32,12 @@ const stages: { value: OpportunityStage; label: string }[] = [
   { value: "closedLost", label: "Closed Lost" },
 ];
 
+const forecastCategories = [
+  { value: "pipeline", label: "Pipeline" },
+  { value: "bestCase", label: "Best Case" },
+  { value: "forecast", label: "Forecast (Commit)" },
+];
+
 export function OpportunityForm({
   onSubmit,
   onCancel,
@@ -47,6 +54,9 @@ export function OpportunityForm({
     nextStep: initialData?.nextStep || "",
     closeDate: initialData?.closeDate || "",
     stage: initialData?.stage || "prospect",
+    forecastCategory: initialData?.forecastCategory || null,
+    riskNotes: initialData?.riskNotes || "",
+    notes: initialData?.notes || "",
     ownerId: initialData?.ownerId || "",
   });
 
@@ -205,6 +215,50 @@ export function OpportunityForm({
           value={formData.nextStep || ""}
           onChange={(e) => setFormData({ ...formData, nextStep: e.target.value })}
           placeholder="e.g. Schedule demo call"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="forecastCategory">Forecast Category</Label>
+        <Select
+          value={formData.forecastCategory || ""}
+          onValueChange={(value) =>
+            setFormData({ ...formData, forecastCategory: value || null })
+          }
+        >
+          <SelectTrigger id="forecastCategory">
+            <SelectValue placeholder="Select forecast category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">None</SelectItem>
+            {forecastCategories.map((cat) => (
+              <SelectItem key={cat.value} value={cat.value}>
+                {cat.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="riskNotes">Risk Notes</Label>
+        <Textarea
+          id="riskNotes"
+          value={formData.riskNotes || ""}
+          onChange={(e) => setFormData({ ...formData, riskNotes: e.target.value })}
+          placeholder="Any concerns, blockers, or risk mitigation strategies..."
+          rows={3}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
+          id="notes"
+          value={formData.notes || ""}
+          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+          placeholder="General notes about this opportunity..."
+          rows={4}
         />
       </div>
 
