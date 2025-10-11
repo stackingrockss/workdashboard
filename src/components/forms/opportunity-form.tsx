@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { OpportunityStage, OpportunityOwner } from "@/types/opportunity";
+import { OpportunityStage, OpportunityOwner, ForecastCategory } from "@/types/opportunity";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { getUsers } from "@/lib/api/users";
 
@@ -223,7 +223,7 @@ export function OpportunityForm({
         <Select
           value={formData.forecastCategory || ""}
           onValueChange={(value) =>
-            setFormData({ ...formData, forecastCategory: value || null })
+            setFormData({ ...formData, forecastCategory: (value as ForecastCategory) || null })
           }
         >
           <SelectTrigger id="forecastCategory">

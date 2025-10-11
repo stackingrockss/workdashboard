@@ -6,7 +6,10 @@ export async function GET() {
   try {
     const opportunities = await prisma.opportunity.findMany({
       orderBy: { updatedAt: "desc" },
-      include: { owner: true },
+      include: {
+        owner: true,
+        account: true,
+      },
       take: 100,
     });
     return NextResponse.json({ opportunities });

@@ -10,7 +10,10 @@ export async function GET(
   try {
     const opportunity = await prisma.opportunity.findUnique({
       where: { id },
-      include: { owner: true },
+      include: {
+        owner: true,
+        account: true,
+      },
     });
     if (!opportunity) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json({ opportunity });
@@ -31,22 +34,48 @@ export async function PATCH(
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
     const data = parsed.data;
+
+    // If account name is provided instead of accountId, find or create the account
+    let accountId = data.accountId;
+    if (data.account && !accountId) {
+      const account = await prisma.account.upsert({
+        where: { name: data.account },
+        update: {},
+        create: {
+          name: data.account,
+          priority: "medium",
+          health: "good",
+        },
+      });
+      accountId = account.id;
+    }
+
+    const updateData: Record<string, unknown> = {
+      name: data.name ?? undefined,
+      accountName: data.account ?? undefined,
+      amountArr: data.amountArr ?? undefined,
+      probability: data.probability ?? undefined,
+      nextStep: data.nextStep ?? undefined,
+      closeDate: data.closeDate ? new Date(data.closeDate) : undefined,
+      quarter: data.quarter ?? undefined,
+      stage: data.stage ?? undefined,
+      forecastCategory: data.forecastCategory ?? undefined,
+      riskNotes: data.riskNotes ?? undefined,
+      notes: data.notes ?? undefined,
+      owner: data.ownerId ? { connect: { id: data.ownerId } } : undefined,
+    };
+
+    if (accountId) {
+      updateData.accountId = accountId;
+    }
+
     const updated = await prisma.opportunity.update({
       where: { id },
-      data: {
-        name: data.name ?? undefined,
-        account: data.account ?? undefined,
-        amountArr: data.amountArr ?? undefined,
-        probability: data.probability ?? undefined,
-        nextStep: data.nextStep ?? undefined,
-        closeDate: data.closeDate ? new Date(data.closeDate) : undefined,
-        stage: data.stage ?? undefined,
-        forecastCategory: data.forecastCategory ?? undefined,
-        riskNotes: data.riskNotes ?? undefined,
-        notes: data.notes ?? undefined,
-        owner: data.ownerId ? { connect: { id: data.ownerId } } : undefined,
+      data: updateData,
+      include: {
+        owner: true,
+        account: true,
       },
-      include: { owner: true },
     });
     return NextResponse.json({ opportunity: updated });
   } catch (error) {

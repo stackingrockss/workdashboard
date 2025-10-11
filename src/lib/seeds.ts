@@ -28,7 +28,7 @@ export async function seedDatabase() {
     {
       id: "opp-001",
       name: "Renewal - Acme Corp",
-      account: "Acme Corp",
+      accountName: "Acme Corp",
       amountArr: 24000,
       probability: 70,
       nextStep: "Send updated MSA",
@@ -39,7 +39,7 @@ export async function seedDatabase() {
     {
       id: "opp-002",
       name: "New Biz - Globex",
-      account: "Globex",
+      accountName: "Globex",
       amountArr: 54000,
       probability: 40,
       nextStep: "Schedule demo with CTO",
@@ -50,7 +50,7 @@ export async function seedDatabase() {
     {
       id: "opp-003",
       name: "Expansion - Initech",
-      account: "Initech",
+      accountName: "Initech",
       amountArr: 120000,
       probability: 55,
       nextStep: "Draft proposal",
@@ -61,7 +61,7 @@ export async function seedDatabase() {
     {
       id: "opp-004",
       name: "New Biz - Hooli",
-      account: "Hooli",
+      accountName: "Hooli",
       amountArr: 36000,
       probability: 25,
       nextStep: "Intro call with VP Eng",
@@ -72,7 +72,7 @@ export async function seedDatabase() {
     {
       id: "opp-005",
       name: "New Biz - Umbrella",
-      account: "Umbrella Co",
+      accountName: "Umbrella Co",
       amountArr: 84000,
       probability: 65,
       nextStep: "Security review",
@@ -83,7 +83,7 @@ export async function seedDatabase() {
     {
       id: "opp-006",
       name: "Renewal - Soylent",
-      account: "Soylent",
+      accountName: "Soylent",
       amountArr: 18000,
       probability: 95,
       nextStep: "Book signature",

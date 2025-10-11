@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AccountCreateInput, AccountUpdateInput } from "@/lib/validations/account";
-import { Account } from "@/types/account";
+import { Account, AccountPriority, AccountHealth } from "@/types/account";
 
 interface AccountFormProps {
   account?: Account;
@@ -70,7 +70,7 @@ export function AccountForm({ account, onSubmit, onCancel, submitLabel }: Accoun
           <Label htmlFor="priority">Priority</Label>
           <Select
             value={formData.priority}
-            onValueChange={(value) => setFormData({ ...formData, priority: value })}
+            onValueChange={(value) => setFormData({ ...formData, priority: value as AccountPriority })}
           >
             <SelectTrigger id="priority">
               <SelectValue />
@@ -87,7 +87,7 @@ export function AccountForm({ account, onSubmit, onCancel, submitLabel }: Accoun
           <Label htmlFor="health">Health</Label>
           <Select
             value={formData.health}
-            onValueChange={(value) => setFormData({ ...formData, health: value })}
+            onValueChange={(value) => setFormData({ ...formData, health: value as AccountHealth })}
           >
             <SelectTrigger id="health">
               <SelectValue />
