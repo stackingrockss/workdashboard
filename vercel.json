@@ -1,8 +1,3 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd opportunity-tracker && npm run build",
-  "devCommand": "cd opportunity-tracker && npm run dev",
-  "installCommand": "cd opportunity-tracker && npm install",
-  "framework": "nextjs",
-  "outputDirectory": "opportunity-tracker/.next"
+  "$schema": "https://openapi.vercel.sh/vercel.json"
 }
