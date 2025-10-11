@@ -6,6 +6,8 @@ export type OpportunityStage =
   | "closedWon"
   | "closedLost";
 
+export type ForecastCategory = "pipeline" | "bestCase" | "forecast";
+
 export interface OpportunityOwner {
   id: string;
   name: string;
@@ -27,6 +29,9 @@ export interface Opportunity {
   closeDate?: string; // ISO date string
   quarter?: string; // e.g., "Q1 2025", "Q2 2025"
   stage: OpportunityStage;
+  forecastCategory?: ForecastCategory | null;
+  riskNotes?: string | null;
+  notes?: string | null;
   owner: OpportunityOwner;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string

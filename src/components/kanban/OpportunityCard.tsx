@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Opportunity } from "@/types/opportunity";
-import { CircleDollarSign, CalendarDays, ArrowRight } from "lucide-react";
+import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle } from "lucide-react";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 
 export interface OpportunityCardProps {
@@ -22,6 +22,12 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
   const closeDate = formatDateShort(opportunity.closeDate);
   const accountName = opportunity.account?.name || opportunity.accountName || "No Account";
 
+  const forecastLabels: Record<string, string> = {
+    pipeline: "Pipeline",
+    bestCase: "Best Case",
+    forecast: "Commit",
+  };
+
   return (
     <Card
       className="cursor-pointer hover:shadow-md transition-shadow"
@@ -33,9 +39,19 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
             <div className="truncate font-medium">{opportunity.name}</div>
             <div className="truncate text-muted-foreground text-sm">{accountName}</div>
           </div>
-          <Badge variant="secondary" className="shrink-0">
-            {opportunity.probability}%
-          </Badge>
+          <div className="flex flex-col gap-1 shrink-0">
+            <Badge variant="secondary" className="text-center">
+              {opportunity.probability}%
+            </Badge>
+            {opportunity.forecastCategory && (
+              <Badge
+                variant={opportunity.forecastCategory === "forecast" ? "default" : "outline"}
+                className="text-center text-[10px]"
+              >
+                {forecastLabels[opportunity.forecastCategory]}
+              </Badge>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-between text-sm">
@@ -43,9 +59,14 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
             <CircleDollarSign size={16} />
             <span>{formatCurrencyCompact(opportunity.amountArr)} ARR</span>
           </div>
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <CalendarDays size={16} />
-            <span>{closeDate}</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <CalendarDays size={16} />
+              <span>{closeDate}</span>
+            </div>
+            {opportunity.riskNotes && (
+              <AlertTriangle size={16} className="text-yellow-600 dark:text-yellow-400" />
+            )}
           </div>
         </div>
 

@@ -55,7 +55,9 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{opportunity.name}</h1>
-          <p className="text-sm text-muted-foreground">{opportunity.account}</p>
+          <p className="text-sm text-muted-foreground">
+            {opportunity.account?.name || opportunity.accountName || "No Account"}
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>
@@ -94,10 +96,26 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           <div className="text-sm text-muted-foreground">Owner</div>
           <div className="font-medium">{opportunity.owner.name}</div>
         </div>
+        <div className="rounded-lg border p-4">
+          <div className="text-sm text-muted-foreground">Forecast Category</div>
+          <div className="font-medium capitalize">{opportunity.forecastCategory ?? "—"}</div>
+        </div>
         <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3">
           <div className="text-sm text-muted-foreground">Next step</div>
           <div className="font-medium whitespace-pre-wrap">{opportunity.nextStep ?? "—"}</div>
         </div>
+        {opportunity.riskNotes && (
+          <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3 border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
+            <div className="text-sm text-muted-foreground">Risk Notes</div>
+            <div className="font-medium whitespace-pre-wrap">{opportunity.riskNotes}</div>
+          </div>
+        )}
+        {opportunity.notes && (
+          <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3">
+            <div className="text-sm text-muted-foreground">Notes</div>
+            <div className="font-medium whitespace-pre-wrap">{opportunity.notes}</div>
+          </div>
+        )}
       </div>
 
       {/* Edit Dialog */}
@@ -111,12 +129,15 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
             onCancel={() => setIsEditDialogOpen(false)}
             initialData={{
               name: opportunity.name,
-              account: opportunity.account,
+              account: opportunity.account?.name || opportunity.accountName,
               amountArr: opportunity.amountArr,
               probability: opportunity.probability,
               nextStep: opportunity.nextStep,
               closeDate: opportunity.closeDate,
               stage: opportunity.stage,
+              forecastCategory: opportunity.forecastCategory,
+              riskNotes: opportunity.riskNotes,
+              notes: opportunity.notes,
               ownerId: opportunity.owner.id,
             }}
             submitLabel="Update Opportunity"

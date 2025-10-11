@@ -16,7 +16,10 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
 
   const opportunityFromDB = await prisma.opportunity.findUnique({
     where: { id },
-    include: { owner: true },
+    include: {
+      owner: true,
+      account: true,
+    },
   });
 
   if (!opportunityFromDB) return notFound();
@@ -24,12 +27,21 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
   const opportunity = {
     id: opportunityFromDB.id,
     name: opportunityFromDB.name,
-    account: opportunityFromDB.account,
+    accountId: opportunityFromDB.accountId || undefined,
+    accountName: opportunityFromDB.accountName || undefined,
+    account: opportunityFromDB.account ? {
+      id: opportunityFromDB.account.id,
+      name: opportunityFromDB.account.name,
+    } : undefined,
     amountArr: opportunityFromDB.amountArr,
     probability: opportunityFromDB.probability,
     nextStep: opportunityFromDB.nextStep || undefined,
     closeDate: opportunityFromDB.closeDate?.toISOString() || undefined,
+    quarter: opportunityFromDB.quarter || undefined,
     stage: opportunityFromDB.stage,
+    forecastCategory: opportunityFromDB.forecastCategory || undefined,
+    riskNotes: opportunityFromDB.riskNotes || undefined,
+    notes: opportunityFromDB.notes || undefined,
     owner: {
       id: opportunityFromDB.owner.id,
       name: opportunityFromDB.owner.name,
