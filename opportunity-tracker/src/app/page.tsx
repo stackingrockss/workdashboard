@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <div className="py-10">
@@ -6,12 +8,12 @@ export default function Home() {
         <p className="text-muted-foreground">Start tracking deals in the Kanban view.</p>
       </div>
       <div className="mt-6">
-        <a
+        <Link
           href="/opportunities"
           className="inline-flex items-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
         >
           Go to Opportunities
-        </a>
+        </Link>
       </div>
     </div>
   );

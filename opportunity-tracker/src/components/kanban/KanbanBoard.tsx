@@ -1,20 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
+import { useMemo } from "react";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { useState } from "react";
 import { defaultColumns } from "@/data/mock-opportunities";
 import { Opportunity, OpportunityStage } from "@/types/opportunity";
 import { KanbanColumn } from "./KanbanColumn";
-import { Plus } from "lucide-react";
+import { OpportunityCard } from "./OpportunityCard";
 
 export interface KanbanBoardProps {
   opportunities: Opportunity[];
+  onStageChange?: (opportunityId: string, newStage: OpportunityStage) => Promise<void>;
 }
 
-export function KanbanBoard({ opportunities }: KanbanBoardProps) {
-  const [filterText, setFilterText] = useState("");
+export function KanbanBoard({ opportunities, onStageChange }: KanbanBoardProps) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   const grouped = useMemo(() => {
     const result: Record<OpportunityStage, Opportunity[]> = {
@@ -26,45 +34,44 @@ export function KanbanBoard({ opportunities }: KanbanBoardProps) {
       closedLost: [],
     };
 
-    const normalized = filterText.trim().toLowerCase();
-    const filtered = normalized
-      ? opportunities.filter(
-          (o) =>
-            o.name.toLowerCase().includes(normalized) ||
-            o.account.toLowerCase().includes(normalized)
-        )
-      : opportunities;
-
-    for (const opp of filtered) {
+    for (const opp of opportunities) {
       result[opp.stage].push(opp);
     }
     return result;
-  }, [opportunities, filterText]);
+  }, [opportunities]);
+
+  const activeOpportunity = useMemo(() => {
+    if (!activeId) return null;
+    return opportunities.find((opp) => opp.id === activeId);
+  }, [activeId, opportunities]);
 
   const handleOpen = (id: string) => {
     window.location.href = `/opportunities/${id}`;
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const opportunityId = active.id as string;
+    const newStage = over.id as OpportunityStage;
+
+    const opportunity = opportunities.find((opp) => opp.id === opportunityId);
+    if (!opportunity || opportunity.stage === newStage) return;
+
+    if (onStageChange) {
+      await onStageChange(opportunityId, newStage);
+    }
+  };
+
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <label className="sr-only" htmlFor="kanban-search">Search opportunities</label>
-          <Input
-            id="kanban-search"
-            className="w-[260px]"
-            placeholder="Search by name or account"
-            value={filterText}
-            onChange={(e) => setFilterText(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" onClick={() => alert("New opportunity")}> 
-            <Plus className="h-4 w-4 mr-2" /> New Opportunity
-          </Button>
-        </div>
-      </div>
-      <Separator />
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4">
         {defaultColumns.map((col) => (
           <KanbanColumn
@@ -76,7 +83,12 @@ export function KanbanBoard({ opportunities }: KanbanBoardProps) {
           />
         ))}
       </div>
-    </div>
+      <DragOverlay>
+        {activeOpportunity ? (
+          <OpportunityCard opportunity={activeOpportunity} />
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
 

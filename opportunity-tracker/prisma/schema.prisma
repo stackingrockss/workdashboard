@@ -7,6 +7,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  schemas  = ["opportunity_tracker"]
 }
 
 model User {
@@ -16,6 +17,8 @@ model User {
   avatarUrl     String?
   opportunities Opportunity[]
   createdAt     DateTime       @default(now())
+
+  @@schema("opportunity_tracker")
 }
 
 enum OpportunityStage {
@@ -25,6 +28,8 @@ enum OpportunityStage {
   negotiation
   closedWon
   closedLost
+
+  @@schema("opportunity_tracker")
 }
 
 model Opportunity {
@@ -40,6 +45,8 @@ model Opportunity {
   owner       User              @relation(fields: [ownerId], references: [id])
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
+
+  @@schema("opportunity_tracker")
 }
 
 

@@ -1,14 +1,38 @@
 // app/opportunities/page.tsx
-// Displays a Kanban view of opportunities using mock data
+// Displays a Kanban view of opportunities fetched from the database
 
-import KanbanBoard from "@/components/kanban/KanbanBoard";
-import { mockOpportunities } from "@/data/mock-opportunities";
+import { KanbanBoardWrapper } from "@/components/kanban/KanbanBoardWrapper";
+import { prisma } from "@/lib/db";
 
-export const dynamic = "force-static";
+export const dynamic = "force-dynamic";
 
 export default async function OpportunitiesPage() {
-  // In a future iteration, fetch opportunities from DB/API here
-  const opportunities = mockOpportunities;
+  // Fetch opportunities from database
+  const opportunitiesFromDB = await prisma.opportunity.findMany({
+    orderBy: { updatedAt: "desc" },
+    include: { owner: true },
+    take: 100,
+  });
+
+  // Transform to match the expected Opportunity type
+  const opportunities = opportunitiesFromDB.map((opp) => ({
+    id: opp.id,
+    name: opp.name,
+    account: opp.account,
+    amountArr: opp.amountArr,
+    probability: opp.probability,
+    nextStep: opp.nextStep || undefined,
+    closeDate: opp.closeDate?.toISOString() || undefined,
+    stage: opp.stage,
+    owner: {
+      id: opp.owner.id,
+      name: opp.owner.name,
+      avatarUrl: opp.owner.avatarUrl || undefined,
+    },
+    createdAt: opp.createdAt.toISOString(),
+    updatedAt: opp.updatedAt.toISOString(),
+  }));
+
   return (
     <div className="p-6">
       <div className="mb-4">
@@ -17,7 +41,7 @@ export default async function OpportunitiesPage() {
           Track deals, next steps, and forecast in a Kanban view
         </p>
       </div>
-      <KanbanBoard opportunities={opportunities} />
+      <KanbanBoardWrapper opportunities={opportunities} />
     </div>
   );
 }

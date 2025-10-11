@@ -1,50 +1,45 @@
 // app/opportunities/[id]/page.tsx
-// Server component: displays a single opportunity from mock data for now
+// Server component: displays a single opportunity from the database
 
 import { notFound } from "next/navigation";
-import { mockOpportunities } from "@/data/mock-opportunities";
-import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
+import { prisma } from "@/lib/db";
+import { OpportunityDetailClient } from "@/components/features/opportunities/opportunity-detail-client";
 
 interface OpportunityPageProps {
   params: Promise<{ id: string }>;
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function OpportunityDetailPage({ params }: OpportunityPageProps) {
   const { id } = await params;
-  const opportunity = mockOpportunities.find((o) => o.id === id);
-  if (!opportunity) return notFound();
 
-  return (
-    <div className="p-6 space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{opportunity.name}</h1>
-        <p className="text-sm text-muted-foreground">{opportunity.account}</p>
-      </div>
+  const opportunityFromDB = await prisma.opportunity.findUnique({
+    where: { id },
+    include: { owner: true },
+  });
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Stage</div>
-          <div className="font-medium capitalize">{opportunity.stage}</div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Amount (ARR)</div>
-          <div className="font-medium">{formatCurrencyCompact(opportunity.amountArr)} ARR</div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Probability</div>
-          <div className="font-medium">{opportunity.probability}%</div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Close date</div>
-          <div className="font-medium">{formatDateShort(opportunity.closeDate)}</div>
-        </div>
-        <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3">
-          <div className="text-sm text-muted-foreground">Next step</div>
-          <div className="font-medium whitespace-pre-wrap">{opportunity.nextStep ?? "—"}</div>
-        </div>
-      </div>
-    </div>
-  );
+  if (!opportunityFromDB) return notFound();
+
+  const opportunity = {
+    id: opportunityFromDB.id,
+    name: opportunityFromDB.name,
+    account: opportunityFromDB.account,
+    amountArr: opportunityFromDB.amountArr,
+    probability: opportunityFromDB.probability,
+    nextStep: opportunityFromDB.nextStep || undefined,
+    closeDate: opportunityFromDB.closeDate?.toISOString() || undefined,
+    stage: opportunityFromDB.stage,
+    owner: {
+      id: opportunityFromDB.owner.id,
+      name: opportunityFromDB.owner.name,
+      avatarUrl: opportunityFromDB.owner.avatarUrl || undefined,
+    },
+    createdAt: opportunityFromDB.createdAt.toISOString(),
+    updatedAt: opportunityFromDB.updatedAt.toISOString(),
+  };
+
+  return <OpportunityDetailClient opportunity={opportunity} />;
 }
 
 

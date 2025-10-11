@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,13 +29,14 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <header className="border-b">
           <div className="mx-auto max-w-7xl px-6 h-12 flex items-center justify-between">
-            <a href="/" className="font-medium">Opportunity Tracker</a>
+            <Link href="/" className="font-medium">Opportunity Tracker</Link>
             <nav className="text-sm">
-              <a href="/opportunities" className="hover:underline">Opportunities</a>
+              <Link href="/opportunities" className="hover:underline">Opportunities</Link>
             </nav>
           </div>
         </header>
         <main className="mx-auto max-w-7xl px-6">{children}</main>
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   );
