@@ -1,0 +1,45 @@
+// Prisma schema for Opportunity Tracker
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String
+  avatarUrl     String?
+  opportunities Opportunity[]
+  createdAt     DateTime       @default(now())
+}
+
+enum OpportunityStage {
+  prospect
+  qualification
+  proposal
+  negotiation
+  closedWon
+  closedLost
+}
+
+model Opportunity {
+  id          String            @id @default(cuid())
+  name        String
+  account     String
+  amountArr   Int
+  probability Int
+  nextStep    String?
+  closeDate   DateTime?
+  stage       OpportunityStage
+  ownerId     String
+  owner       User              @relation(fields: [ownerId], references: [id])
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+
