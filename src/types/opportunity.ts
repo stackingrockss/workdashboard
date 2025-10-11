@@ -15,11 +15,17 @@ export interface OpportunityOwner {
 export interface Opportunity {
   id: string;
   name: string;
-  account: string;
+  accountId?: string;
+  accountName?: string; // Backward compatibility
+  account?: {
+    id: string;
+    name: string;
+  };
   amountArr: number; // annual recurring revenue forecast
   probability: number; // 0-100
   nextStep?: string;
   closeDate?: string; // ISO date string
+  quarter?: string; // e.g., "Q1 2025", "Q2 2025"
   stage: OpportunityStage;
   owner: OpportunityOwner;
   createdAt: string; // ISO date string

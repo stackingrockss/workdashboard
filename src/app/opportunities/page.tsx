@@ -10,7 +10,10 @@ export default async function OpportunitiesPage() {
   // Fetch opportunities from database
   const opportunitiesFromDB = await prisma.opportunity.findMany({
     orderBy: { updatedAt: "desc" },
-    include: { owner: true },
+    include: {
+      owner: true,
+      account: true,
+    },
     take: 100,
   });
 
@@ -18,11 +21,17 @@ export default async function OpportunitiesPage() {
   const opportunities = opportunitiesFromDB.map((opp) => ({
     id: opp.id,
     name: opp.name,
-    account: opp.account,
+    accountId: opp.accountId || undefined,
+    accountName: opp.accountName || undefined,
+    account: opp.account ? {
+      id: opp.account.id,
+      name: opp.account.name,
+    } : undefined,
     amountArr: opp.amountArr,
     probability: opp.probability,
     nextStep: opp.nextStep || undefined,
     closeDate: opp.closeDate?.toISOString() || undefined,
+    quarter: opp.quarter || undefined,
     stage: opp.stage,
     owner: {
       id: opp.owner.id,

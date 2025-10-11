@@ -189,6 +189,16 @@ export function OpportunityForm({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="quarter">Quarter</Label>
+        <Input
+          id="quarter"
+          value={formData.quarter || ""}
+          onChange={(e) => setFormData({ ...formData, quarter: e.target.value })}
+          placeholder="e.g. Q1 2025"
+        />
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="nextStep">Next Step</Label>
         <Input
           id="nextStep"

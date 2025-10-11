@@ -2,11 +2,14 @@ import { z } from "zod";
 
 export const opportunityCreateSchema = z.object({
   name: z.string().min(2).max(120),
-  account: z.string().min(1).max(120),
+  // Support both old account field and new accountId for backward compatibility
+  account: z.string().min(1).max(120).optional(),
+  accountId: z.string().optional(),
   amountArr: z.number().int().nonnegative(),
   probability: z.number().int().min(0).max(100),
   nextStep: z.string().max(500).optional().nullable(),
   closeDate: z.string().datetime().optional().nullable(),
+  quarter: z.string().max(20).optional().nullable(),
   stage: z.enum([
     "prospect",
     "qualification",
@@ -16,6 +19,9 @@ export const opportunityCreateSchema = z.object({
     "closedLost",
   ]),
   ownerId: z.string().min(1),
+}).refine((data) => data.account || data.accountId, {
+  message: "Either account name or accountId must be provided",
+  path: ["account"],
 });
 
 export const opportunityUpdateSchema = opportunityCreateSchema.partial();

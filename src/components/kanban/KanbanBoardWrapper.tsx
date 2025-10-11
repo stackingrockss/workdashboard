@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -10,9 +10,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Plus } from "lucide-react";
+import { Plus, Filter } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { Opportunity, OpportunityStage } from "@/types/opportunity";
@@ -25,7 +32,46 @@ interface KanbanBoardWrapperProps {
 
 export function KanbanBoardWrapper({ opportunities }: KanbanBoardWrapperProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
+
+  // Get unique quarters from opportunities
+  const quarters = useMemo(() => {
+    const uniqueQuarters = new Set<string>();
+    opportunities.forEach(opp => {
+      if (opp.quarter) {
+        uniqueQuarters.add(opp.quarter);
+      }
+    });
+    return Array.from(uniqueQuarters).sort();
+  }, [opportunities]);
+
+  // Filter opportunities based on quarter and search
+  const filteredOpportunities = useMemo(() => {
+    return opportunities.filter(opp => {
+      // Quarter filter
+      if (selectedQuarter !== "all") {
+        if (selectedQuarter === "unassigned") {
+          if (opp.quarter) return false;
+        } else if (opp.quarter !== selectedQuarter) {
+          return false;
+        }
+      }
+
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const accountName = opp.account?.name || opp.accountName || "";
+        return (
+          opp.name.toLowerCase().includes(query) ||
+          accountName.toLowerCase().includes(query)
+        );
+      }
+
+      return true;
+    });
+  }, [opportunities, selectedQuarter, searchQuery]);
 
   const handleCreateOpportunity = async (data: OpportunityCreateInput) => {
     try {
@@ -60,7 +106,24 @@ export function KanbanBoardWrapper({ opportunities }: KanbanBoardWrapperProps) {
             id="kanban-search"
             className="w-[260px]"
             placeholder="Search by name or account"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
+          <Select value={selectedQuarter} onValueChange={setSelectedQuarter}>
+            <SelectTrigger className="w-[180px]">
+              <Filter className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="All Quarters" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Quarters</SelectItem>
+              <SelectItem value="unassigned">Unassigned</SelectItem>
+              {quarters.map(quarter => (
+                <SelectItem key={quarter} value={quarter}>
+                  {quarter}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex items-center gap-2">
           <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
@@ -69,7 +132,7 @@ export function KanbanBoardWrapper({ opportunities }: KanbanBoardWrapperProps) {
         </div>
       </div>
       <Separator />
-      <KanbanBoard opportunities={opportunities} onStageChange={handleStageChange} />
+      <KanbanBoard opportunities={filteredOpportunities} onStageChange={handleStageChange} />
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

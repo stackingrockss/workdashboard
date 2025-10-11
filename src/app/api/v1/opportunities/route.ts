@@ -23,21 +23,43 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
     const data = parsed.data;
+
+    // If account name is provided instead of accountId, find or create the account
+    let accountId = data.accountId;
+    if (!accountId && data.account) {
+      const account = await prisma.account.upsert({
+        where: { name: data.account },
+        update: {},
+        create: {
+          name: data.account,
+          priority: "medium",
+          health: "good",
+        },
+      });
+      accountId = account.id;
+    }
+
     const created = await prisma.opportunity.create({
       data: {
         name: data.name,
-        account: data.account,
+        accountName: data.account,
+        accountId: accountId,
         amountArr: data.amountArr,
         probability: data.probability,
         nextStep: data.nextStep ?? undefined,
         closeDate: data.closeDate ? new Date(data.closeDate) : undefined,
+        quarter: data.quarter ?? undefined,
         stage: data.stage,
         owner: { connect: { id: data.ownerId } },
       },
-      include: { owner: true },
+      include: {
+        owner: true,
+        account: true,
+      },
     });
     return NextResponse.json({ opportunity: created }, { status: 201 });
   } catch (error) {
+    console.error("Error creating opportunity:", error);
     return NextResponse.json({ error: "Failed to create opportunity" }, { status: 500 });
   }
 }

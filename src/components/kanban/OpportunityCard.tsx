@@ -20,6 +20,7 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
     .toUpperCase();
 
   const closeDate = formatDateShort(opportunity.closeDate);
+  const accountName = opportunity.account?.name || opportunity.accountName || "No Account";
 
   return (
     <Card
@@ -30,7 +31,7 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <div className="truncate font-medium">{opportunity.name}</div>
-            <div className="truncate text-muted-foreground text-sm">{opportunity.account}</div>
+            <div className="truncate text-muted-foreground text-sm">{accountName}</div>
           </div>
           <Badge variant="secondary" className="shrink-0">
             {opportunity.probability}%

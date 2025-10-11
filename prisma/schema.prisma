@@ -1,4 +1,5 @@
 // Prisma schema for Opportunity Tracker
+// Last updated: 2025-10-11
 
 generator client {
   provider = "prisma-client-js"
@@ -32,14 +33,33 @@ enum OpportunityStage {
   @@schema("opportunity_tracker")
 }
 
+model Account {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  industry      String?
+  priority      String         @default("medium") // low, medium, high
+  health        String         @default("good") // good, at-risk, critical
+  notes         String?
+  opportunities Opportunity[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@schema("opportunity_tracker")
+}
+
 model Opportunity {
   id          String            @id @default(cuid())
   name        String
-  account     String
+  // Keep old account field for backward compatibility during migration
+  accountName String?
+  // New relation to Account model
+  accountId   String?
+  account     Account?          @relation(fields: [accountId], references: [id])
   amountArr   Int
   probability Int
   nextStep    String?
   closeDate   DateTime?
+  quarter     String?           // e.g., "Q1 2025", "Q2 2025"
   stage       OpportunityStage
   ownerId     String
   owner       User              @relation(fields: [ownerId], references: [id])

@@ -1,3 +1,13 @@
+export function formatCurrency(amountInDollars: number, locale = "en-US") {
+  const formatter = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+  return formatter.format(amountInDollars);
+}
+
 export function formatCurrencyCompact(amountInDollars: number, locale = "en-US") {
   const formatter = new Intl.NumberFormat(locale, {
     style: "currency",

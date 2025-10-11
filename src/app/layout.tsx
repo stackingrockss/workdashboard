@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { MainNav } from "@/components/navigation/MainNav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,11 +29,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <header className="border-b">
-          <div className="mx-auto max-w-7xl px-6 h-12 flex items-center justify-between">
-            <Link href="/" className="font-medium">Opportunity Tracker</Link>
-            <nav className="text-sm">
-              <Link href="/opportunities" className="hover:underline">Opportunities</Link>
-            </nav>
+          <div className="mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
+            <Link href="/" className="font-semibold text-lg">Opportunity Tracker</Link>
+            <MainNav />
           </div>
         </header>
         <main className="mx-auto max-w-7xl px-6">{children}</main>
