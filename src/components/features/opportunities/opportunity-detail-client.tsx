@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { Opportunity } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity } from "@/lib/api/opportunities";
@@ -56,7 +57,15 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-start justify-between">
-        <div>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/opportunities">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Opportunities
+              </Link>
+            </Button>
+          </div>
           <h1 className="text-2xl font-semibold tracking-tight">{opportunity.name}</h1>
           <p className="text-sm text-muted-foreground">
             {opportunity.account?.name || opportunity.accountName || "No Account"}
