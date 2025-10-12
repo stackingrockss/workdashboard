@@ -80,9 +80,10 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity }: Kanba
               size="sm"
               variant="ghost"
               onClick={() => setIsEditing(true)}
-              className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-8 w-8 p-0 hover:bg-accent"
+              title="Edit column name"
             >
-              <Pencil className="h-3 w-3" />
+              <Pencil className="h-3 w-3 text-muted-foreground" />
             </Button>
           </>
         )}
