@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
@@ -90,26 +89,20 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity }: Kanba
       </div>
       <Separator />
       <ScrollArea className="h-[70vh] p-3">
-        <SortableContext
-          id={column.id}
-          items={opportunities.map((opp) => opp.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <div ref={setNodeRef} className="space-y-3 min-h-[200px]">
-            {opportunities.map((opp) => (
-              <DraggableOpportunityCard
-                key={opp.id}
-                opportunity={opp}
-                onClick={onOpenOpportunity}
-              />
-            ))}
-            {count === 0 && (
-              <div className="text-sm text-muted-foreground text-center py-6">
-                No opportunities
-              </div>
-            )}
-          </div>
-        </SortableContext>
+        <div ref={setNodeRef} className="space-y-3 min-h-[200px]">
+          {opportunities.map((opp) => (
+            <DraggableOpportunityCard
+              key={opp.id}
+              opportunity={opp}
+              onClick={onOpenOpportunity}
+            />
+          ))}
+          {count === 0 && (
+            <div className="text-sm text-muted-foreground text-center py-6">
+              No opportunities
+            </div>
+          )}
+        </div>
       </ScrollArea>
     </div>
   );

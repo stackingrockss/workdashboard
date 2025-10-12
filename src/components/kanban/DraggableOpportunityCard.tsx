@@ -1,6 +1,6 @@
 "use client";
 
-import { useSortable } from "@dnd-kit/sortable";
+import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { OpportunityCard, OpportunityCardProps } from "./OpportunityCard";
 
@@ -10,13 +10,11 @@ export function DraggableOpportunityCard({ opportunity, onClick }: OpportunityCa
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging,
-  } = useSortable({ id: opportunity.id });
+  } = useDraggable({ id: opportunity.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
     opacity: isDragging ? 0.5 : 1,
   };
 
