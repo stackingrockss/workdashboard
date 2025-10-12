@@ -57,12 +57,12 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
             <CircleDollarSign size={16} />
-            <span>{formatCurrencyCompact(opportunity.amountArr)} ARR</span>
+            <span suppressHydrationWarning>{formatCurrencyCompact(opportunity.amountArr)} ARR</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 text-muted-foreground">
               <CalendarDays size={16} />
-              <span>{closeDate}</span>
+              <span suppressHydrationWarning>{closeDate}</span>
             </div>
             {opportunity.riskNotes && (
               <AlertTriangle size={16} className="text-yellow-600 dark:text-yellow-400" />

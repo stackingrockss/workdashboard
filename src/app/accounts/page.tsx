@@ -103,11 +103,11 @@ export default async function AccountsPage() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Total Value</span>
-                    <span className="font-medium">{formatCurrencyCompact(account.stats.totalValue)}</span>
+                    <span className="font-medium" suppressHydrationWarning>{formatCurrencyCompact(account.stats.totalValue)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Weighted Value</span>
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400" suppressHydrationWarning>
                       {formatCurrencyCompact(account.stats.weightedValue)}
                     </span>
                   </div>
@@ -133,7 +133,7 @@ export default async function AccountsPage() {
                           href={`/opportunities/${opp.id}`}
                           className="block text-sm hover:underline truncate"
                         >
-                          {opp.name} • {formatCurrencyCompact(opp.amountArr)}
+                          <span suppressHydrationWarning>{opp.name} • {formatCurrencyCompact(opp.amountArr)}</span>
                         </Link>
                       ))}
                     </div>

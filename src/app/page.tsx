@@ -80,7 +80,7 @@ export default async function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrencyCompact(stats.totalValue)}</div>
+            <div className="text-2xl font-bold" suppressHydrationWarning>{formatCurrencyCompact(stats.totalValue)}</div>
             <p className="text-xs text-muted-foreground">Total ARR in pipeline</p>
           </CardContent>
         </Card>
@@ -91,7 +91,7 @@ export default async function DashboardPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{formatCurrencyCompact(stats.weightedValue)}</div>
+            <div className="text-2xl font-bold" suppressHydrationWarning>{formatCurrencyCompact(stats.weightedValue)}</div>
             <p className="text-xs text-muted-foreground">Probability-adjusted ARR</p>
           </CardContent>
         </Card>
@@ -126,11 +126,11 @@ export default async function DashboardPage() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Total Value</span>
-                    <span className="font-medium">{formatCurrency(quarter.value)}</span>
+                    <span className="font-medium" suppressHydrationWarning>{formatCurrency(quarter.value)}</span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Weighted Value</span>
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="font-medium text-emerald-600 dark:text-emerald-400" suppressHydrationWarning>
                       {formatCurrency(quarter.weightedValue)}
                     </span>
                   </div>
@@ -158,7 +158,7 @@ export default async function DashboardPage() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Total Value</span>
-                    <span className="font-medium">{formatCurrency(stage.value)}</span>
+                    <span className="font-medium" suppressHydrationWarning>{formatCurrency(stage.value)}</span>
                   </div>
                 </div>
               ))}
@@ -187,7 +187,7 @@ export default async function DashboardPage() {
                     {activity.accountName} • {activity.action}
                   </div>
                 </div>
-                <div className="text-xs text-muted-foreground whitespace-nowrap">
+                <div className="text-xs text-muted-foreground whitespace-nowrap" suppressHydrationWarning>
                   {new Date(activity.timestamp).toLocaleDateString()}
                 </div>
               </div>

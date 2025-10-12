@@ -16,6 +16,7 @@ import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity } from "@/lib/api/opportunities";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
+import { GranolaNotesSection } from "./granola-notes-section";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -82,7 +83,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         </div>
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Amount (ARR)</div>
-          <div className="font-medium">{formatCurrencyCompact(opportunity.amountArr)} ARR</div>
+          <div className="font-medium" suppressHydrationWarning>{formatCurrencyCompact(opportunity.amountArr)} ARR</div>
         </div>
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Probability</div>
@@ -90,7 +91,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         </div>
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Close date</div>
-          <div className="font-medium">{formatDateShort(opportunity.closeDate)}</div>
+          <div className="font-medium" suppressHydrationWarning>{formatDateShort(opportunity.closeDate)}</div>
         </div>
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Owner</div>
@@ -116,6 +117,10 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
             <div className="font-medium whitespace-pre-wrap">{opportunity.notes}</div>
           </div>
         )}
+        <GranolaNotesSection
+          opportunityId={opportunity.id}
+          notes={opportunity.granolaNotes || []}
+        />
       </div>
 
       {/* Edit Dialog */}
