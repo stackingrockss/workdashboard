@@ -17,6 +17,8 @@ import { updateOpportunity, deleteOpportunity } from "@/lib/api/opportunities";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 import { GranolaNotesSection } from "./granola-notes-section";
+import { OrgChartSection } from "@/components/contacts/OrgChartSection";
+import { Separator } from "@/components/ui/separator";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -122,6 +124,11 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           notes={opportunity.granolaNotes || []}
         />
       </div>
+
+      <Separator className="my-8" />
+
+      {/* Organization Chart Section */}
+      <OrgChartSection opportunityId={opportunity.id} />
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

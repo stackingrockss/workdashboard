@@ -42,6 +42,26 @@ enum ForecastCategory {
   @@schema("opportunity_tracker")
 }
 
+enum ContactRole {
+  decision_maker
+  influencer
+  champion
+  blocker
+  end_user
+
+  @@schema("opportunity_tracker")
+}
+
+enum ContactSentiment {
+  advocate
+  positive
+  neutral
+  negative
+  unknown
+
+  @@schema("opportunity_tracker")
+}
+
 model Account {
   id            String         @id @default(cuid())
   name          String         @unique
@@ -91,8 +111,45 @@ model Opportunity {
   notes            String?
   ownerId          String
   owner            User               @relation(fields: [ownerId], references: [id])
+  granolaNotes     GranolaNote[]
+  contacts         Contact[]
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
+
+  @@schema("opportunity_tracker")
+}
+
+model GranolaNote {
+  id            String       @id @default(cuid())
+  opportunityId String
+  opportunity   Opportunity  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  title         String
+  url           String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@schema("opportunity_tracker")
+}
+
+model Contact {
+  id              String            @id @default(cuid())
+  firstName       String
+  lastName        String
+  title           String?           // Job title (e.g., "VP of Engineering")
+  email           String?
+  phone           String?
+  role            ContactRole       // Decision maker, influencer, etc.
+  sentiment       ContactSentiment  @default(unknown) // How they feel about the deal
+  opportunityId   String
+  opportunity     Opportunity       @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  managerId       String?           // Self-referencing for org hierarchy
+  manager         Contact?          @relation("ContactReports", fields: [managerId], references: [id], onDelete: SetNull)
+  directReports   Contact[]         @relation("ContactReports")
+  positionX       Float?            // X coordinate for org chart positioning
+  positionY       Float?            // Y coordinate for org chart positioning
+  notes           String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@schema("opportunity_tracker")
 }

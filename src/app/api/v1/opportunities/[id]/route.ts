@@ -13,6 +13,11 @@ export async function GET(
       include: {
         owner: true,
         account: true,
+        granolaNotes: {
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
       },
     });
     if (!opportunity) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -31,6 +36,10 @@ export async function PATCH(
     const json = await req.json();
     const parsed = opportunityUpdateSchema.safeParse(json);
     if (!parsed.success) {
+      console.error(`[PATCH /api/v1/opportunities/${id}] Validation failed:`, {
+        input: json,
+        errors: parsed.error.flatten(),
+      });
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
     const data = parsed.data;
@@ -59,6 +68,7 @@ export async function PATCH(
       closeDate: data.closeDate ? new Date(data.closeDate) : undefined,
       quarter: data.quarter ?? undefined,
       stage: data.stage ?? undefined,
+      columnId: data.columnId !== undefined ? data.columnId : undefined,
       forecastCategory: data.forecastCategory ?? undefined,
       riskNotes: data.riskNotes ?? undefined,
       notes: data.notes ?? undefined,
@@ -79,6 +89,7 @@ export async function PATCH(
     });
     return NextResponse.json({ opportunity: updated });
   } catch (error) {
+    console.error(`[PATCH /api/v1/opportunities/${id}] Error:`, error);
     return NextResponse.json({ error: "Failed to update opportunity" }, { status: 500 });
   }
 }
