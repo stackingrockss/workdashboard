@@ -111,6 +111,17 @@ export function KanbanBoardWrapper({ opportunities, initialColumns }: KanbanBoar
     }
   };
 
+  const handleColumnChange = async (opportunityId: string, newColumnId: string) => {
+    try {
+      await updateOpportunity(opportunityId, { columnId: newColumnId });
+      toast.success("Opportunity moved successfully!");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to move opportunity");
+      throw error;
+    }
+  };
+
   const handleCreateColumn = async (data: ColumnCreateInput) => {
     try {
       const maxOrder = columns.length > 0 ? Math.max(...columns.map(c => c.order)) : -1;
@@ -167,6 +178,7 @@ export function KanbanBoardWrapper({ opportunities, initialColumns }: KanbanBoar
         opportunities={filteredOpportunities}
         columns={columns}
         onStageChange={handleStageChange}
+        onColumnChange={handleColumnChange}
       />
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

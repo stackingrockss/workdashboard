@@ -12,9 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Sparkles, Loader2 } from "lucide-react";
 import { OpportunityStage, OpportunityOwner, ForecastCategory } from "@/types/opportunity";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { getUsers } from "@/lib/api/users";
+import { toast } from "sonner";
 
 interface OpportunityFormProps {
   onSubmit: (data: OpportunityCreateInput) => Promise<void>;
@@ -45,6 +47,7 @@ export function OpportunityForm({
   submitLabel = "Create",
 }: OpportunityFormProps) {
   const [loading, setLoading] = useState(false);
+  const [generatingNotes, setGeneratingNotes] = useState(false);
   const [users, setUsers] = useState<OpportunityOwner[]>([]);
   const [formData, setFormData] = useState<OpportunityCreateInput>({
     name: initialData?.name || "",
@@ -82,6 +85,42 @@ export function OpportunityForm({
       await onSubmit(formData);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateNotes = async () => {
+    if (!formData.account || formData.account.trim() === "") {
+      toast.error("Please enter an account name first");
+      return;
+    }
+
+    setGeneratingNotes(true);
+    try {
+      const response = await fetch("/api/v1/ai/meeting-notes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          accountName: formData.account,
+          stage: formData.stage,
+          opportunityValue: formData.amountArr > 0 ? formData.amountArr : undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to generate notes");
+      }
+
+      setFormData({ ...formData, notes: data.notes });
+      toast.success("Pre-meeting notes generated successfully!");
+    } catch (error) {
+      console.error("Error generating notes:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to generate notes");
+    } finally {
+      setGeneratingNotes(false);
     }
   };
 
@@ -230,7 +269,6 @@ export function OpportunityForm({
             <SelectValue placeholder="Select forecast category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">None</SelectItem>
             {forecastCategories.map((cat) => (
               <SelectItem key={cat.value} value={cat.value}>
                 {cat.label}
@@ -252,13 +290,34 @@ export function OpportunityForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="notes">Notes</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="notes">Notes</Label>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleGenerateNotes}
+            disabled={generatingNotes || !formData.account}
+          >
+            {generatingNotes ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Researching {formData.account}...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate Pre-Meeting Notes
+              </>
+            )}
+          </Button>
+        </div>
         <Textarea
           id="notes"
           value={formData.notes || ""}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          placeholder="General notes about this opportunity..."
-          rows={4}
+          placeholder="General notes about this opportunity... (or generate AI-powered pre-meeting research)"
+          rows={12}
         />
       </div>
 
