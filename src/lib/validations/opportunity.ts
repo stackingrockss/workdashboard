@@ -18,6 +18,7 @@ const baseOpportunitySchema = z.object({
     "closedWon",
     "closedLost",
   ]),
+  columnId: z.string().optional().nullable(), // Support flexible column assignment
   forecastCategory: z.enum(["pipeline", "bestCase", "forecast"]).optional().nullable(),
   riskNotes: z.string().max(2000).optional().nullable(),
   notes: z.string().max(5000).optional().nullable(),
