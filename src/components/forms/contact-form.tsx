@@ -105,7 +105,7 @@ export function ContactForm({
         <Label htmlFor="title">Job Title</Label>
         <Input
           id="title"
-          value={formData.title}
+          value={formData.title || ""}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           placeholder="VP of Engineering"
         />
@@ -117,7 +117,7 @@ export function ContactForm({
           <Input
             id="email"
             type="email"
-            value={formData.email}
+            value={formData.email || ""}
             onChange={(e) =>
               setFormData({ ...formData, email: e.target.value })
             }
@@ -130,7 +130,7 @@ export function ContactForm({
           <Input
             id="phone"
             type="tel"
-            value={formData.phone}
+            value={formData.phone || ""}
             onChange={(e) =>
               setFormData({ ...formData, phone: e.target.value })
             }
@@ -224,7 +224,7 @@ export function ContactForm({
         <Label htmlFor="notes">Notes</Label>
         <Textarea
           id="notes"
-          value={formData.notes}
+          value={formData.notes || ""}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
           placeholder="Additional notes about this contact..."
           rows={3}
