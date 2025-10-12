@@ -7,6 +7,23 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export default async function OpportunitiesPage() {
+  // Fetch columns from database
+  const columnsFromDB = await prisma.kanbanColumn.findMany({
+    where: { userId: null }, // Global columns only for now
+    orderBy: { order: "asc" },
+  });
+
+  // Transform columns to match expected type
+  const columns = columnsFromDB.map((col) => ({
+    id: col.id,
+    title: col.title,
+    order: col.order,
+    color: col.color || undefined,
+    userId: col.userId || undefined,
+    createdAt: col.createdAt.toISOString(),
+    updatedAt: col.updatedAt.toISOString(),
+  }));
+
   // Fetch opportunities from database
   const opportunitiesFromDB = await prisma.opportunity.findMany({
     orderBy: { updatedAt: "desc" },
@@ -33,6 +50,10 @@ export default async function OpportunitiesPage() {
     closeDate: opp.closeDate?.toISOString() || undefined,
     quarter: opp.quarter || undefined,
     stage: opp.stage,
+    columnId: opp.columnId || undefined,
+    forecastCategory: opp.forecastCategory || undefined,
+    riskNotes: opp.riskNotes || undefined,
+    notes: opp.notes || undefined,
     owner: {
       id: opp.owner.id,
       name: opp.owner.name,
@@ -50,7 +71,7 @@ export default async function OpportunitiesPage() {
           Track deals, next steps, and forecast in a Kanban view
         </p>
       </div>
-      <KanbanBoardWrapper opportunities={opportunities} />
+      <KanbanBoardWrapper opportunities={opportunities} initialColumns={columns} />
     </div>
   );
 }

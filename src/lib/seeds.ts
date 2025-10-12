@@ -6,19 +6,30 @@ const prisma = new PrismaClient();
 export async function seedDatabase() {
   console.log("🌱 Seeding database...");
 
-  // Create users
-  const owners = [
-    { id: "u1", email: "alex@example.com", name: "Alex Johnson" },
-    { id: "u2", email: "priya@example.com", name: "Priya Singh" },
-    { id: "u3", email: "marco@example.com", name: "Marco Ruiz" },
+  // Create user
+  const owner = { id: "u1", email: "matt.seelig@example.com", name: "Matt Seelig" };
+
+  console.log("Creating user...");
+  await prisma.user.upsert({
+    where: { id: owner.id },
+    create: { id: owner.id, email: owner.email, name: owner.name },
+    update: { email: owner.email, name: owner.name },
+  });
+
+  console.log("Creating default kanban columns...");
+  const defaultColumns = [
+    { id: "col-q1-2025", title: "Q1 2025", order: 0 },
+    { id: "col-q2-2025", title: "Q2 2025", order: 1 },
+    { id: "col-q3-2025", title: "Q3 2025", order: 2 },
+    { id: "col-q4-2025", title: "Q4 2025", order: 3 },
+    { id: "col-closed-lost", title: "Closed Lost", order: 4, color: "#ef4444" },
   ];
 
-  console.log("Creating users...");
-  for (const o of owners) {
-    await prisma.user.upsert({
-      where: { id: o.id },
-      create: { id: o.id, email: o.email, name: o.name },
-      update: { email: o.email, name: o.name },
+  for (const col of defaultColumns) {
+    await prisma.kanbanColumn.upsert({
+      where: { id: col.id },
+      create: col,
+      update: { title: col.title, order: col.order, color: col.color },
     });
   }
 
@@ -27,69 +38,102 @@ export async function seedDatabase() {
   const opportunities = [
     {
       id: "opp-001",
-      name: "Renewal - Acme Corp",
-      accountName: "Acme Corp",
-      amountArr: 24000,
-      probability: 70,
-      nextStep: "Send updated MSA",
+      name: "Claritev",
+      accountName: "Claritev",
+      amountArr: 85000,
+      probability: 75,
+      nextStep: "Final contract review",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 1, 15),
-      stage: "proposal" as OpportunityStage,
+      stage: "negotiation" as OpportunityStage,
       ownerId: "u1",
     },
     {
       id: "opp-002",
-      name: "New Biz - Globex",
-      accountName: "Globex",
-      amountArr: 54000,
-      probability: 40,
-      nextStep: "Schedule demo with CTO",
+      name: "InnovAge",
+      accountName: "InnovAge",
+      amountArr: 120000,
+      probability: 60,
+      nextStep: "Schedule technical demo",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 2, 1),
       stage: "qualification" as OpportunityStage,
-      ownerId: "u2",
+      ownerId: "u1",
     },
     {
       id: "opp-003",
-      name: "Expansion - Initech",
-      accountName: "Initech",
-      amountArr: 120000,
-      probability: 55,
-      nextStep: "Draft proposal",
+      name: "Loyal Source",
+      accountName: "Loyal Source",
+      amountArr: 95000,
+      probability: 80,
+      nextStep: "Send proposal",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 1, 30),
-      stage: "prospect" as OpportunityStage,
-      ownerId: "u3",
+      stage: "proposal" as OpportunityStage,
+      ownerId: "u1",
     },
     {
       id: "opp-004",
-      name: "New Biz - Hooli",
-      accountName: "Hooli",
-      amountArr: 36000,
-      probability: 25,
-      nextStep: "Intro call with VP Eng",
+      name: "Apple",
+      accountName: "Apple",
+      amountArr: 250000,
+      probability: 45,
+      nextStep: "Discovery call with procurement",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 3, 10),
       stage: "prospect" as OpportunityStage,
       ownerId: "u1",
     },
     {
       id: "opp-005",
-      name: "New Biz - Umbrella",
-      accountName: "Umbrella Co",
-      amountArr: 84000,
-      probability: 65,
-      nextStep: "Security review",
+      name: "Defense Health Agency",
+      accountName: "Defense Health Agency",
+      amountArr: 180000,
+      probability: 70,
+      nextStep: "Security compliance review",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 2, 20),
-      stage: "negotiation" as OpportunityStage,
-      ownerId: "u2",
+      stage: "qualification" as OpportunityStage,
+      ownerId: "u1",
     },
     {
       id: "opp-006",
-      name: "Renewal - Soylent",
-      accountName: "Soylent",
-      amountArr: 18000,
-      probability: 95,
-      nextStep: "Book signature",
+      name: "SummaCare",
+      accountName: "SummaCare",
+      amountArr: 65000,
+      probability: 85,
+      nextStep: "Final approval meeting",
       closeDate: new Date(today.getFullYear(), today.getMonth(), 28),
+      stage: "negotiation" as OpportunityStage,
+      ownerId: "u1",
+    },
+    {
+      id: "opp-007",
+      name: "Concentra",
+      accountName: "Concentra",
+      amountArr: 110000,
+      probability: 55,
+      nextStep: "Product demonstration",
+      closeDate: new Date(today.getFullYear(), today.getMonth() + 2, 15),
+      stage: "qualification" as OpportunityStage,
+      ownerId: "u1",
+    },
+    {
+      id: "opp-008",
+      name: "Premera",
+      accountName: "Premera",
+      amountArr: 140000,
+      probability: 65,
+      nextStep: "Draft MSA",
+      closeDate: new Date(today.getFullYear(), today.getMonth() + 1, 25),
       stage: "proposal" as OpportunityStage,
-      ownerId: "u3",
+      ownerId: "u1",
+    },
+    {
+      id: "opp-009",
+      name: "CareFirst",
+      accountName: "CareFirst",
+      amountArr: 95000,
+      probability: 50,
+      nextStep: "Initial needs assessment",
+      closeDate: new Date(today.getFullYear(), today.getMonth() + 3, 5),
+      stage: "prospect" as OpportunityStage,
+      ownerId: "u1",
     },
   ];
 

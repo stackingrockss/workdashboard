@@ -17,6 +17,7 @@ model User {
   name          String
   avatarUrl     String?
   opportunities Opportunity[]
+  kanbanColumns KanbanColumn[]
   createdAt     DateTime       @default(now())
 
   @@schema("opportunity_tracker")
@@ -55,6 +56,20 @@ model Account {
   @@schema("opportunity_tracker")
 }
 
+model KanbanColumn {
+  id        String   @id @default(cuid())
+  title     String
+  order     Int
+  color     String?  // Optional hex color for the column header
+  userId    String?  // Optional: per-user columns, null for global columns
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, order])
+  @@schema("opportunity_tracker")
+}
+
 model Opportunity {
   id               String             @id @default(cuid())
   name             String
@@ -69,6 +84,8 @@ model Opportunity {
   closeDate        DateTime?
   quarter          String?            // e.g., "Q1 2025", "Q2 2025"
   stage            OpportunityStage
+  // New flexible column assignment
+  columnId         String?            // References KanbanColumn.id
   forecastCategory ForecastCategory?
   riskNotes        String?
   notes            String?

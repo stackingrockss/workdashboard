@@ -3,17 +3,17 @@
 import { useMemo } from "react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useState } from "react";
-import { defaultColumns } from "@/data/mock-opportunities";
-import { Opportunity, OpportunityStage } from "@/types/opportunity";
+import { Opportunity, OpportunityStage, KanbanColumnConfig } from "@/types/opportunity";
 import { KanbanColumn } from "./KanbanColumn";
 import { OpportunityCard } from "./OpportunityCard";
 
 export interface KanbanBoardProps {
   opportunities: Opportunity[];
+  columns: KanbanColumnConfig[];
   onStageChange?: (opportunityId: string, newStage: OpportunityStage) => Promise<void>;
 }
 
-export function KanbanBoard({ opportunities, onStageChange }: KanbanBoardProps) {
+export function KanbanBoard({ opportunities, columns, onStageChange }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -25,20 +25,23 @@ export function KanbanBoard({ opportunities, onStageChange }: KanbanBoardProps) 
   );
 
   const grouped = useMemo(() => {
-    const result: Record<OpportunityStage, Opportunity[]> = {
-      prospect: [],
-      qualification: [],
-      proposal: [],
-      negotiation: [],
-      closedWon: [],
-      closedLost: [],
-    };
+    const result: Record<string, Opportunity[]> = {};
 
+    // Initialize with column IDs
+    for (const col of columns) {
+      result[col.id] = [];
+    }
+
+    // Group opportunities by columnId, fallback to stage for backward compatibility
     for (const opp of opportunities) {
-      result[opp.stage].push(opp);
+      const key = opp.columnId || opp.stage;
+      if (!result[key]) {
+        result[key] = [];
+      }
+      result[key].push(opp);
     }
     return result;
-  }, [opportunities]);
+  }, [opportunities, columns]);
 
   const activeOpportunity = useMemo(() => {
     if (!activeId) return null;
@@ -72,13 +75,12 @@ export function KanbanBoard({ opportunities, onStageChange }: KanbanBoardProps) 
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6 gap-4">
-        {defaultColumns.map((col) => (
+      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.min(columns.length, 6)}, minmax(280px, 1fr))` }}>
+        {columns.map((col) => (
           <KanbanColumn
             key={col.id}
-            stage={col.id}
-            title={col.title}
-            opportunities={grouped[col.id]}
+            column={col}
+            opportunities={grouped[col.id] || []}
             onOpenOpportunity={handleOpen}
           />
         ))}

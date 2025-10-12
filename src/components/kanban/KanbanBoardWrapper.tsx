@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,22 +19,38 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Filter } from "lucide-react";
+import { Plus, Filter, Columns } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
-import { Opportunity, OpportunityStage } from "@/types/opportunity";
+import { ColumnForm } from "@/components/forms/column-form";
+import { Opportunity, OpportunityStage, KanbanColumnConfig } from "@/types/opportunity";
 import { createOpportunity, updateOpportunity } from "@/lib/api/opportunities";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
+import { getColumns, createColumn } from "@/lib/api/columns";
+import { ColumnCreateInput } from "@/lib/validations/column";
 
 interface KanbanBoardWrapperProps {
   opportunities: Opportunity[];
+  initialColumns?: KanbanColumnConfig[];
 }
 
-export function KanbanBoardWrapper({ opportunities }: KanbanBoardWrapperProps) {
+export function KanbanBoardWrapper({ opportunities, initialColumns }: KanbanBoardWrapperProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
   const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [columns, setColumns] = useState<KanbanColumnConfig[]>(initialColumns || []);
   const router = useRouter();
+
+  // Fetch columns on mount if not provided
+  useEffect(() => {
+    if (!initialColumns) {
+      getColumns().then(setColumns).catch((error) => {
+        console.error("Failed to fetch columns:", error);
+        toast.error("Failed to load kanban columns");
+      });
+    }
+  }, [initialColumns]);
 
   // Get unique quarters from opportunities
   const quarters = useMemo(() => {
@@ -95,6 +111,18 @@ export function KanbanBoardWrapper({ opportunities }: KanbanBoardWrapperProps) {
     }
   };
 
+  const handleCreateColumn = async (data: ColumnCreateInput) => {
+    try {
+      const maxOrder = columns.length > 0 ? Math.max(...columns.map(c => c.order)) : -1;
+      await createColumn({ ...data, order: maxOrder + 1 });
+      toast.success("Column created successfully!");
+      setIsColumnDialogOpen(false);
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create column");
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -126,13 +154,20 @@ export function KanbanBoardWrapper({ opportunities }: KanbanBoardWrapperProps) {
           </Select>
         </div>
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => setIsColumnDialogOpen(true)}>
+            <Columns className="h-4 w-4 mr-2" /> Add Column
+          </Button>
           <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> New Opportunity
           </Button>
         </div>
       </div>
       <Separator />
-      <KanbanBoard opportunities={filteredOpportunities} onStageChange={handleStageChange} />
+      <KanbanBoard
+        opportunities={filteredOpportunities}
+        columns={columns}
+        onStageChange={handleStageChange}
+      />
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -143,6 +178,20 @@ export function KanbanBoardWrapper({ opportunities }: KanbanBoardWrapperProps) {
             onSubmit={handleCreateOpportunity}
             onCancel={() => setIsCreateDialogOpen(false)}
             submitLabel="Create Opportunity"
+          />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isColumnDialogOpen} onOpenChange={setIsColumnDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Column</DialogTitle>
+          </DialogHeader>
+          <ColumnForm
+            onSubmit={handleCreateColumn}
+            onCancel={() => setIsColumnDialogOpen(false)}
+            submitLabel="Add Column"
+            defaultOrder={columns.length}
           />
         </DialogContent>
       </Dialog>

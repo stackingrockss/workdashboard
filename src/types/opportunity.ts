@@ -29,6 +29,7 @@ export interface Opportunity {
   closeDate?: string; // ISO date string
   quarter?: string; // e.g., "Q1 2025", "Q2 2025"
   stage: OpportunityStage;
+  columnId?: string; // New flexible column assignment
   forecastCategory?: ForecastCategory | null;
   riskNotes?: string | null;
   notes?: string | null;
@@ -38,8 +39,13 @@ export interface Opportunity {
 }
 
 export interface KanbanColumnConfig {
-  id: OpportunityStage;
+  id: string;
   title: string;
+  order: number;
+  color?: string;
+  userId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 
