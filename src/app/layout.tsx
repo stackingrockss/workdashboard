@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { MainNav } from "@/components/navigation/MainNav";
+import { UserMenu } from "@/components/navigation/UserMenu";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,7 +32,10 @@ export default function RootLayout({
         <header className="border-b">
           <div className="mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
             <Link href="/" className="font-semibold text-lg">Opportunity Tracker</Link>
-            <MainNav />
+            <div className="flex items-center gap-6">
+              <MainNav />
+              <UserMenu />
+            </div>
           </div>
         </header>
         <main className="mx-auto max-w-7xl px-6">{children}</main>

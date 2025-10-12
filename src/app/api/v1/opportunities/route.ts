@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { opportunityCreateSchema } from "@/lib/validations/opportunity";
+import { requireAuth } from "@/lib/auth";
 
 export async function GET() {
   try {
+    const user = await requireAuth();
+
     const opportunities = await prisma.opportunity.findMany({
+      where: { ownerId: user.id },
       orderBy: { updatedAt: "desc" },
       include: {
         owner: true,
@@ -14,12 +18,17 @@ export async function GET() {
     });
     return NextResponse.json({ opportunities });
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Failed to fetch opportunities" }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await requireAuth();
+
     const json = await req.json();
     const parsed = opportunityCreateSchema.safeParse(json);
     if (!parsed.success) {
@@ -54,7 +63,7 @@ export async function POST(req: NextRequest) {
       forecastCategory: data.forecastCategory ?? undefined,
       riskNotes: data.riskNotes ?? undefined,
       notes: data.notes ?? undefined,
-      ownerId: data.ownerId,
+      ownerId: user.id, // Use authenticated user's ID
       ...(accountId ? { accountId } : {}),
     };
 
@@ -67,6 +76,9 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ opportunity: created }, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     console.error("Error creating opportunity:", error);
     return NextResponse.json({ error: "Failed to create opportunity" }, { status: 500 });
   }

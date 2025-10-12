@@ -3,6 +3,17 @@ import { OpportunityStage } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+/**
+ * NOTE: With Supabase Auth enabled, users are created automatically when they sign up.
+ * This seed script is kept for reference or testing purposes.
+ * In production, each user will create their own opportunities and columns.
+ *
+ * To seed data for testing, you'll need to:
+ * 1. Create a user via Supabase Auth
+ * 2. Get the user's ID from the database
+ * 3. Update the owner.id below to match that user's ID
+ */
+
 // Helper function to determine quarter column ID based on close date
 function getQuarterColumnId(closeDate: Date): string {
   const month = closeDate.getMonth(); // 0-11
@@ -33,8 +44,7 @@ export async function seedDatabase() {
     { id: "col-q2-2025", title: "Q2 2025", order: 1 },
     { id: "col-q3-2025", title: "Q3 2025", order: 2 },
     { id: "col-q4-2025", title: "Q4 2025", order: 3 },
-    { id: "col-q1-2026", title: "Q1 2026", order: 4 },
-    { id: "col-closed-lost", title: "Closed Lost", order: 5, color: "#ef4444" },
+    { id: "col-closed-lost", title: "Closed Lost", order: 4, color: "#ef4444" },
   ];
 
   for (const col of defaultColumns) {
