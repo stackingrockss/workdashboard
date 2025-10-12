@@ -83,7 +83,7 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity }: Kanba
               className="h-8 w-8 p-0 hover:bg-accent"
               title="Edit column name"
             >
-              <Pencil className="h-3 w-3 text-muted-foreground" />
+              <Pencil className="h-4 w-4 text-foreground/70" />
             </Button>
           </>
         )}
