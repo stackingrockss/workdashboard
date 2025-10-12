@@ -3,6 +3,17 @@ import { OpportunityStage } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Helper function to determine quarter column ID based on close date
+function getQuarterColumnId(closeDate: Date): string {
+  const month = closeDate.getMonth(); // 0-11
+  const year = closeDate.getFullYear();
+
+  // Determine quarter (Q1: Jan-Mar, Q2: Apr-Jun, Q3: Jul-Sep, Q4: Oct-Dec)
+  const quarter = Math.floor(month / 3) + 1;
+
+  return `col-q${quarter}-${year}`;
+}
+
 export async function seedDatabase() {
   console.log("🌱 Seeding database...");
 
@@ -45,6 +56,7 @@ export async function seedDatabase() {
       nextStep: "Final contract review",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 1, 15),
       stage: "negotiation" as OpportunityStage,
+      columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 1, 15)),
       ownerId: "u1",
     },
     {
@@ -56,6 +68,7 @@ export async function seedDatabase() {
       nextStep: "Schedule technical demo",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 2, 1),
       stage: "qualification" as OpportunityStage,
+      columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 2, 1)),
       ownerId: "u1",
     },
     {
@@ -67,6 +80,7 @@ export async function seedDatabase() {
       nextStep: "Send proposal",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 1, 30),
       stage: "proposal" as OpportunityStage,
+      columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 1, 30)),
       ownerId: "u1",
     },
     {
@@ -78,6 +92,7 @@ export async function seedDatabase() {
       nextStep: "Discovery call with procurement",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 3, 10),
       stage: "prospect" as OpportunityStage,
+      columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 3, 10)),
       ownerId: "u1",
     },
     {
@@ -89,6 +104,7 @@ export async function seedDatabase() {
       nextStep: "Security compliance review",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 2, 20),
       stage: "qualification" as OpportunityStage,
+      columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 2, 20)),
       ownerId: "u1",
     },
     {
@@ -100,6 +116,7 @@ export async function seedDatabase() {
       nextStep: "Final approval meeting",
       closeDate: new Date(today.getFullYear(), today.getMonth(), 28),
       stage: "negotiation" as OpportunityStage,
+      columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth(), 28)),
       ownerId: "u1",
     },
     {
@@ -111,6 +128,7 @@ export async function seedDatabase() {
       nextStep: "Product demonstration",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 2, 15),
       stage: "qualification" as OpportunityStage,
+      columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 2, 15)),
       ownerId: "u1",
     },
     {
@@ -122,6 +140,7 @@ export async function seedDatabase() {
       nextStep: "Draft MSA",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 1, 25),
       stage: "proposal" as OpportunityStage,
+      columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 1, 25)),
       ownerId: "u1",
     },
     {
@@ -133,6 +152,7 @@ export async function seedDatabase() {
       nextStep: "Initial needs assessment",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 3, 5),
       stage: "prospect" as OpportunityStage,
+      columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 3, 5)),
       ownerId: "u1",
     },
   ];
