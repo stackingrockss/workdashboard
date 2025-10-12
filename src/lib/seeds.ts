@@ -33,7 +33,8 @@ export async function seedDatabase() {
     { id: "col-q2-2025", title: "Q2 2025", order: 1 },
     { id: "col-q3-2025", title: "Q3 2025", order: 2 },
     { id: "col-q4-2025", title: "Q4 2025", order: 3 },
-    { id: "col-closed-lost", title: "Closed Lost", order: 4, color: "#ef4444" },
+    { id: "col-q1-2026", title: "Q1 2026", order: 4 },
+    { id: "col-closed-lost", title: "Closed Lost", order: 5, color: "#ef4444" },
   ];
 
   for (const col of defaultColumns) {

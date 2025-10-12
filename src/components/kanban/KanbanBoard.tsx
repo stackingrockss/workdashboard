@@ -11,9 +11,10 @@ export interface KanbanBoardProps {
   opportunities: Opportunity[];
   columns: KanbanColumnConfig[];
   onStageChange?: (opportunityId: string, newStage: OpportunityStage) => Promise<void>;
+  onColumnChange?: (opportunityId: string, newColumnId: string) => Promise<void>;
 }
 
-export function KanbanBoard({ opportunities, columns, onStageChange }: KanbanBoardProps) {
+export function KanbanBoard({ opportunities, columns, onStageChange, onColumnChange }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -32,13 +33,12 @@ export function KanbanBoard({ opportunities, columns, onStageChange }: KanbanBoa
       result[col.id] = [];
     }
 
-    // Group opportunities by columnId, fallback to stage for backward compatibility
+    // Group opportunities by columnId only (no stage fallback)
     for (const opp of opportunities) {
-      const key = opp.columnId || opp.stage;
-      if (!result[key]) {
-        result[key] = [];
+      if (opp.columnId && result[opp.columnId]) {
+        result[opp.columnId].push(opp);
       }
-      result[key].push(opp);
+      // Skip opportunities without a valid columnId - they won't be displayed
     }
     return result;
   }, [opportunities, columns]);
@@ -63,13 +63,21 @@ export function KanbanBoard({ opportunities, columns, onStageChange }: KanbanBoa
     if (!over) return;
 
     const opportunityId = active.id as string;
-    const newStage = over.id as OpportunityStage;
+    const newColumnId = over.id as string;
 
     const opportunity = opportunities.find((opp) => opp.id === opportunityId);
-    if (!opportunity || opportunity.stage === newStage) return;
+    if (!opportunity) return;
 
-    if (onStageChange) {
-      await onStageChange(opportunityId, newStage);
+    // Only allow dropping onto valid columns
+    const targetColumn = columns.find(col => col.id === newColumnId);
+    if (!targetColumn) return; // Invalid drop target
+
+    // No change if already in this column
+    if (opportunity.columnId === newColumnId) return;
+
+    // Update columnId
+    if (onColumnChange) {
+      await onColumnChange(opportunityId, newColumnId);
     }
   };
 
