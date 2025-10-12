@@ -59,22 +59,26 @@ export async function PATCH(
       accountId = account.id;
     }
 
-    const updateData: Record<string, unknown> = {
-      name: data.name ?? undefined,
-      accountName: data.account ?? undefined,
-      amountArr: data.amountArr ?? undefined,
-      probability: data.probability ?? undefined,
-      nextStep: data.nextStep ?? undefined,
-      closeDate: data.closeDate ? new Date(data.closeDate) : undefined,
-      quarter: data.quarter ?? undefined,
-      stage: data.stage ?? undefined,
-      columnId: data.columnId !== undefined ? data.columnId : undefined,
-      forecastCategory: data.forecastCategory ?? undefined,
-      riskNotes: data.riskNotes ?? undefined,
-      notes: data.notes ?? undefined,
-      owner: data.ownerId ? { connect: { id: data.ownerId } } : undefined,
-    };
+    const updateData: Record<string, unknown> = {};
 
+    // Only include fields that are explicitly provided
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.account !== undefined) updateData.accountName = data.account;
+    if (data.amountArr !== undefined) updateData.amountArr = data.amountArr;
+    if (data.probability !== undefined) updateData.probability = data.probability;
+    if (data.nextStep !== undefined) updateData.nextStep = data.nextStep;
+    if (data.closeDate !== undefined) {
+      updateData.closeDate = data.closeDate ? new Date(data.closeDate) : null;
+    }
+    if (data.quarter !== undefined) updateData.quarter = data.quarter;
+    if (data.stage !== undefined) updateData.stage = data.stage;
+    if (data.columnId !== undefined) updateData.columnId = data.columnId;
+    if (data.forecastCategory !== undefined) updateData.forecastCategory = data.forecastCategory;
+    if (data.riskNotes !== undefined) updateData.riskNotes = data.riskNotes;
+    if (data.notes !== undefined) updateData.notes = data.notes;
+    if (data.ownerId !== undefined) {
+      updateData.owner = { connect: { id: data.ownerId } };
+    }
     if (accountId) {
       updateData.accountId = accountId;
     }
