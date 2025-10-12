@@ -19,6 +19,15 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     include: {
       owner: true,
       account: true,
+      granolaNotes: {
+        orderBy: { createdAt: "desc" },
+      },
+      gongCalls: {
+        orderBy: { createdAt: "desc" },
+      },
+      googleNotes: {
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -47,6 +56,30 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
       name: opportunityFromDB.owner.name,
       avatarUrl: opportunityFromDB.owner.avatarUrl || undefined,
     },
+    granolaNotes: opportunityFromDB.granolaNotes.map(note => ({
+      id: note.id,
+      opportunityId: note.opportunityId,
+      title: note.title,
+      url: note.url,
+      createdAt: note.createdAt.toISOString(),
+      updatedAt: note.updatedAt.toISOString(),
+    })),
+    gongCalls: opportunityFromDB.gongCalls.map(call => ({
+      id: call.id,
+      opportunityId: call.opportunityId,
+      title: call.title,
+      url: call.url,
+      createdAt: call.createdAt.toISOString(),
+      updatedAt: call.updatedAt.toISOString(),
+    })),
+    googleNotes: opportunityFromDB.googleNotes.map(note => ({
+      id: note.id,
+      opportunityId: note.opportunityId,
+      title: note.title,
+      url: note.url,
+      createdAt: note.createdAt.toISOString(),
+      updatedAt: note.updatedAt.toISOString(),
+    })),
     createdAt: opportunityFromDB.createdAt.toISOString(),
     updatedAt: opportunityFromDB.updatedAt.toISOString(),
   };
