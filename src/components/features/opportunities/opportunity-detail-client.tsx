@@ -18,6 +18,8 @@ import { updateOpportunity, deleteOpportunity } from "@/lib/api/opportunities";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 import { GranolaNotesSection } from "./granola-notes-section";
+import { GongCallsSection } from "./gong-calls-section";
+import { GoogleNotesSection } from "./google-notes-section";
 import { OrgChartSection } from "@/components/contacts/OrgChartSection";
 import { Separator } from "@/components/ui/separator";
 
@@ -131,6 +133,14 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         <GranolaNotesSection
           opportunityId={opportunity.id}
           notes={opportunity.granolaNotes || []}
+        />
+        <GongCallsSection
+          opportunityId={opportunity.id}
+          calls={opportunity.gongCalls || []}
+        />
+        <GoogleNotesSection
+          opportunityId={opportunity.id}
+          notes={opportunity.googleNotes || []}
         />
       </div>
 

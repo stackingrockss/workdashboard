@@ -18,6 +18,11 @@ export async function GET(
             createdAt: "desc",
           },
         },
+        gongCalls: {
+          orderBy: {
+            createdAt: "desc",
+          },
+        },
       },
     });
     if (!opportunity) return NextResponse.json({ error: "Not found" }, { status: 404 });
