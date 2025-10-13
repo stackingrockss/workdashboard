@@ -46,11 +46,24 @@ export async function PATCH(
     const json = await req.json();
     const parsed = opportunityUpdateSchema.safeParse(json);
     if (!parsed.success) {
+      const errors = parsed.error.flatten();
       console.error(`[PATCH /api/v1/opportunities/${id}] Validation failed:`, {
         input: json,
-        errors: parsed.error.flatten(),
+        errors,
       });
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
+
+      // Create a user-friendly error message
+      const fieldErrors = errors.fieldErrors;
+      let errorMessage = "Validation failed";
+
+      if (fieldErrors.accountResearch) {
+        errorMessage = `Account research validation failed: ${fieldErrors.accountResearch[0]}`;
+      } else if (Object.keys(fieldErrors).length > 0) {
+        const firstError = Object.entries(fieldErrors)[0];
+        errorMessage = `${firstError[0]}: ${firstError[1]?.[0]}`;
+      }
+
+      return NextResponse.json({ error: errorMessage, details: errors }, { status: 400 });
     }
     const data = parsed.data;
 

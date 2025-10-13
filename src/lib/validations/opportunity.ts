@@ -22,7 +22,7 @@ const baseOpportunitySchema = z.object({
   forecastCategory: z.enum(["pipeline", "bestCase", "forecast"]).optional().nullable().default("pipeline"),
   riskNotes: z.string().max(2000).optional().nullable().transform(val => val === "" ? null : val),
   notes: z.string().max(5000).optional().nullable().transform(val => val === "" ? null : val),
-  accountResearch: z.string().max(10000).optional().nullable().transform(val => val === "" ? null : val),
+  accountResearch: z.string().max(50000).optional().nullable().transform(val => val === "" ? null : val),
   ownerId: z.string().optional(),
 });
 

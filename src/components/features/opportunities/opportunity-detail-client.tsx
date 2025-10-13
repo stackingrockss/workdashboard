@@ -133,13 +133,34 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         throw new Error(data.error || "Failed to generate account research");
       }
 
+      // Safety check: truncate if content exceeds max length (50,000 chars)
+      const MAX_LENGTH = 50000;
+      let generatedNotes = data.notes;
+
+      if (generatedNotes && generatedNotes.length > MAX_LENGTH) {
+        generatedNotes = generatedNotes.substring(0, MAX_LENGTH);
+        toast.warning(`Research truncated to ${MAX_LENGTH.toLocaleString()} characters`);
+      }
+
       // Update the opportunity with the generated research
-      await updateOpportunityField(opportunity.id, "accountResearch", data.notes);
+      await updateOpportunityField(opportunity.id, "accountResearch", generatedNotes);
       toast.success("Account research generated successfully!");
       router.refresh();
     } catch (error) {
       console.error("Error generating research:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to generate account research");
+
+      // Extract more detailed error message from validation errors
+      let errorMessage = "Failed to generate account research";
+      if (error instanceof Error) {
+        errorMessage = error.message;
+
+        // Check if it's a validation error
+        if (error.message.includes("[object Object]")) {
+          errorMessage = "Validation error: Generated content may be too long or contain invalid data";
+        }
+      }
+
+      toast.error(errorMessage);
     } finally {
       setIsGeneratingResearch(false);
     }
