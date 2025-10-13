@@ -7,9 +7,9 @@ const baseOpportunitySchema = z.object({
   accountId: z.string().optional(),
   amountArr: z.number().int().nonnegative(),
   probability: z.number().int().min(0).max(100),
-  nextStep: z.string().max(500).optional().nullable(),
-  closeDate: z.string().datetime().optional().nullable(),
-  quarter: z.string().max(20).optional().nullable(),
+  nextStep: z.string().max(500).optional().nullable().transform(val => val === "" ? null : val),
+  closeDate: z.string().datetime().optional().nullable().transform(val => val === "" ? null : val),
+  quarter: z.string().max(20).optional().nullable().transform(val => val === "" ? null : val),
   stage: z.enum([
     "discovery",
     "demo",
@@ -21,9 +21,9 @@ const baseOpportunitySchema = z.object({
   ]),
   columnId: z.string().optional().nullable(), // Support flexible column assignment
   forecastCategory: z.enum(["pipeline", "bestCase", "forecast"]).optional().nullable(),
-  riskNotes: z.string().max(2000).optional().nullable(),
-  notes: z.string().max(5000).optional().nullable(),
-  accountResearch: z.string().max(10000).optional().nullable(),
+  riskNotes: z.string().max(2000).optional().nullable().transform(val => val === "" ? null : val),
+  notes: z.string().max(5000).optional().nullable().transform(val => val === "" ? null : val),
+  accountResearch: z.string().max(10000).optional().nullable().transform(val => val === "" ? null : val),
   ownerId: z.string().min(1),
 });
 
