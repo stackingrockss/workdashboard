@@ -386,7 +386,7 @@ export function InlineSelect({
   );
 }
 
-interface InlineDatePickerProps extends BaseEditableFieldProps {
+interface InlineDatePickerProps extends Omit<BaseEditableFieldProps, 'value' | 'onSave'> {
   value: string | null | undefined;
   onSave: (value: string | null) => Promise<void>;
 }
