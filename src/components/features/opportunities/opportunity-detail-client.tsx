@@ -12,9 +12,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
-import { Opportunity, getStageLabel } from "@/types/opportunity";
+import { Opportunity, getStageLabel, OpportunityStage } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
-import { updateOpportunity, deleteOpportunity } from "@/lib/api/opportunities";
+import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 import { GranolaNotesSection } from "./granola-notes-section";
@@ -22,10 +22,32 @@ import { GongCallsSection } from "./gong-calls-section";
 import { GoogleNotesSection } from "./google-notes-section";
 import { OrgChartSection } from "@/components/contacts/OrgChartSection";
 import { Separator } from "@/components/ui/separator";
+import {
+  InlineTextInput,
+  InlineTextarea,
+  InlineSelect,
+  InlineDatePicker,
+} from "@/components/ui/inline-editable";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
 }
+
+const stageOptions = [
+  { value: "discovery", label: "Discovery" },
+  { value: "demo", label: "Demo" },
+  { value: "validateSolution", label: "Validate Solution" },
+  { value: "decisionMakerApproval", label: "Decision Maker Approval" },
+  { value: "contracting", label: "Contracting" },
+  { value: "closedWon", label: "Closed Won" },
+  { value: "closedLost", label: "Closed Lost" },
+];
+
+const forecastCategoryOptions = [
+  { value: "pipeline", label: "Pipeline" },
+  { value: "bestCase", label: "Best Case" },
+  { value: "forecast", label: "Forecast (Commit)" },
+];
 
 export function OpportunityDetailClient({ opportunity }: OpportunityDetailClientProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -41,6 +63,20 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to update opportunity");
+    }
+  };
+
+  const handleFieldUpdate = async (
+    field: keyof OpportunityUpdateInput,
+    value: string | number | null
+  ) => {
+    try {
+      await updateOpportunityField(opportunity.id, field, value);
+      toast.success("Updated successfully!");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update");
+      throw error;
     }
   };
 
@@ -76,7 +112,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>
             <Pencil className="h-4 w-4 mr-2" />
-            Edit
+            Edit All
           </Button>
           <Button
             variant="outline"
@@ -90,52 +126,82 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Stage</div>
-          <div className="font-medium">{getStageLabel(opportunity.stage)}</div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Amount (ARR)</div>
-          <div className="font-medium" suppressHydrationWarning>{formatCurrencyCompact(opportunity.amountArr)} ARR</div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Probability</div>
-          <div className="font-medium">{opportunity.probability}%</div>
-        </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Close date</div>
-          <div className="font-medium" suppressHydrationWarning>{formatDateShort(opportunity.closeDate)}</div>
-        </div>
+        <InlineSelect
+          label="Stage"
+          value={opportunity.stage}
+          onSave={async (value) => handleFieldUpdate("stage", value)}
+          options={stageOptions}
+          displayFormatter={(val) => getStageLabel(val as OpportunityStage)}
+        />
+        <InlineTextInput
+          label="Amount (ARR)"
+          value={opportunity.amountArr}
+          onSave={async (value) => handleFieldUpdate("amountArr", value)}
+          type="number"
+          min={0}
+          step={1000}
+          displayFormatter={(val) => `${formatCurrencyCompact(val as number)} ARR`}
+        />
+        <InlineTextInput
+          label="Probability"
+          value={opportunity.probability}
+          onSave={async (value) => handleFieldUpdate("probability", value)}
+          type="number"
+          min={0}
+          max={100}
+          displayFormatter={(val) => `${val}%`}
+        />
+        <InlineDatePicker
+          label="Close date"
+          value={opportunity.closeDate}
+          onSave={async (value) => handleFieldUpdate("closeDate", value)}
+          displayFormatter={(val) => formatDateShort(val as string)}
+        />
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Owner</div>
           <div className="font-medium">{opportunity.owner.name}</div>
         </div>
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Forecast Category</div>
-          <div className="font-medium capitalize">{opportunity.forecastCategory ?? "—"}</div>
-        </div>
-        <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3">
-          <div className="text-sm text-muted-foreground">Next step</div>
-          <div className="font-medium whitespace-pre-wrap">{opportunity.nextStep ?? "—"}</div>
-        </div>
-        {opportunity.riskNotes && (
-          <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3 border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
-            <div className="text-sm text-muted-foreground">Risk Notes</div>
-            <div className="font-medium whitespace-pre-wrap">{opportunity.riskNotes}</div>
-          </div>
-        )}
-        {opportunity.accountResearch && (
-          <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
-            <div className="text-sm text-muted-foreground">Account Research</div>
-            <div className="font-medium whitespace-pre-wrap">{opportunity.accountResearch}</div>
-          </div>
-        )}
-        {opportunity.notes && (
-          <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3">
-            <div className="text-sm text-muted-foreground">Notes</div>
-            <div className="font-medium whitespace-pre-wrap">{opportunity.notes}</div>
-          </div>
-        )}
+        <InlineSelect
+          label="Forecast Category"
+          value={opportunity.forecastCategory || ""}
+          onSave={async (value) => handleFieldUpdate("forecastCategory", value || null)}
+          options={forecastCategoryOptions}
+          placeholder="Select category"
+          displayFormatter={(val) =>
+            val ? forecastCategoryOptions.find(o => o.value === val)?.label || "" : "—"
+          }
+        />
+        <InlineTextInput
+          label="Next step"
+          value={opportunity.nextStep || ""}
+          onSave={async (value) => handleFieldUpdate("nextStep", value)}
+          placeholder="e.g. Schedule demo call"
+          className="md:col-span-2 lg:col-span-3"
+        />
+        <InlineTextarea
+          label="Risk Notes"
+          value={opportunity.riskNotes || ""}
+          onSave={async (value) => handleFieldUpdate("riskNotes", value)}
+          placeholder="Any concerns, blockers, or risk mitigation strategies..."
+          rows={3}
+          className="md:col-span-2 lg:col-span-3 border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950"
+        />
+        <InlineTextarea
+          label="Account Research"
+          value={opportunity.accountResearch || ""}
+          onSave={async (value) => handleFieldUpdate("accountResearch", value)}
+          placeholder="AI-powered account research and pre-meeting intelligence..."
+          rows={6}
+          className="md:col-span-2 lg:col-span-3 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
+        />
+        <InlineTextarea
+          label="Notes"
+          value={opportunity.notes || ""}
+          onSave={async (value) => handleFieldUpdate("notes", value)}
+          placeholder="Your personal notes about this opportunity..."
+          rows={4}
+          className="md:col-span-2 lg:col-span-3"
+        />
         <GranolaNotesSection
           opportunityId={opportunity.id}
           notes={opportunity.granolaNotes || []}
