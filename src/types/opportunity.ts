@@ -83,6 +83,7 @@ export interface Opportunity {
     opportunityId: string;
     title: string;
     url: string;
+    meetingDate: string;
     createdAt: string;
     updatedAt: string;
   }>;
@@ -91,6 +92,7 @@ export interface Opportunity {
     opportunityId: string;
     title: string;
     url: string;
+    meetingDate: string;
     createdAt: string;
     updatedAt: string;
   }>;

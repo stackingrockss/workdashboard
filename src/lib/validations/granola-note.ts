@@ -3,6 +3,7 @@ import { z } from "zod";
 export const granolaCreateSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   url: z.string().url("Must be a valid URL"),
+  meetingDate: z.string().datetime("Meeting date is required"),
 });
 
 export const granolaUpdateSchema = granolaCreateSchema.partial();

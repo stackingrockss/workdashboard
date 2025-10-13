@@ -87,14 +87,40 @@ export async function PATCH(
         });
         const fiscalYearStartMonth = settings?.fiscalYearStartMonth ?? 1;
         const closeDate = new Date(data.closeDate);
-        updateData.quarter = getQuarterFromDate(closeDate, fiscalYearStartMonth);
+        const newQuarter = getQuarterFromDate(closeDate, fiscalYearStartMonth);
+        updateData.quarter = newQuarter;
+
+        // Auto-assign columnId based on new quarter
+        const matchingColumn = await prisma.kanbanColumn.findFirst({
+          where: {
+            userId: user.id,
+            title: newQuarter,
+          },
+        });
+        if (matchingColumn) {
+          updateData.columnId = matchingColumn.id;
+        }
       } else {
         updateData.quarter = null;
+        updateData.columnId = null;
       }
     }
     if (data.quarter !== undefined && data.closeDate === undefined) {
       // Only update quarter directly if closeDate is not being updated
       updateData.quarter = data.quarter;
+
+      // Also update columnId to match the quarter
+      if (data.quarter) {
+        const matchingColumn = await prisma.kanbanColumn.findFirst({
+          where: {
+            userId: user.id,
+            title: data.quarter,
+          },
+        });
+        if (matchingColumn) {
+          updateData.columnId = matchingColumn.id;
+        }
+      }
     }
     if (data.stage !== undefined) {
       updateData.stage = data.stage;

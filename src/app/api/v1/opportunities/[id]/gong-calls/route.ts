@@ -45,6 +45,7 @@ export async function POST(
         opportunityId: id,
         title: parsed.data.title,
         url: parsed.data.url,
+        meetingDate: new Date(parsed.data.meetingDate),
       },
     });
     return NextResponse.json({ call }, { status: 201 });

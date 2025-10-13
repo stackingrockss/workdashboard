@@ -15,6 +15,7 @@ import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { GongCall } from "@/types/gong-call";
 import { createGongCall, deleteGongCall } from "@/lib/api/gong-calls";
 import { useRouter } from "next/navigation";
+import { formatDateShort } from "@/lib/format";
 
 interface GongCallsSectionProps {
   opportunityId: string;
@@ -26,22 +27,28 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
+  const [meetingDate, setMeetingDate] = useState("");
   const router = useRouter();
 
   const handleAddCall = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !url.trim()) {
+    if (!title.trim() || !url.trim() || !meetingDate) {
       toast.error("Please fill in all fields");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await createGongCall(opportunityId, { title, url });
+      await createGongCall(opportunityId, {
+        title,
+        url,
+        meetingDate: new Date(meetingDate).toISOString()
+      });
       toast.success("Gong call added successfully!");
       setIsAddDialogOpen(false);
       setTitle("");
       setUrl("");
+      setMeetingDate("");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to add Gong call");
@@ -87,19 +94,24 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
               key={call.id}
               className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 group"
             >
-              <a
-                href={call.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm font-medium hover:text-primary flex-1"
-              >
-                <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                <span className="truncate">{call.title}</span>
-              </a>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <a
+                  href={call.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm font-medium hover:text-primary flex-1 min-w-0"
+                >
+                  <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{call.title}</span>
+                </a>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {formatDateShort(call.meetingDate)}
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
                 onClick={() => handleDeleteCall(call.id, call.title)}
               >
                 <Trash2 className="h-4 w-4" />
@@ -142,6 +154,20 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
               />
               <p className="text-xs text-muted-foreground">
                 Copy the URL from your Gong recording and paste it here
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="meeting-date">Meeting Date *</Label>
+              <Input
+                id="meeting-date"
+                type="date"
+                value={meetingDate}
+                onChange={(e) => setMeetingDate(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                When did this call take place?
               </p>
             </div>
 

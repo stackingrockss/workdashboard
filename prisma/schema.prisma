@@ -85,6 +85,7 @@ model GranolaNote {
   opportunityId String
   title         String
   url           String
+  meetingDate   DateTime
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
@@ -97,6 +98,7 @@ model GongCall {
   opportunityId String
   title         String
   url           String
+  meetingDate   DateTime
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)

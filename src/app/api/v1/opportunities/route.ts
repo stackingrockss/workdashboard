@@ -65,6 +65,20 @@ export async function POST(req: NextRequest) {
       quarter = getQuarterFromDate(closeDate, fiscalYearStartMonth);
     }
 
+    // Auto-assign columnId based on quarter if a matching column exists
+    let columnId: string | undefined = undefined;
+    if (quarter) {
+      const matchingColumn = await prisma.kanbanColumn.findFirst({
+        where: {
+          userId: user.id,
+          title: quarter,
+        },
+      });
+      if (matchingColumn) {
+        columnId = matchingColumn.id;
+      }
+    }
+
     const createData = {
       name: data.name,
       accountName: data.account ?? undefined,
@@ -73,6 +87,7 @@ export async function POST(req: NextRequest) {
       nextStep: data.nextStep ?? undefined,
       closeDate: data.closeDate ? new Date(data.closeDate) : undefined,
       quarter: quarter ?? undefined,
+      columnId: columnId ?? undefined,
       stage: data.stage ?? "discovery", // Default to discovery if not provided
       forecastCategory: data.forecastCategory ?? "pipeline", // Default to pipeline if not provided
       riskNotes: data.riskNotes ?? undefined,

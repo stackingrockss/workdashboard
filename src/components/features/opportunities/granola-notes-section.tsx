@@ -15,6 +15,7 @@ import { ExternalLink, Plus, Trash2 } from "lucide-react";
 import { GranolaNote } from "@/types/granola-note";
 import { createGranolaNote, deleteGranolaNote } from "@/lib/api/granola-notes";
 import { useRouter } from "next/navigation";
+import { formatDateShort } from "@/lib/format";
 
 interface GranolaNoteSectionProps {
   opportunityId: string;
@@ -26,22 +27,28 @@ export function GranolaNotesSection({ opportunityId, notes }: GranolaNoteSection
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
+  const [meetingDate, setMeetingDate] = useState("");
   const router = useRouter();
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !url.trim()) {
+    if (!title.trim() || !url.trim() || !meetingDate) {
       toast.error("Please fill in all fields");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await createGranolaNote(opportunityId, { title, url });
+      await createGranolaNote(opportunityId, {
+        title,
+        url,
+        meetingDate: new Date(meetingDate).toISOString()
+      });
       toast.success("Granola note added successfully!");
       setIsAddDialogOpen(false);
       setTitle("");
       setUrl("");
+      setMeetingDate("");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to add Granola note");
@@ -87,19 +94,24 @@ export function GranolaNotesSection({ opportunityId, notes }: GranolaNoteSection
               key={note.id}
               className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 group"
             >
-              <a
-                href={note.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm font-medium hover:text-primary flex-1"
-              >
-                <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                <span className="truncate">{note.title}</span>
-              </a>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <a
+                  href={note.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-sm font-medium hover:text-primary flex-1 min-w-0"
+                >
+                  <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{note.title}</span>
+                </a>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {formatDateShort(note.meetingDate)}
+                </span>
+              </div>
               <Button
                 variant="ghost"
                 size="sm"
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
                 onClick={() => handleDeleteNote(note.id, note.title)}
               >
                 <Trash2 className="h-4 w-4" />
@@ -142,6 +154,20 @@ export function GranolaNotesSection({ opportunityId, notes }: GranolaNoteSection
               />
               <p className="text-xs text-muted-foreground">
                 Copy the URL from your Granola note and paste it here
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="meeting-date">Meeting Date *</Label>
+              <Input
+                id="meeting-date"
+                type="date"
+                value={meetingDate}
+                onChange={(e) => setMeetingDate(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                When did this meeting take place?
               </p>
             </div>
 
