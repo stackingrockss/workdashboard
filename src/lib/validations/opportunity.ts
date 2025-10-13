@@ -11,10 +11,11 @@ const baseOpportunitySchema = z.object({
   closeDate: z.string().datetime().optional().nullable(),
   quarter: z.string().max(20).optional().nullable(),
   stage: z.enum([
-    "prospect",
-    "qualification",
-    "proposal",
-    "negotiation",
+    "discovery",
+    "demo",
+    "validateSolution",
+    "decisionMakerApproval",
+    "contracting",
     "closedWon",
     "closedLost",
   ]),
@@ -22,6 +23,7 @@ const baseOpportunitySchema = z.object({
   forecastCategory: z.enum(["pipeline", "bestCase", "forecast"]).optional().nullable(),
   riskNotes: z.string().max(2000).optional().nullable(),
   notes: z.string().max(5000).optional().nullable(),
+  accountResearch: z.string().max(10000).optional().nullable(),
   ownerId: z.string().min(1),
 });
 

@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
       forecastCategory: data.forecastCategory ?? undefined,
       riskNotes: data.riskNotes ?? undefined,
       notes: data.notes ?? undefined,
+      accountResearch: data.accountResearch ?? undefined,
       ownerId: user.id, // Use authenticated user's ID
       ...(accountId ? { accountId } : {}),
     };

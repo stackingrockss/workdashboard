@@ -66,6 +66,7 @@ model Opportunity {
   forecastCategory ForecastCategory?
   notes            String?
   riskNotes        String?
+  accountResearch  String?
   columnId         String?
   contacts         Contact[]
   gongCalls        GongCall[]
@@ -137,10 +138,11 @@ model Contact {
 }
 
 enum OpportunityStage {
-  prospect
-  qualification
-  proposal
-  negotiation
+  discovery
+  demo
+  validateSolution
+  decisionMakerApproval
+  contracting
   closedWon
   closedLost
 

@@ -1,10 +1,39 @@
 export type OpportunityStage =
-  | "prospect"
-  | "qualification"
-  | "proposal"
-  | "negotiation"
+  | "discovery"
+  | "demo"
+  | "validateSolution"
+  | "decisionMakerApproval"
+  | "contracting"
   | "closedWon"
   | "closedLost";
+
+// Helper function to get default probability for each stage
+export function getDefaultProbability(stage: OpportunityStage): number {
+  const probabilityMap: Record<OpportunityStage, number> = {
+    discovery: 10,
+    demo: 20,
+    validateSolution: 40,
+    decisionMakerApproval: 60,
+    contracting: 90,
+    closedWon: 100,
+    closedLost: 0,
+  };
+  return probabilityMap[stage];
+}
+
+// Helper function to get display label for each stage
+export function getStageLabel(stage: OpportunityStage): string {
+  const labelMap: Record<OpportunityStage, string> = {
+    discovery: "Discovery",
+    demo: "Demo",
+    validateSolution: "Validate Solution",
+    decisionMakerApproval: "Decision Maker Approval",
+    contracting: "Contracting",
+    closedWon: "Closed Won",
+    closedLost: "Closed Lost",
+  };
+  return labelMap[stage];
+}
 
 export type ForecastCategory = "pipeline" | "bestCase" | "forecast";
 
@@ -33,6 +62,7 @@ export interface Opportunity {
   forecastCategory?: ForecastCategory | null;
   riskNotes?: string | null;
   notes?: string | null;
+  accountResearch?: string | null;
   owner: OpportunityOwner;
   granolaNotes?: Array<{
     id: string;

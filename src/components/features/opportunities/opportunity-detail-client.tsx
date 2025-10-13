@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
-import { Opportunity } from "@/types/opportunity";
+import { Opportunity, getStageLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity } from "@/lib/api/opportunities";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
@@ -92,7 +92,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Stage</div>
-          <div className="font-medium capitalize">{opportunity.stage}</div>
+          <div className="font-medium">{getStageLabel(opportunity.stage)}</div>
         </div>
         <div className="rounded-lg border p-4">
           <div className="text-sm text-muted-foreground">Amount (ARR)</div>
@@ -122,6 +122,12 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3 border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
             <div className="text-sm text-muted-foreground">Risk Notes</div>
             <div className="font-medium whitespace-pre-wrap">{opportunity.riskNotes}</div>
+          </div>
+        )}
+        {opportunity.accountResearch && (
+          <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+            <div className="text-sm text-muted-foreground">Account Research</div>
+            <div className="font-medium whitespace-pre-wrap">{opportunity.accountResearch}</div>
           </div>
         )}
         {opportunity.notes && (
@@ -169,6 +175,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
               forecastCategory: opportunity.forecastCategory,
               riskNotes: opportunity.riskNotes,
               notes: opportunity.notes,
+              accountResearch: opportunity.accountResearch,
               ownerId: opportunity.owner.id,
             }}
             submitLabel="Update Opportunity"

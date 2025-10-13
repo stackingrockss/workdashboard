@@ -81,6 +81,7 @@ export async function PATCH(
     if (data.forecastCategory !== undefined) updateData.forecastCategory = data.forecastCategory;
     if (data.riskNotes !== undefined) updateData.riskNotes = data.riskNotes;
     if (data.notes !== undefined) updateData.notes = data.notes;
+    if (data.accountResearch !== undefined) updateData.accountResearch = data.accountResearch;
     if (data.ownerId !== undefined) {
       updateData.owner = { connect: { id: data.ownerId } };
     }

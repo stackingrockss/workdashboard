@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sparkles, Loader2 } from "lucide-react";
-import { OpportunityStage, OpportunityOwner, ForecastCategory } from "@/types/opportunity";
+import { OpportunityStage, OpportunityOwner, ForecastCategory, getDefaultProbability, getStageLabel } from "@/types/opportunity";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { getUsers } from "@/lib/api/users";
 import { toast } from "sonner";
@@ -26,10 +26,11 @@ interface OpportunityFormProps {
 }
 
 const stages: { value: OpportunityStage; label: string }[] = [
-  { value: "prospect", label: "Prospect" },
-  { value: "qualification", label: "Qualification" },
-  { value: "proposal", label: "Proposal" },
-  { value: "negotiation", label: "Negotiation" },
+  { value: "discovery", label: "Discovery" },
+  { value: "demo", label: "Demo" },
+  { value: "validateSolution", label: "Validate Solution" },
+  { value: "decisionMakerApproval", label: "Decision Maker Approval" },
+  { value: "contracting", label: "Contracting" },
   { value: "closedWon", label: "Closed Won" },
   { value: "closedLost", label: "Closed Lost" },
 ];
@@ -49,17 +50,19 @@ export function OpportunityForm({
   const [loading, setLoading] = useState(false);
   const [generatingNotes, setGeneratingNotes] = useState(false);
   const [users, setUsers] = useState<OpportunityOwner[]>([]);
+  const [isProbabilityManuallyEdited, setIsProbabilityManuallyEdited] = useState(false);
   const [formData, setFormData] = useState<OpportunityCreateInput>({
     name: initialData?.name || "",
     account: initialData?.account || "",
     amountArr: initialData?.amountArr || 0,
-    probability: initialData?.probability || 50,
+    probability: initialData?.probability || getDefaultProbability("discovery"),
     nextStep: initialData?.nextStep || "",
     closeDate: initialData?.closeDate || "",
-    stage: initialData?.stage || "prospect",
+    stage: initialData?.stage || "discovery",
     forecastCategory: initialData?.forecastCategory || null,
     riskNotes: initialData?.riskNotes || "",
     notes: initialData?.notes || "",
+    accountResearch: initialData?.accountResearch || "",
     ownerId: initialData?.ownerId || "",
   });
 
@@ -88,6 +91,22 @@ export function OpportunityForm({
     }
   };
 
+  const handleStageChange = (newStage: OpportunityStage) => {
+    const updates: Partial<OpportunityCreateInput> = { stage: newStage };
+
+    // Only auto-update probability if it hasn't been manually edited
+    if (!isProbabilityManuallyEdited) {
+      updates.probability = getDefaultProbability(newStage);
+    }
+
+    setFormData({ ...formData, ...updates });
+  };
+
+  const handleProbabilityChange = (newProbability: number) => {
+    setIsProbabilityManuallyEdited(true);
+    setFormData({ ...formData, probability: newProbability });
+  };
+
   const handleGenerateNotes = async () => {
     if (!formData.account || formData.account.trim() === "") {
       toast.error("Please enter an account name first");
@@ -114,8 +133,8 @@ export function OpportunityForm({
         throw new Error(data.error || "Failed to generate notes");
       }
 
-      setFormData({ ...formData, notes: data.notes });
-      toast.success("Pre-meeting notes generated successfully!");
+      setFormData({ ...formData, accountResearch: data.notes });
+      toast.success("Account research generated successfully!");
     } catch (error) {
       console.error("Error generating notes:", error);
       toast.error(error instanceof Error ? error.message : "Failed to generate notes");
@@ -173,11 +192,9 @@ export function OpportunityForm({
             min="0"
             max="100"
             value={formData.probability}
-            onChange={(e) =>
-              setFormData({ ...formData, probability: parseInt(e.target.value) || 0 })
-            }
+            onChange={(e) => handleProbabilityChange(parseInt(e.target.value) || 0)}
             required
-            placeholder="50"
+            placeholder="Auto-populates based on stage"
           />
         </div>
       </div>
@@ -186,9 +203,7 @@ export function OpportunityForm({
         <Label htmlFor="stage">Stage *</Label>
         <Select
           value={formData.stage}
-          onValueChange={(value: OpportunityStage) =>
-            setFormData({ ...formData, stage: value })
-          }
+          onValueChange={(value: OpportunityStage) => handleStageChange(value)}
         >
           <SelectTrigger id="stage">
             <SelectValue />
@@ -291,7 +306,7 @@ export function OpportunityForm({
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label htmlFor="notes">Notes</Label>
+          <Label htmlFor="accountResearch">Account Research</Label>
           <Button
             type="button"
             variant="outline"
@@ -307,17 +322,28 @@ export function OpportunityForm({
             ) : (
               <>
                 <Sparkles className="h-4 w-4 mr-2" />
-                Generate Pre-Meeting Notes
+                Generate Account Research
               </>
             )}
           </Button>
         </div>
         <Textarea
+          id="accountResearch"
+          value={formData.accountResearch || ""}
+          onChange={(e) => setFormData({ ...formData, accountResearch: e.target.value })}
+          placeholder="AI-powered account research and pre-meeting intelligence..."
+          rows={12}
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
           id="notes"
           value={formData.notes || ""}
           onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          placeholder="General notes about this opportunity... (or generate AI-powered pre-meeting research)"
-          rows={12}
+          placeholder="Your personal notes about this opportunity..."
+          rows={6}
         />
       </div>
 
