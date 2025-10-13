@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { opportunityUpdateSchema } from "@/lib/validations/opportunity";
+import { requireAuth } from "@/lib/auth";
+import { getQuarterFromDate } from "@/lib/utils/quarter";
 
 export async function GET(
   _req: NextRequest,
@@ -38,6 +40,8 @@ export async function PATCH(
 ) {
   const { id } = await params;
   try {
+    const user = await requireAuth();
+
     const json = await req.json();
     const parsed = opportunityUpdateSchema.safeParse(json);
     if (!parsed.success) {
@@ -74,8 +78,23 @@ export async function PATCH(
     if (data.nextStep !== undefined) updateData.nextStep = data.nextStep;
     if (data.closeDate !== undefined) {
       updateData.closeDate = data.closeDate ? new Date(data.closeDate) : null;
+
+      // Recalculate quarter when close date changes
+      if (data.closeDate) {
+        const settings = await prisma.companySettings.findUnique({
+          where: { userId: user.id },
+        });
+        const fiscalYearStartMonth = settings?.fiscalYearStartMonth ?? 1;
+        const closeDate = new Date(data.closeDate);
+        updateData.quarter = getQuarterFromDate(closeDate, fiscalYearStartMonth);
+      } else {
+        updateData.quarter = null;
+      }
     }
-    if (data.quarter !== undefined) updateData.quarter = data.quarter;
+    if (data.quarter !== undefined && data.closeDate === undefined) {
+      // Only update quarter directly if closeDate is not being updated
+      updateData.quarter = data.quarter;
+    }
     if (data.stage !== undefined) updateData.stage = data.stage;
     if (data.columnId !== undefined) updateData.columnId = data.columnId;
     if (data.forecastCategory !== undefined) updateData.forecastCategory = data.forecastCategory;

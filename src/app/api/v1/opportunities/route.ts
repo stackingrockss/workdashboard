@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { opportunityCreateSchema } from "@/lib/validations/opportunity";
 import { requireAuth } from "@/lib/auth";
+import { getQuarterFromDate } from "@/lib/utils/quarter";
 
 export async function GET() {
   try {
@@ -51,20 +52,33 @@ export async function POST(req: NextRequest) {
       accountId = account.id;
     }
 
+    // Get user's fiscal year settings to calculate quarter
+    const settings = await prisma.companySettings.findUnique({
+      where: { userId: user.id },
+    });
+    const fiscalYearStartMonth = settings?.fiscalYearStartMonth ?? 1;
+
+    // Calculate quarter from close date if provided
+    let quarter = data.quarter;
+    if (data.closeDate && !quarter) {
+      const closeDate = new Date(data.closeDate);
+      quarter = getQuarterFromDate(closeDate, fiscalYearStartMonth);
+    }
+
     const createData = {
       name: data.name,
       accountName: data.account ?? undefined,
-      amountArr: data.amountArr,
-      probability: data.probability,
+      amountArr: data.amountArr ?? 0, // Default to 0 if not provided
+      probability: data.probability ?? 10, // Default to 10% if not provided
       nextStep: data.nextStep ?? undefined,
       closeDate: data.closeDate ? new Date(data.closeDate) : undefined,
-      quarter: data.quarter ?? undefined,
-      stage: data.stage,
-      forecastCategory: data.forecastCategory ?? undefined,
+      quarter: quarter ?? undefined,
+      stage: data.stage ?? "discovery", // Default to discovery if not provided
+      forecastCategory: data.forecastCategory ?? "pipeline", // Default to pipeline if not provided
       riskNotes: data.riskNotes ?? undefined,
       notes: data.notes ?? undefined,
       accountResearch: data.accountResearch ?? undefined,
-      ownerId: user.id, // Use authenticated user's ID
+      ownerId: data.ownerId ?? user.id, // Use provided ownerId or default to authenticated user's ID
       ...(accountId ? { accountId } : {}),
     };
 

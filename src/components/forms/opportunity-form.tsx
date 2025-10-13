@@ -17,6 +17,7 @@ import { OpportunityStage, OpportunityOwner, ForecastCategory, getDefaultProbabi
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { getUsers } from "@/lib/api/users";
 import { toast } from "sonner";
+import { getQuarterFromDate } from "@/lib/utils/quarter";
 
 interface OpportunityFormProps {
   onSubmit: (data: OpportunityCreateInput) => Promise<void>;
@@ -51,6 +52,8 @@ export function OpportunityForm({
   const [generatingNotes, setGeneratingNotes] = useState(false);
   const [users, setUsers] = useState<OpportunityOwner[]>([]);
   const [isProbabilityManuallyEdited, setIsProbabilityManuallyEdited] = useState(false);
+  const [fiscalYearStartMonth, setFiscalYearStartMonth] = useState(1);
+  const isEditMode = !!initialData?.ownerId; // Edit mode if ownerId is provided
   const [formData, setFormData] = useState<OpportunityCreateInput>({
     name: initialData?.name || "",
     account: initialData?.account || "",
@@ -58,28 +61,61 @@ export function OpportunityForm({
     probability: initialData?.probability || getDefaultProbability("discovery"),
     nextStep: initialData?.nextStep || "",
     closeDate: initialData?.closeDate || "",
+    quarter: initialData?.quarter || "",
     stage: initialData?.stage || "discovery",
-    forecastCategory: initialData?.forecastCategory || null,
+    forecastCategory: initialData?.forecastCategory || "pipeline",
     riskNotes: initialData?.riskNotes || "",
     notes: initialData?.notes || "",
     accountResearch: initialData?.accountResearch || "",
     ownerId: initialData?.ownerId || "",
   });
 
+  // Load fiscal year settings
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const response = await fetch("/api/v1/settings");
+        const data = await response.json();
+        if (response.ok && data.settings) {
+          setFiscalYearStartMonth(data.settings.fiscalYearStartMonth || 1);
+        }
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+      }
+    }
+    loadSettings();
+  }, []);
+
+  // Load users if in edit mode
   useEffect(() => {
     async function loadUsers() {
+      // Only load users if in edit mode
+      if (!isEditMode) return;
+
       try {
         const data = await getUsers();
         setUsers(data);
-        if (!formData.ownerId && data.length > 0) {
-          setFormData((prev) => ({ ...prev, ownerId: data[0].id }));
-        }
       } catch (error) {
         console.error("Failed to load users:", error);
       }
     }
     loadUsers();
-  }, []);
+  }, [isEditMode]);
+
+  // Auto-calculate quarter when close date changes
+  useEffect(() => {
+    if (formData.closeDate) {
+      try {
+        const date = new Date(formData.closeDate);
+        const calculatedQuarter = getQuarterFromDate(date, fiscalYearStartMonth);
+        setFormData(prev => ({ ...prev, quarter: calculatedQuarter }));
+      } catch (error) {
+        console.error("Failed to calculate quarter:", error);
+      }
+    } else {
+      setFormData(prev => ({ ...prev, quarter: "" }));
+    }
+  }, [formData.closeDate, fiscalYearStartMonth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,7 +205,7 @@ export function OpportunityForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="amountArr">Amount (ARR) *</Label>
+          <Label htmlFor="amountArr">Amount (ARR)</Label>
           <Input
             id="amountArr"
             type="number"
@@ -179,13 +215,12 @@ export function OpportunityForm({
             onChange={(e) =>
               setFormData({ ...formData, amountArr: parseInt(e.target.value) || 0 })
             }
-            required
             placeholder="0"
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="probability">Probability (%) *</Label>
+          <Label htmlFor="probability">Probability (%)</Label>
           <Input
             id="probability"
             type="number"
@@ -193,14 +228,13 @@ export function OpportunityForm({
             max="100"
             value={formData.probability}
             onChange={(e) => handleProbabilityChange(parseInt(e.target.value) || 0)}
-            required
             placeholder="Auto-populates based on stage"
           />
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="stage">Stage *</Label>
+        <Label htmlFor="stage">Stage</Label>
         <Select
           value={formData.stage}
           onValueChange={(value: OpportunityStage) => handleStageChange(value)}
@@ -218,30 +252,33 @@ export function OpportunityForm({
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="ownerId">Owner *</Label>
-        <Select
-          value={formData.ownerId}
-          onValueChange={(value) => setFormData({ ...formData, ownerId: value })}
-        >
-          <SelectTrigger id="ownerId">
-            <SelectValue placeholder="Select owner" />
-          </SelectTrigger>
-          <SelectContent>
-            {users.map((user) => (
-              <SelectItem key={user.id} value={user.id}>
-                {user.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {isEditMode && (
+        <div className="space-y-2">
+          <Label htmlFor="ownerId">Owner</Label>
+          <Select
+            value={formData.ownerId}
+            onValueChange={(value) => setFormData({ ...formData, ownerId: value })}
+          >
+            <SelectTrigger id="ownerId">
+              <SelectValue placeholder="Select owner" />
+            </SelectTrigger>
+            <SelectContent>
+              {users.map((user) => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="space-y-2">
-        <Label htmlFor="closeDate">Close Date</Label>
+        <Label htmlFor="closeDate">Close Date *</Label>
         <Input
           id="closeDate"
           type="date"
+          required
           value={formData.closeDate ? formData.closeDate.split("T")[0] : ""}
           onChange={(e) =>
             setFormData({
@@ -257,9 +294,14 @@ export function OpportunityForm({
         <Input
           id="quarter"
           value={formData.quarter || ""}
-          onChange={(e) => setFormData({ ...formData, quarter: e.target.value })}
-          placeholder="e.g. Q1 2025"
+          readOnly
+          disabled
+          className="bg-muted cursor-not-allowed"
+          placeholder="Select a close date to auto-calculate"
         />
+        <p className="text-xs text-muted-foreground">
+          Auto-calculated based on close date and fiscal year settings
+        </p>
       </div>
 
       <div className="space-y-2">
@@ -293,16 +335,18 @@ export function OpportunityForm({
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="riskNotes">Risk Notes</Label>
-        <Textarea
-          id="riskNotes"
-          value={formData.riskNotes || ""}
-          onChange={(e) => setFormData({ ...formData, riskNotes: e.target.value })}
-          placeholder="Any concerns, blockers, or risk mitigation strategies..."
-          rows={3}
-        />
-      </div>
+      {isEditMode && (
+        <div className="space-y-2">
+          <Label htmlFor="riskNotes">Risk Notes</Label>
+          <Textarea
+            id="riskNotes"
+            value={formData.riskNotes || ""}
+            onChange={(e) => setFormData({ ...formData, riskNotes: e.target.value })}
+            placeholder="Any concerns, blockers, or risk mitigation strategies..."
+            rows={3}
+          />
+        </div>
+      )}
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
