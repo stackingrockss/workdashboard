@@ -21,6 +21,20 @@ export function getDefaultProbability(stage: OpportunityStage): number {
   return probabilityMap[stage];
 }
 
+// Helper function to get default forecast category for each stage
+export function getDefaultForecastCategory(stage: OpportunityStage): ForecastCategory {
+  const forecastCategoryMap: Record<OpportunityStage, ForecastCategory> = {
+    discovery: "pipeline",
+    demo: "pipeline",
+    validateSolution: "pipeline",
+    decisionMakerApproval: "bestCase",
+    contracting: "bestCase",
+    closedWon: "forecast",
+    closedLost: "pipeline",
+  };
+  return forecastCategoryMap[stage];
+}
+
 // Helper function to get display label for each stage
 export function getStageLabel(stage: OpportunityStage): string {
   const labelMap: Record<OpportunityStage, string> = {

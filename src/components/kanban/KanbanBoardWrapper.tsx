@@ -23,7 +23,7 @@ import { Plus, Filter, Columns } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { ColumnForm } from "@/components/forms/column-form";
-import { Opportunity, OpportunityStage, KanbanColumnConfig } from "@/types/opportunity";
+import { Opportunity, OpportunityStage, KanbanColumnConfig, getDefaultProbability, getDefaultForecastCategory } from "@/types/opportunity";
 import { createOpportunity, updateOpportunity } from "@/lib/api/opportunities";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { getColumns, createColumn } from "@/lib/api/columns";
@@ -102,7 +102,11 @@ export function KanbanBoardWrapper({ opportunities, initialColumns }: KanbanBoar
 
   const handleStageChange = async (opportunityId: string, newStage: OpportunityStage) => {
     try {
-      await updateOpportunity(opportunityId, { stage: newStage });
+      await updateOpportunity(opportunityId, {
+        stage: newStage,
+        probability: getDefaultProbability(newStage),
+        forecastCategory: getDefaultForecastCategory(newStage),
+      });
       toast.success("Opportunity moved successfully!");
       router.refresh();
     } catch (error) {

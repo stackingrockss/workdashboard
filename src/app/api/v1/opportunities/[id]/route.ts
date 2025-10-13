@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { opportunityUpdateSchema } from "@/lib/validations/opportunity";
 import { requireAuth } from "@/lib/auth";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
+import { getDefaultProbability, getDefaultForecastCategory, OpportunityStage } from "@/types/opportunity";
 
 export async function GET(
   _req: NextRequest,
@@ -95,7 +96,19 @@ export async function PATCH(
       // Only update quarter directly if closeDate is not being updated
       updateData.quarter = data.quarter;
     }
-    if (data.stage !== undefined) updateData.stage = data.stage;
+    if (data.stage !== undefined) {
+      updateData.stage = data.stage;
+
+      // Auto-update probability if not explicitly provided
+      if (data.probability === undefined) {
+        updateData.probability = getDefaultProbability(data.stage as OpportunityStage);
+      }
+
+      // Auto-update forecastCategory if not explicitly provided
+      if (data.forecastCategory === undefined) {
+        updateData.forecastCategory = getDefaultForecastCategory(data.stage as OpportunityStage);
+      }
+    }
     if (data.columnId !== undefined) updateData.columnId = data.columnId;
     if (data.forecastCategory !== undefined) updateData.forecastCategory = data.forecastCategory;
     if (data.riskNotes !== undefined) updateData.riskNotes = data.riskNotes;

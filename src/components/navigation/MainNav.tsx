@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Building2 } from "lucide-react";
+import { LayoutDashboard, Target, Building2, Star, Presentation, Bell } from "lucide-react";
 
 const navItems = [
   {
@@ -20,6 +20,21 @@ const navItems = [
     title: "Prospects",
     href: "/prospects",
     icon: Building2,
+  },
+  {
+    title: "Key Deal Review",
+    href: "/key-deal-review",
+    icon: Star,
+  },
+  {
+    title: "Whiteboarding",
+    href: "/whiteboarding",
+    icon: Presentation,
+  },
+  {
+    title: "Deal Updates",
+    href: "/deal-updates",
+    icon: Bell,
   },
 ];
 

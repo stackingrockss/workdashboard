@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
-import { Opportunity, getStageLabel, OpportunityStage } from "@/types/opportunity";
+import { Opportunity, getStageLabel, OpportunityStage, getDefaultProbability, getDefaultForecastCategory } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
@@ -71,7 +71,17 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
     value: string | number | null
   ) => {
     try {
-      await updateOpportunityField(opportunity.id, field, value);
+      // When updating stage, also update probability and forecastCategory
+      if (field === "stage") {
+        const stage = value as OpportunityStage;
+        await updateOpportunity(opportunity.id, {
+          stage,
+          probability: getDefaultProbability(stage),
+          forecastCategory: getDefaultForecastCategory(stage),
+        });
+      } else {
+        await updateOpportunityField(opportunity.id, field, value);
+      }
       toast.success("Updated successfully!");
       router.refresh();
     } catch (error) {
@@ -157,10 +167,6 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           onSave={async (value) => handleFieldUpdate("closeDate", value)}
           displayFormatter={(val) => formatDateShort(val as string)}
         />
-        <div className="rounded-lg border p-4">
-          <div className="text-sm text-muted-foreground">Owner</div>
-          <div className="font-medium">{opportunity.owner.name}</div>
-        </div>
         <InlineSelect
           label="Forecast Category"
           value={opportunity.forecastCategory || ""}
