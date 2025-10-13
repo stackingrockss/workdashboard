@@ -106,3 +106,11 @@ export async function deleteOpportunity(id: string): Promise<void> {
     throw new Error(error.error || "Failed to delete opportunity");
   }
 }
+
+export async function updateOpportunityField(
+  id: string,
+  field: keyof OpportunityUpdateInput,
+  value: unknown
+): Promise<Opportunity> {
+  return updateOpportunity(id, { [field]: value } as OpportunityUpdateInput);
+}

@@ -101,9 +101,7 @@ export async function PATCH(
     if (data.riskNotes !== undefined) updateData.riskNotes = data.riskNotes;
     if (data.notes !== undefined) updateData.notes = data.notes;
     if (data.accountResearch !== undefined) updateData.accountResearch = data.accountResearch;
-    if (data.ownerId !== undefined) {
-      updateData.owner = { connect: { id: data.ownerId } };
-    }
+    if (data.ownerId !== undefined) updateData.ownerId = data.ownerId;
     if (accountId) {
       updateData.accountId = accountId;
     }
