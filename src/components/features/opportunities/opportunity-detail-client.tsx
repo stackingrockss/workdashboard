@@ -26,6 +26,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   InlineTextInput,
   InlineTextarea,
+  InlineTextareaWithAI,
   InlineSelect,
   InlineDatePicker,
 } from "@/components/ui/inline-editable";
@@ -54,6 +55,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isGeneratingResearch, setIsGeneratingResearch] = useState(false);
   const router = useRouter();
 
   const handleUpdateOpportunity = async (data: OpportunityUpdateInput) => {
@@ -100,6 +102,46 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to delete opportunity");
       setIsDeleting(false);
+    }
+  };
+
+  const handleGenerateAccountResearch = async () => {
+    const accountName = opportunity.account?.name || opportunity.accountName;
+
+    if (!accountName || accountName.trim() === "") {
+      toast.error("Account name is required to generate research");
+      return;
+    }
+
+    setIsGeneratingResearch(true);
+    try {
+      const response = await fetch("/api/v1/ai/meeting-notes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          accountName,
+          stage: opportunity.stage,
+          opportunityValue: opportunity.amountArr > 0 ? opportunity.amountArr : undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to generate account research");
+      }
+
+      // Update the opportunity with the generated research
+      await updateOpportunityField(opportunity.id, "accountResearch", data.notes);
+      toast.success("Account research generated successfully!");
+      router.refresh();
+    } catch (error) {
+      console.error("Error generating research:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to generate account research");
+    } finally {
+      setIsGeneratingResearch(false);
     }
   };
 
@@ -213,13 +255,16 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         {/* Research & Notes Tab */}
         <TabsContent value="research" className="space-y-4 mt-4">
           <div className="grid gap-4">
-            <InlineTextarea
+            <InlineTextareaWithAI
               label="Account Research"
               value={opportunity.accountResearch || ""}
               onSave={async (value) => handleFieldUpdate("accountResearch", value)}
               placeholder="AI-powered account research and pre-meeting intelligence..."
               rows={8}
               className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
+              onGenerate={handleGenerateAccountResearch}
+              isGenerating={isGeneratingResearch}
+              generateButtonLabel="Generate with Gemini"
             />
             <InlineTextarea
               label="Risk Notes"

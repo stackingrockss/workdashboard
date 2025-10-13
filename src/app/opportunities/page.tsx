@@ -3,18 +3,58 @@
 
 import { KanbanBoardWrapper } from "@/components/kanban/KanbanBoardWrapper";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
+import { getQuarterlyTemplate, prepareTemplateForCreation } from "@/lib/templates/column-templates";
 
 export const dynamic = "force-dynamic";
 
 export default async function OpportunitiesPage() {
-  // Fetch columns from database
+  // Require authentication
+  const user = await requireAuth();
+
+  // Get user's fiscal year settings
+  const settings = await prisma.companySettings.findUnique({
+    where: { userId: user.id },
+  });
+  const fiscalYearStartMonth = settings?.fiscalYearStartMonth ?? 1;
+
+  // Fetch columns from database (user-specific + global)
   const columnsFromDB = await prisma.kanbanColumn.findMany({
-    where: { userId: null }, // Global columns only for now
+    where: {
+      OR: [{ userId: user.id }, { userId: null }],
+    },
     orderBy: { order: "asc" },
   });
 
+  // Auto-create quarterly columns for new users (Option A)
+  let finalColumns = columnsFromDB;
+  if (columnsFromDB.length === 0) {
+    console.log("No columns found for user, auto-creating quarterly template...");
+
+    // Get quarterly template
+    const template = getQuarterlyTemplate(fiscalYearStartMonth);
+    const columnsToCreate = prepareTemplateForCreation(template);
+
+    // Create columns in database
+    const createdColumns = await Promise.all(
+      columnsToCreate.map((col) =>
+        prisma.kanbanColumn.create({
+          data: {
+            title: col.title,
+            order: col.order,
+            color: col.color || null,
+            userId: user.id,
+          },
+        })
+      )
+    );
+
+    finalColumns = createdColumns;
+    console.log(`Auto-created ${createdColumns.length} quarterly columns for new user`);
+  }
+
   // Transform columns to match expected type
-  const columns = columnsFromDB.map((col) => ({
+  const columns = finalColumns.map((col) => ({
     id: col.id,
     title: col.title,
     order: col.order,
@@ -71,7 +111,11 @@ export default async function OpportunitiesPage() {
           Track deals, next steps, and forecast in a Kanban view
         </p>
       </div>
-      <KanbanBoardWrapper opportunities={opportunities} initialColumns={columns} />
+      <KanbanBoardWrapper
+        opportunities={opportunities}
+        initialColumns={columns}
+        fiscalYearStartMonth={fiscalYearStartMonth}
+      />
     </div>
   );
 }

@@ -11,36 +11,70 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Filter, Columns } from "lucide-react";
+import { Plus, Filter, Columns, LayoutGrid, CalendarDays, ChevronDown, Sparkles } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { ColumnForm } from "@/components/forms/column-form";
+import { ColumnTemplateDialog } from "./ColumnTemplateDialog";
 import { Opportunity, OpportunityStage, KanbanColumnConfig, getDefaultProbability, getDefaultForecastCategory } from "@/types/opportunity";
 import { createOpportunity, updateOpportunity } from "@/lib/api/opportunities";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { getColumns, createColumn } from "@/lib/api/columns";
 import { ColumnCreateInput } from "@/lib/validations/column";
+import { generateQuarterlyColumns, groupOpportunitiesByQuarter } from "@/lib/utils/quarterly-view";
+import { getTemplateById, prepareTemplateForCreation, type ColumnTemplateType } from "@/lib/templates/column-templates";
+
+type ViewMode = "custom" | "quarterly";
 
 interface KanbanBoardWrapperProps {
   opportunities: Opportunity[];
   initialColumns?: KanbanColumnConfig[];
+  fiscalYearStartMonth?: number;
 }
 
-export function KanbanBoardWrapper({ opportunities, initialColumns }: KanbanBoardWrapperProps) {
+export function KanbanBoardWrapper({
+  opportunities,
+  initialColumns,
+  fiscalYearStartMonth = 1
+}: KanbanBoardWrapperProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
+  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [columns, setColumns] = useState<KanbanColumnConfig[]>(initialColumns || []);
+  const [viewMode, setViewMode] = useState<ViewMode>("custom");
   const router = useRouter();
+
+  // Load view mode preference from localStorage
+  useEffect(() => {
+    const savedMode = localStorage.getItem("kanban-view-mode");
+    if (savedMode === "quarterly" || savedMode === "custom") {
+      setViewMode(savedMode);
+    }
+  }, []);
+
+  // Save view mode preference to localStorage
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem("kanban-view-mode", mode);
+  };
 
   // Fetch columns on mount if not provided
   useEffect(() => {
@@ -52,7 +86,15 @@ export function KanbanBoardWrapper({ opportunities, initialColumns }: KanbanBoar
     }
   }, [initialColumns]);
 
-  // Get unique quarters from opportunities
+  // Generate virtual quarterly columns or use custom columns
+  const displayColumns = useMemo(() => {
+    if (viewMode === "quarterly") {
+      return generateQuarterlyColumns(opportunities, fiscalYearStartMonth);
+    }
+    return columns;
+  }, [viewMode, opportunities, columns, fiscalYearStartMonth]);
+
+  // Get unique quarters from opportunities (for filter dropdown)
   const quarters = useMemo(() => {
     const uniqueQuarters = new Set<string>();
     opportunities.forEach(opp => {
@@ -138,6 +180,26 @@ export function KanbanBoardWrapper({ opportunities, initialColumns }: KanbanBoar
     }
   };
 
+  const handleApplyTemplate = async (templateId: ColumnTemplateType) => {
+    try {
+      // Get template with fiscal year configuration
+      const template = getTemplateById(templateId, fiscalYearStartMonth);
+      const columnsToCreate = prepareTemplateForCreation(template);
+
+      // Create columns via API
+      for (const col of columnsToCreate) {
+        await createColumn(col);
+      }
+
+      toast.success(`${template.name} template applied successfully!`);
+      setIsTemplateDialogOpen(false);
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to apply template");
+      throw error;
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -168,10 +230,45 @@ export function KanbanBoardWrapper({ opportunities, initialColumns }: KanbanBoar
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setIsColumnDialogOpen(true)}>
-            <Columns className="h-4 w-4 mr-2" /> Add Column
-          </Button>
+        <div className="flex items-center gap-3">
+          {/* View Mode Toggle */}
+          <Tabs value={viewMode} onValueChange={(value) => handleViewModeChange(value as ViewMode)}>
+            <TabsList>
+              <TabsTrigger value="custom" className="flex items-center gap-1.5">
+                <LayoutGrid className="h-3.5 w-3.5" />
+                Custom
+              </TabsTrigger>
+              <TabsTrigger value="quarterly" className="flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5" />
+                Quarterly
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Enhanced Add Column Button with Dropdown */}
+          {viewMode === "custom" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <Columns className="h-4 w-4 mr-2" />
+                  Add Column
+                  <ChevronDown className="h-3.5 w-3.5 ml-1 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={() => setIsColumnDialogOpen(true)}>
+                  <Columns className="h-4 w-4 mr-2" />
+                  Add Single Column
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsTemplateDialogOpen(true)}>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Apply Template...
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> New Opportunity
           </Button>
@@ -180,9 +277,11 @@ export function KanbanBoardWrapper({ opportunities, initialColumns }: KanbanBoar
       <Separator />
       <KanbanBoard
         opportunities={filteredOpportunities}
-        columns={columns}
+        columns={displayColumns}
         onStageChange={handleStageChange}
         onColumnChange={handleColumnChange}
+        isVirtualMode={viewMode === "quarterly"}
+        fiscalYearStartMonth={fiscalYearStartMonth}
       />
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -211,6 +310,13 @@ export function KanbanBoardWrapper({ opportunities, initialColumns }: KanbanBoar
           />
         </DialogContent>
       </Dialog>
+
+      <ColumnTemplateDialog
+        open={isTemplateDialogOpen}
+        onOpenChange={setIsTemplateDialogOpen}
+        onSelectTemplate={handleApplyTemplate}
+        fiscalYearStartMonth={fiscalYearStartMonth}
+      />
     </div>
   );
 }

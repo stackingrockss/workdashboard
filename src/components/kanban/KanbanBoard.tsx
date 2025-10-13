@@ -6,15 +6,25 @@ import { useState } from "react";
 import { Opportunity, OpportunityStage, KanbanColumnConfig } from "@/types/opportunity";
 import { KanbanColumn } from "./KanbanColumn";
 import { OpportunityCard } from "./OpportunityCard";
+import { groupOpportunitiesByQuarter } from "@/lib/utils/quarterly-view";
 
 export interface KanbanBoardProps {
   opportunities: Opportunity[];
   columns: KanbanColumnConfig[];
   onStageChange?: (opportunityId: string, newStage: OpportunityStage) => Promise<void>;
   onColumnChange?: (opportunityId: string, newColumnId: string) => Promise<void>;
+  isVirtualMode?: boolean;
+  fiscalYearStartMonth?: number;
 }
 
-export function KanbanBoard({ opportunities, columns, onStageChange, onColumnChange }: KanbanBoardProps) {
+export function KanbanBoard({
+  opportunities,
+  columns,
+  onStageChange,
+  onColumnChange,
+  isVirtualMode = false,
+  fiscalYearStartMonth = 1,
+}: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -25,7 +35,14 @@ export function KanbanBoard({ opportunities, columns, onStageChange, onColumnCha
     })
   );
 
+  // Group opportunities by columnId (custom mode) or by quarter (virtual mode)
   const grouped = useMemo(() => {
+    if (isVirtualMode) {
+      // Virtual mode: group by calculated quarter from close date
+      return groupOpportunitiesByQuarter(opportunities, fiscalYearStartMonth);
+    }
+
+    // Custom mode: group by columnId
     const result: Record<string, Opportunity[]> = {};
 
     // Initialize with column IDs
@@ -41,7 +58,7 @@ export function KanbanBoard({ opportunities, columns, onStageChange, onColumnCha
       // Skip opportunities without a valid columnId - they won't be displayed
     }
     return result;
-  }, [opportunities, columns]);
+  }, [isVirtualMode, opportunities, columns, fiscalYearStartMonth]);
 
   const activeOpportunity = useMemo(() => {
     if (!activeId) return null;
@@ -72,6 +89,11 @@ export function KanbanBoard({ opportunities, columns, onStageChange, onColumnCha
     const targetColumn = columns.find(col => col.id === newColumnId);
     if (!targetColumn) return; // Invalid drop target
 
+    // In virtual mode, drag-and-drop is disabled (read-only)
+    if (isVirtualMode) {
+      return;
+    }
+
     // No change if already in this column
     if (opportunity.columnId === newColumnId) return;
 
@@ -90,6 +112,7 @@ export function KanbanBoard({ opportunities, columns, onStageChange, onColumnCha
             column={col}
             opportunities={grouped[col.id] || []}
             onOpenOpportunity={handleOpen}
+            isVirtualMode={isVirtualMode}
           />
         ))}
       </div>
@@ -103,5 +126,3 @@ export function KanbanBoard({ opportunities, columns, onStageChange, onColumnCha
 }
 
 export default KanbanBoard;
-
-

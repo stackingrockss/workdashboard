@@ -66,16 +66,30 @@ import { useDebounce } from "@/hooks/useDebounce";   // → src/hooks/useDebounc
     /components
       /kanban
         KanbanBoard.tsx
+        KanbanBoardWrapper.tsx
         KanbanColumn.tsx
         OpportunityCard.tsx
+        DraggableOpportunityCard.tsx
+        ColumnTemplateDialog.tsx
+      /forms
+        opportunity-form.tsx
+        column-form.tsx
       /ui (shadcn components)
         button.tsx
         card.tsx
         dialog.tsx
+        tabs.tsx
+        dropdown-menu.tsx
+        tooltip.tsx
         ...
     /lib
       /validations
         opportunity.ts
+      /templates
+        column-templates.ts
+      /utils
+        quarter.ts
+        quarterly-view.ts
       utils.ts
       db.ts
       format.ts
@@ -275,6 +289,49 @@ const onSubmit = async (data: OpportunityCreateInput) => {
 - Display key info on cards: opportunity name, account, ARR, probability, close date
 - Use badges to indicate stage, status, or priority
 - Use grid layout for columns: `grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6`
+
+**Kanban Column System:**
+The Kanban board supports two view modes and includes a template system for quick setup:
+
+1. **Custom View Mode** (default):
+   - Users create and manage their own columns via database (`KanbanColumn` model)
+   - Columns can be renamed, reordered, and colored
+   - Opportunities are assigned to columns via `columnId` field
+   - Full drag-and-drop support for moving opportunities between columns
+
+2. **Quarterly View Mode**:
+   - Virtual columns generated dynamically from opportunities' close dates
+   - Columns represent fiscal quarters (e.g., "Q1 2025", "Q2 2025")
+   - Opportunities automatically grouped by calculated quarter
+   - Read-only mode: drag-and-drop disabled, columns cannot be edited
+   - Respects user's fiscal year start month setting
+
+3. **Column Templates**:
+   - Predefined templates for common workflows (located in `/src/lib/templates/column-templates.ts`)
+   - Available templates:
+     - **Quarterly Forecast**: Current + next 3 quarters (time-based tracking)
+     - **Sales Stages**: Discovery → Demo → Validate Solution → Decision Maker Approval → Contracting → Closed Won/Lost
+     - **Forecast Categories**: Pipeline → Best Case → Commit → Closed Won/Lost
+     - **Start Blank**: No columns (user builds custom structure)
+   - Templates applied via "Apply Template" dropdown in column management UI
+
+4. **Auto-Creation for New Users**:
+   - When a user accesses the opportunities page for the first time with zero columns
+   - System automatically creates quarterly columns (current + next 3 quarters)
+   - Provides "opinionated defaults" without forcing a specific structure
+   - Users can immediately switch to custom view or apply different templates
+
+5. **View Mode Toggle**:
+   - Tabs UI component in toolbar: "Custom" vs "Quarterly"
+   - User preference persisted in localStorage (`kanban-view-mode`)
+   - "Add Column" button hidden in quarterly mode (virtual columns cannot be added)
+
+**Technical Implementation:**
+- Custom mode: Uses `columns` from database, groups by `opportunity.columnId`
+- Quarterly mode: Uses `generateQuarterlyColumns()` and `groupOpportunitiesByQuarter()` from `/src/lib/utils/quarterly-view.ts`
+- Templates: Use `getTemplateById()` and `prepareTemplateForCreation()` from `/src/lib/templates/column-templates.ts`
+- Fiscal year support: All quarter calculations use `fiscalYearStartMonth` from user settings
+- Virtual columns have IDs like `virtual-Q1-2025` to distinguish from database columns
 
 **Currency & Date Formatting:**
 - **Always use formatting utilities** from `/src/lib/format.ts`:

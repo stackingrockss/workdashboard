@@ -12,11 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sparkles, Loader2 } from "lucide-react";
-import { OpportunityStage, OpportunityOwner, ForecastCategory, getDefaultProbability, getStageLabel } from "@/types/opportunity";
+import { OpportunityStage, OpportunityOwner, ForecastCategory, getDefaultProbability } from "@/types/opportunity";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { getUsers } from "@/lib/api/users";
-import { toast } from "sonner";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
 
 interface OpportunityFormProps {
@@ -49,9 +47,7 @@ export function OpportunityForm({
   submitLabel = "Create",
 }: OpportunityFormProps) {
   const [loading, setLoading] = useState(false);
-  const [generatingNotes, setGeneratingNotes] = useState(false);
   const [users, setUsers] = useState<OpportunityOwner[]>([]);
-  const [isProbabilityManuallyEdited, setIsProbabilityManuallyEdited] = useState(false);
   const [fiscalYearStartMonth, setFiscalYearStartMonth] = useState(1);
   const isEditMode = !!initialData?.ownerId; // Edit mode if ownerId is provided
   const [formData, setFormData] = useState<OpportunityCreateInput>({
@@ -65,8 +61,6 @@ export function OpportunityForm({
     stage: initialData?.stage || "discovery",
     forecastCategory: initialData?.forecastCategory || "pipeline",
     riskNotes: initialData?.riskNotes || "",
-    notes: initialData?.notes || "",
-    accountResearch: initialData?.accountResearch || "",
     ownerId: initialData?.ownerId || "",
   });
 
@@ -128,55 +122,11 @@ export function OpportunityForm({
   };
 
   const handleStageChange = (newStage: OpportunityStage) => {
-    const updates: Partial<OpportunityCreateInput> = { stage: newStage };
-
-    // Only auto-update probability if it hasn't been manually edited
-    if (!isProbabilityManuallyEdited) {
-      updates.probability = getDefaultProbability(newStage);
-    }
-
-    setFormData({ ...formData, ...updates });
-  };
-
-  const handleProbabilityChange = (newProbability: number) => {
-    setIsProbabilityManuallyEdited(true);
-    setFormData({ ...formData, probability: newProbability });
-  };
-
-  const handleGenerateNotes = async () => {
-    if (!formData.account || formData.account.trim() === "") {
-      toast.error("Please enter an account name first");
-      return;
-    }
-
-    setGeneratingNotes(true);
-    try {
-      const response = await fetch("/api/v1/ai/meeting-notes", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          accountName: formData.account,
-          stage: formData.stage,
-          opportunityValue: formData.amountArr > 0 ? formData.amountArr : undefined,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to generate notes");
-      }
-
-      setFormData({ ...formData, accountResearch: data.notes });
-      toast.success("Account research generated successfully!");
-    } catch (error) {
-      console.error("Error generating notes:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to generate notes");
-    } finally {
-      setGeneratingNotes(false);
-    }
+    setFormData({
+      ...formData,
+      stage: newStage,
+      probability: getDefaultProbability(newStage)
+    });
   };
 
   return (
@@ -203,34 +153,19 @@ export function OpportunityForm({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="amountArr">Amount (ARR)</Label>
-          <Input
-            id="amountArr"
-            type="number"
-            min="0"
-            step="1000"
-            value={formData.amountArr}
-            onChange={(e) =>
-              setFormData({ ...formData, amountArr: parseInt(e.target.value) || 0 })
-            }
-            placeholder="0"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="probability">Probability (%)</Label>
-          <Input
-            id="probability"
-            type="number"
-            min="0"
-            max="100"
-            value={formData.probability}
-            onChange={(e) => handleProbabilityChange(parseInt(e.target.value) || 0)}
-            placeholder="Auto-populates based on stage"
-          />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="amountArr">Amount (ARR)</Label>
+        <Input
+          id="amountArr"
+          type="number"
+          min="0"
+          step="1000"
+          value={formData.amountArr}
+          onChange={(e) =>
+            setFormData({ ...formData, amountArr: parseInt(e.target.value) || 0 })
+          }
+          placeholder="0"
+        />
       </div>
 
       <div className="space-y-2">
@@ -290,21 +225,6 @@ export function OpportunityForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="quarter">Quarter</Label>
-        <Input
-          id="quarter"
-          value={formData.quarter || ""}
-          readOnly
-          disabled
-          className="bg-muted cursor-not-allowed"
-          placeholder="Select a close date to auto-calculate"
-        />
-        <p className="text-xs text-muted-foreground">
-          Auto-calculated based on close date and fiscal year settings
-        </p>
-      </div>
-
-      <div className="space-y-2">
         <Label htmlFor="nextStep">Next Step</Label>
         <Input
           id="nextStep"
@@ -347,49 +267,6 @@ export function OpportunityForm({
           />
         </div>
       )}
-
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="accountResearch">Account Research</Label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleGenerateNotes}
-            disabled={generatingNotes || !formData.account}
-          >
-            {generatingNotes ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Researching {formData.account}...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Generate Account Research
-              </>
-            )}
-          </Button>
-        </div>
-        <Textarea
-          id="accountResearch"
-          value={formData.accountResearch || ""}
-          onChange={(e) => setFormData({ ...formData, accountResearch: e.target.value })}
-          placeholder="AI-powered account research and pre-meeting intelligence..."
-          rows={12}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="notes">Notes</Label>
-        <Textarea
-          id="notes"
-          value={formData.notes || ""}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-          placeholder="Your personal notes about this opportunity..."
-          rows={6}
-        />
-      </div>
 
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>

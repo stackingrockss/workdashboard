@@ -17,14 +17,18 @@ export interface KanbanColumnProps {
   column: KanbanColumnConfig;
   opportunities: Opportunity[];
   onOpenOpportunity?: (id: string) => void;
+  isVirtualMode?: boolean;
 }
 
-export function KanbanColumn({ column, opportunities, onOpenOpportunity }: KanbanColumnProps) {
+export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtualMode = false }: KanbanColumnProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(column.title);
   const count = opportunities.length;
   const { setNodeRef } = useDroppable({ id: column.id });
   const router = useRouter();
+
+  // Disable editing in virtual mode
+  const canEdit = !isVirtualMode;
 
   const handleSave = async () => {
     if (!editedTitle.trim()) {
@@ -75,15 +79,17 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity }: Kanba
               {column.title}
               <span className="text-muted-foreground font-normal"> ({count})</span>
             </h3>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setIsEditing(true)}
-              className="h-8 w-8 p-0 hover:bg-accent"
-              title="Edit column name"
-            >
-              <Pencil className="h-4 w-4 text-foreground/70" />
-            </Button>
+            {canEdit && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setIsEditing(true)}
+                className="h-8 w-8 p-0 hover:bg-accent"
+                title="Edit column name"
+              >
+                <Pencil className="h-4 w-4 text-foreground/70" />
+              </Button>
+            )}
           </>
         )}
       </div>

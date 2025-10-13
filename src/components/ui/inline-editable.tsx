@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Pencil, Check, X, Loader2 } from "lucide-react";
+import { Pencil, Check, X, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BaseEditableFieldProps {
@@ -503,6 +503,171 @@ export function InlineDatePicker({
         {isSaving && (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         )}
+      </div>
+    </div>
+  );
+}
+
+interface InlineTextareaWithAIProps extends InlineTextareaProps {
+  onGenerate?: () => Promise<void>;
+  isGenerating?: boolean;
+  generateButtonLabel?: string;
+}
+
+export function InlineTextareaWithAI({
+  value,
+  onSave,
+  label,
+  placeholder = "Click to edit",
+  className,
+  displayFormatter,
+  rows = 3,
+  onGenerate,
+  isGenerating = false,
+  generateButtonLabel = "Generate with Gemini",
+}: InlineTextareaWithAIProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value?.toString() || "");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.select();
+    }
+  }, [isEditing]);
+
+  const handleSave = async () => {
+    if (editValue === (value?.toString() || "")) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onSave(editValue || null);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to save:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditValue(value?.toString() || "");
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Escape") {
+      handleCancel();
+    }
+    // Ctrl/Cmd + Enter to save
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      handleSave();
+    }
+  };
+
+  const displayValue = displayFormatter
+    ? displayFormatter(value)
+    : value?.toString() || placeholder;
+
+  // Show generate button only if field is empty and onGenerate is provided
+  const showGenerateButton = onGenerate && (!value || value.toString().trim().length === 0);
+
+  if (!isEditing) {
+    return (
+      <div
+        className={cn(
+          "rounded-lg border p-4 cursor-pointer transition-colors group",
+          isHovered && "border-primary/50 bg-accent/50",
+          className
+        )}
+        onClick={() => !isGenerating && setIsEditing(true)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm text-muted-foreground">{label}</div>
+          <div className="flex items-center gap-2">
+            {showGenerateButton && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onGenerate?.();
+                }}
+                disabled={isGenerating}
+                className="h-7 text-xs"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    {generateButtonLabel}
+                  </>
+                )}
+              </Button>
+            )}
+            {!showGenerateButton && (
+              <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+            )}
+          </div>
+        </div>
+        <div
+          className={cn(
+            "font-medium whitespace-pre-wrap",
+            !value && "text-muted-foreground italic"
+          )}
+        >
+          {displayValue}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("rounded-lg border p-4 border-primary", className)}>
+      <div className="text-sm text-muted-foreground mb-2">{label}</div>
+      <Textarea
+        ref={textareaRef}
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onKeyDown={handleKeyDown}
+        disabled={isSaving}
+        placeholder={placeholder}
+        rows={rows}
+        className="resize-none"
+      />
+      <div className="flex items-center justify-end gap-2 mt-2">
+        <span className="text-xs text-muted-foreground mr-auto">
+          Ctrl+Enter to save, Esc to cancel
+        </span>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleCancel}
+          disabled={isSaving}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+        <Button size="sm" onClick={handleSave} disabled={isSaving}>
+          {isSaving ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Check className="h-4 w-4" />
+          )}
+        </Button>
       </div>
     </div>
   );
