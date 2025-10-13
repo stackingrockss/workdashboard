@@ -11,7 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultProbability, getDefaultForecastCategory } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -135,97 +136,132 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <InlineSelect
-          label="Stage"
-          value={opportunity.stage}
-          onSave={async (value) => handleFieldUpdate("stage", value)}
-          options={stageOptions}
-          displayFormatter={(val) => getStageLabel(val as OpportunityStage)}
-        />
-        <InlineTextInput
-          label="Amount (ARR)"
-          value={opportunity.amountArr}
-          onSave={async (value) => handleFieldUpdate("amountArr", value)}
-          type="number"
-          min={0}
-          step={1000}
-          displayFormatter={(val) => `${formatCurrencyCompact(val as number)} ARR`}
-        />
-        <InlineTextInput
-          label="Probability"
-          value={opportunity.probability}
-          onSave={async (value) => handleFieldUpdate("probability", value)}
-          type="number"
-          min={0}
-          max={100}
-          displayFormatter={(val) => `${val}%`}
-        />
-        <InlineDatePicker
-          label="Close date"
-          value={opportunity.closeDate}
-          onSave={async (value) => handleFieldUpdate("closeDate", value)}
-          displayFormatter={(val) => formatDateShort(val as string)}
-        />
-        <InlineSelect
-          label="Forecast Category"
-          value={opportunity.forecastCategory || ""}
-          onSave={async (value) => handleFieldUpdate("forecastCategory", value || null)}
-          options={forecastCategoryOptions}
-          placeholder="Select category"
-          displayFormatter={(val) =>
-            val ? forecastCategoryOptions.find(o => o.value === val)?.label || "" : "—"
-          }
-        />
-        <InlineTextInput
-          label="Next step"
-          value={opportunity.nextStep || ""}
-          onSave={async (value) => handleFieldUpdate("nextStep", value)}
-          placeholder="e.g. Schedule demo call"
-          className="md:col-span-2 lg:col-span-3"
-        />
-        <InlineTextarea
-          label="Risk Notes"
-          value={opportunity.riskNotes || ""}
-          onSave={async (value) => handleFieldUpdate("riskNotes", value)}
-          placeholder="Any concerns, blockers, or risk mitigation strategies..."
-          rows={3}
-          className="md:col-span-2 lg:col-span-3 border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950"
-        />
-        <InlineTextarea
-          label="Account Research"
-          value={opportunity.accountResearch || ""}
-          onSave={async (value) => handleFieldUpdate("accountResearch", value)}
-          placeholder="AI-powered account research and pre-meeting intelligence..."
-          rows={6}
-          className="md:col-span-2 lg:col-span-3 border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
-        />
-        <InlineTextarea
-          label="Notes"
-          value={opportunity.notes || ""}
-          onSave={async (value) => handleFieldUpdate("notes", value)}
-          placeholder="Your personal notes about this opportunity..."
-          rows={4}
-          className="md:col-span-2 lg:col-span-3"
-        />
-        <GranolaNotesSection
-          opportunityId={opportunity.id}
-          notes={opportunity.granolaNotes || []}
-        />
-        <GongCallsSection
-          opportunityId={opportunity.id}
-          calls={opportunity.gongCalls || []}
-        />
-        <GoogleNotesSection
-          opportunityId={opportunity.id}
-          notes={opportunity.googleNotes || []}
-        />
-      </div>
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview" className="flex items-center gap-2">
+            <LayoutDashboard className="h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="research" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Research & Notes
+          </TabsTrigger>
+          <TabsTrigger value="meetings" className="flex items-center gap-2">
+            <Phone className="h-4 w-4" />
+            Meetings & Calls
+          </TabsTrigger>
+          <TabsTrigger value="contacts" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Contacts
+          </TabsTrigger>
+        </TabsList>
 
-      <Separator className="my-8" />
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-4 mt-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <InlineSelect
+              label="Stage"
+              value={opportunity.stage}
+              onSave={async (value) => handleFieldUpdate("stage", value)}
+              options={stageOptions}
+              displayFormatter={(val) => getStageLabel(val as OpportunityStage)}
+            />
+            <InlineTextInput
+              label="Amount (ARR)"
+              value={opportunity.amountArr}
+              onSave={async (value) => handleFieldUpdate("amountArr", value)}
+              type="number"
+              min={0}
+              step={1000}
+              displayFormatter={(val) => `${formatCurrencyCompact(val as number)} ARR`}
+            />
+            <InlineTextInput
+              label="Probability"
+              value={opportunity.probability}
+              onSave={async (value) => handleFieldUpdate("probability", value)}
+              type="number"
+              min={0}
+              max={100}
+              displayFormatter={(val) => `${val}%`}
+            />
+            <InlineDatePicker
+              label="Close date"
+              value={opportunity.closeDate}
+              onSave={async (value) => handleFieldUpdate("closeDate", value)}
+              displayFormatter={(val) => formatDateShort(val as string)}
+            />
+            <InlineSelect
+              label="Forecast Category"
+              value={opportunity.forecastCategory || ""}
+              onSave={async (value) => handleFieldUpdate("forecastCategory", value || null)}
+              options={forecastCategoryOptions}
+              placeholder="Select category"
+              displayFormatter={(val) =>
+                val ? forecastCategoryOptions.find(o => o.value === val)?.label || "" : "—"
+              }
+            />
+            <InlineTextInput
+              label="Next step"
+              value={opportunity.nextStep || ""}
+              onSave={async (value) => handleFieldUpdate("nextStep", value)}
+              placeholder="e.g. Schedule demo call"
+              className="md:col-span-2 lg:col-span-3"
+            />
+          </div>
+        </TabsContent>
 
-      {/* Organization Chart Section */}
-      <OrgChartSection opportunityId={opportunity.id} />
+        {/* Research & Notes Tab */}
+        <TabsContent value="research" className="space-y-4 mt-4">
+          <div className="grid gap-4">
+            <InlineTextarea
+              label="Account Research"
+              value={opportunity.accountResearch || ""}
+              onSave={async (value) => handleFieldUpdate("accountResearch", value)}
+              placeholder="AI-powered account research and pre-meeting intelligence..."
+              rows={8}
+              className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
+            />
+            <InlineTextarea
+              label="Risk Notes"
+              value={opportunity.riskNotes || ""}
+              onSave={async (value) => handleFieldUpdate("riskNotes", value)}
+              placeholder="Any concerns, blockers, or risk mitigation strategies..."
+              rows={5}
+              className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950"
+            />
+            <InlineTextarea
+              label="Personal Notes"
+              value={opportunity.notes || ""}
+              onSave={async (value) => handleFieldUpdate("notes", value)}
+              placeholder="Your personal notes about this opportunity..."
+              rows={6}
+            />
+          </div>
+        </TabsContent>
+
+        {/* Meetings & Calls Tab */}
+        <TabsContent value="meetings" className="space-y-6 mt-4">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <GranolaNotesSection
+              opportunityId={opportunity.id}
+              notes={opportunity.granolaNotes || []}
+            />
+            <GongCallsSection
+              opportunityId={opportunity.id}
+              calls={opportunity.gongCalls || []}
+            />
+            <GoogleNotesSection
+              opportunityId={opportunity.id}
+              notes={opportunity.googleNotes || []}
+            />
+          </div>
+        </TabsContent>
+
+        {/* Contacts Tab */}
+        <TabsContent value="contacts" className="mt-4">
+          <OrgChartSection opportunityId={opportunity.id} />
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
