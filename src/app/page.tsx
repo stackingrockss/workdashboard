@@ -212,10 +212,10 @@ export default async function DashboardPage() {
             View Opportunities
           </Link>
           <Link
-            href="/accounts"
+            href="/prospects"
             className="inline-flex items-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
           >
-            Manage Accounts
+            Manage Prospects
           </Link>
         </CardContent>
       </Card>

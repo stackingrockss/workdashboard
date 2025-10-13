@@ -129,12 +129,12 @@ export default function SettingsPage() {
               <Label htmlFor="companyWebsite">Company Website</Label>
               <Input
                 id="companyWebsite"
-                type="url"
+                type="text"
                 value={formData.companyWebsite}
                 onChange={(e) =>
                   setFormData({ ...formData, companyWebsite: e.target.value })
                 }
-                placeholder="https://example.com"
+                placeholder="www.example.com or https://example.com"
               />
             </div>
           </CardContent>

@@ -12,13 +12,6 @@ import {
 } from "@/components/ui/dialog";
 import { Contact } from "@/types/contact";
 import { ContactCreateInput, ContactUpdateInput } from "@/lib/validations/contact";
-import {
-  fetchContacts,
-  createContact,
-  updateContact,
-  deleteContact,
-  updateContactPosition,
-} from "@/lib/api/contacts";
 import { ContactForm } from "@/components/forms/contact-form";
 import { ContactList } from "./ContactList";
 import { OrgChartView } from "./OrgChartView";
@@ -26,7 +19,10 @@ import { Plus, List, Network } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 interface OrgChartSectionProps {
-  opportunityId: string;
+  opportunityId?: string;
+  parentId?: string;
+  parentType?: "opportunity" | "account";
+  apiEndpoint?: string;
   initialContacts?: Contact[];
 }
 
@@ -34,12 +30,21 @@ type ViewMode = "list" | "chart";
 
 export function OrgChartSection({
   opportunityId,
+  parentId,
+  parentType,
+  apiEndpoint,
   initialContacts = [],
 }: OrgChartSectionProps) {
   const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>(initialContacts);
   const [isLoading, setIsLoading] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("chart");
+
+  // Determine the API endpoint based on props
+  const effectiveApiEndpoint = apiEndpoint ||
+    (opportunityId ? `/api/v1/opportunities/${opportunityId}/contacts` :
+     parentId ? `/api/v1/${parentType === "account" ? "accounts" : "opportunities"}/${parentId}/contacts` :
+     "");
 
   // Dialog states
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -50,13 +55,19 @@ export function OrgChartSection({
 
   // Load contacts
   useEffect(() => {
-    loadContacts();
-  }, [opportunityId]);
+    if (effectiveApiEndpoint) {
+      loadContacts();
+    }
+  }, [effectiveApiEndpoint]);
 
   const loadContacts = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchContacts(opportunityId);
+      const response = await fetch(effectiveApiEndpoint);
+      if (!response.ok) {
+        throw new Error("Failed to fetch contacts");
+      }
+      const data = await response.json();
       setContacts(data);
     } catch (error) {
       toast.error(
@@ -70,7 +81,17 @@ export function OrgChartSection({
   // Create contact
   const handleCreateContact = async (data: ContactCreateInput | ContactUpdateInput) => {
     try {
-      const newContact = await createContact(opportunityId, data as ContactCreateInput);
+      const response = await fetch(effectiveApiEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create contact");
+      }
+
+      const newContact = await response.json();
       setContacts([...contacts, newContact]);
       setIsCreateDialogOpen(false);
       toast.success("Contact created successfully!");
@@ -88,11 +109,17 @@ export function OrgChartSection({
     if (!selectedContact) return;
 
     try {
-      const updatedContact = await updateContact(
-        opportunityId,
-        selectedContact.id,
-        data as ContactUpdateInput
-      );
+      const response = await fetch(`${effectiveApiEndpoint}/${selectedContact.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update contact");
+      }
+
+      const updatedContact = await response.json();
       setContacts(
         contacts.map((c) => (c.id === updatedContact.id ? updatedContact : c))
       );
@@ -114,7 +141,14 @@ export function OrgChartSection({
 
     setIsDeleting(true);
     try {
-      await deleteContact(opportunityId, selectedContact.id);
+      const response = await fetch(`${effectiveApiEndpoint}/${selectedContact.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete contact");
+      }
+
       setContacts(contacts.filter((c) => c.id !== selectedContact.id));
       setIsDeleteDialogOpen(false);
       setSelectedContact(null);
@@ -136,7 +170,16 @@ export function OrgChartSection({
     y: number
   ) => {
     try {
-      await updateContactPosition(opportunityId, contactId, x, y);
+      const response = await fetch(`${effectiveApiEndpoint}/${contactId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ positionX: x, positionY: y }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update position");
+      }
+
       // Update local state
       setContacts(
         contacts.map((c) =>

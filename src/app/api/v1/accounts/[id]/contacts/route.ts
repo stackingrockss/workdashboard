@@ -1,0 +1,163 @@
+import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
+import { contactCreateSchema } from "@/lib/validations/contact";
+
+const prisma = new PrismaClient();
+
+// GET /api/v1/accounts/[id]/contacts - List all contacts for an account
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    // Verify account exists
+    const account = await prisma.account.findUnique({
+      where: { id },
+    });
+
+    if (!account) {
+      return NextResponse.json(
+        { error: "Account not found" },
+        { status: 404 }
+      );
+    }
+
+    // Fetch all contacts for this account with their manager and direct reports
+    const contacts = await prisma.contact.findMany({
+      where: { accountId: id },
+      include: {
+        manager: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            title: true,
+            role: true,
+          },
+        },
+        directReports: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            title: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "asc",
+      },
+    });
+
+    // Transform contacts to include fullName
+    const transformedContacts = contacts.map((contact) => ({
+      ...contact,
+      fullName: `${contact.firstName} ${contact.lastName}`,
+      createdAt: contact.createdAt.toISOString(),
+      updatedAt: contact.updatedAt.toISOString(),
+    }));
+
+    return NextResponse.json(transformedContacts);
+  } catch (error) {
+    console.error("Error fetching contacts:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch contacts" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST /api/v1/accounts/[id]/contacts - Create a new contact
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+
+    // Verify account exists
+    const account = await prisma.account.findUnique({
+      where: { id },
+    });
+
+    if (!account) {
+      return NextResponse.json(
+        { error: "Account not found" },
+        { status: 404 }
+      );
+    }
+
+    // Validate input
+    const validatedData = contactCreateSchema.parse(body);
+
+    // If managerId is provided, verify the manager exists and belongs to the same account
+    if (validatedData.managerId) {
+      const manager = await prisma.contact.findUnique({
+        where: { id: validatedData.managerId },
+      });
+
+      if (!manager || manager.accountId !== id) {
+        return NextResponse.json(
+          { error: "Invalid manager: Manager must belong to the same account" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Create the contact
+    const contact = await prisma.contact.create({
+      data: {
+        ...validatedData,
+        accountId: id,
+      },
+      include: {
+        manager: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            title: true,
+            role: true,
+          },
+        },
+        directReports: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            title: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    // Transform contact to include fullName
+    const transformedContact = {
+      ...contact,
+      fullName: `${contact.firstName} ${contact.lastName}`,
+      createdAt: contact.createdAt.toISOString(),
+      updatedAt: contact.updatedAt.toISOString(),
+    };
+
+    return NextResponse.json(transformedContact, { status: 201 });
+  } catch (error) {
+    console.error("Error creating contact:", error);
+
+    if (error instanceof Error && error.name === "ZodError") {
+      return NextResponse.json(
+        { error: "Invalid input data", details: error },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: "Failed to create contact" },
+      { status: 500 }
+    );
+  }
+}

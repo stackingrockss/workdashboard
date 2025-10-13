@@ -32,6 +32,7 @@ model Account {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   opportunities Opportunity[]
+  contacts      Contact[]
 
   @@schema("opportunity_tracker")
 }
@@ -124,7 +125,8 @@ model Contact {
   phone         String?
   role          ContactRole
   sentiment     ContactSentiment @default(unknown)
-  opportunityId String
+  opportunityId String?
+  accountId     String?
   managerId     String?
   positionX     Float?
   positionY     Float?
@@ -133,7 +135,8 @@ model Contact {
   updatedAt     DateTime         @updatedAt
   manager       Contact?         @relation("ContactReports", fields: [managerId], references: [id])
   directReports Contact[]        @relation("ContactReports")
-  opportunity   Opportunity      @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity?     @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  account       Account?         @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@schema("opportunity_tracker")
 }
