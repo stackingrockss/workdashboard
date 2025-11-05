@@ -6,6 +6,11 @@ import { NextResponse, type NextRequest } from "next/server";
  * This should be called from Next.js middleware to keep sessions alive.
  */
 export async function updateSession(request: NextRequest) {
+  // Early return for API routes - let them handle their own auth
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.next({ request });
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
