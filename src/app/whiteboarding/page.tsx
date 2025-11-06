@@ -4,12 +4,13 @@ import { WhiteboardTable } from "@/components/whiteboard/WhiteboardTable";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import Link from "next/link";
+import { Opportunity } from "@/types/opportunity";
 
 export default async function WhiteboardingPage() {
   const user = await requireAuth();
 
   // Fetch opportunities for the authenticated user
-  const opportunities = await prisma.opportunity.findMany({
+  const opportunitiesFromDB = await prisma.opportunity.findMany({
     where: { ownerId: user.id },
     include: {
       owner: true,
@@ -17,6 +18,42 @@ export default async function WhiteboardingPage() {
     },
     orderBy: { closeDate: "asc" },
   });
+
+  // Map Prisma results to Opportunity type (convert null to undefined)
+  const opportunities: Opportunity[] = opportunitiesFromDB.map(opp => ({
+    id: opp.id,
+    name: opp.name,
+    accountId: opp.accountId || undefined,
+    accountName: opp.accountName || undefined,
+    account: opp.account ? {
+      id: opp.account.id,
+      name: opp.account.name,
+    } : undefined,
+    amountArr: opp.amountArr,
+    confidenceLevel: opp.confidenceLevel,
+    nextStep: opp.nextStep || undefined,
+    closeDate: opp.closeDate?.toISOString() || undefined,
+    quarter: opp.quarter || undefined,
+    stage: opp.stage,
+    columnId: opp.columnId || undefined,
+    forecastCategory: opp.forecastCategory || undefined,
+    riskNotes: opp.riskNotes || undefined,
+    notes: opp.notes || undefined,
+    accountResearch: opp.accountResearch || undefined,
+    decisionMakers: opp.decisionMakers || undefined,
+    competition: opp.competition || undefined,
+    legalReviewStatus: opp.legalReviewStatus || undefined,
+    securityReviewStatus: opp.securityReviewStatus || undefined,
+    platformType: opp.platformType || undefined,
+    businessCaseStatus: opp.businessCaseStatus || undefined,
+    owner: {
+      id: opp.owner.id,
+      name: opp.owner.name,
+      email: opp.owner.email,
+    },
+    createdAt: opp.createdAt.toISOString(),
+    updatedAt: opp.updatedAt.toISOString(),
+  }));
 
   return (
     <div className="p-6 space-y-6">
