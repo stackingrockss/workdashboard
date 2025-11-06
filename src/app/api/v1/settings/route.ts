@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { companySettingsSchema } from "@/lib/validations/company-settings";
 import { requireAuth } from "@/lib/auth";
-import { getQuarterFromDate, getNextQuarters } from "@/lib/utils/quarter";
+import { getQuarterFromDate } from "@/lib/utils/quarter";
 
 export async function GET() {
   try {
@@ -70,13 +70,13 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // If fiscal year changed, recalculate all opportunity quarters and update kanban columns
+    // If fiscal year changed, recalculate all opportunity quarters
     if (fiscalYearChanged || !existingSettings) {
       console.log(
         `Fiscal year changed to month ${data.fiscalYearStartMonth}, recalculating quarters...`
       );
 
-      // 1. Recalculate quarters for all opportunities with close dates
+      // Recalculate quarters for all opportunities with close dates
       const opportunities = await prisma.opportunity.findMany({
         where: {
           ownerId: user.id,
@@ -86,71 +86,21 @@ export async function POST(req: NextRequest) {
 
       console.log(`Recalculating quarters for ${opportunities.length} opportunities`);
 
-      // Store opportunity updates to apply after columns are created
-      const opportunityUpdates: Array<{ id: string; quarter: string }> = [];
+      // Update each opportunity's quarter field
       for (const opp of opportunities) {
         if (opp.closeDate) {
           const newQuarter = getQuarterFromDate(
             opp.closeDate,
             data.fiscalYearStartMonth
           );
-          opportunityUpdates.push({ id: opp.id, quarter: newQuarter });
+          await prisma.opportunity.update({
+            where: { id: opp.id },
+            data: { quarter: newQuarter },
+          });
         }
       }
 
-      // 2. Auto-create/update kanban columns for current + next 3 quarters
-      const quarterStrings = getNextQuarters(4, data.fiscalYearStartMonth);
-      console.log(`Creating/updating columns for quarters: ${quarterStrings.join(", ")}`);
-
-      // Get existing columns for this user
-      const existingColumns = await prisma.kanbanColumn.findMany({
-        where: { userId: user.id },
-        orderBy: { order: "asc" },
-      });
-
-      // Delete old quarter-based columns (those with titles matching "Q\d \d{4}" pattern)
-      const quarterPattern = /^Q[1-4]\s\d{4}$/;
-      const columnsToDelete = existingColumns.filter((col) =>
-        quarterPattern.test(col.title)
-      );
-
-      if (columnsToDelete.length > 0) {
-        await prisma.kanbanColumn.deleteMany({
-          where: {
-            id: { in: columnsToDelete.map((col) => col.id) },
-          },
-        });
-        console.log(`Deleted ${columnsToDelete.length} old quarter columns`);
-      }
-
-      // Create new quarter columns
-      const newColumns: Record<string, string> = {};
-      for (let i = 0; i < quarterStrings.length; i++) {
-        const column = await prisma.kanbanColumn.create({
-          data: {
-            title: quarterStrings[i],
-            order: i,
-            userId: user.id,
-          },
-        });
-        newColumns[quarterStrings[i]] = column.id;
-      }
-
-      console.log(`Created ${quarterStrings.length} new quarter columns`);
-
-      // 3. Now update opportunities with their new quarters and columnIds
-      for (const update of opportunityUpdates) {
-        const columnId = newColumns[update.quarter];
-        await prisma.opportunity.update({
-          where: { id: update.id },
-          data: {
-            quarter: update.quarter,
-            columnId: columnId || null,
-          },
-        });
-      }
-
-      console.log(`Updated ${opportunityUpdates.length} opportunities with new quarters and columns`);
+      console.log(`Updated ${opportunities.length} opportunities with new quarters`);
     }
 
     return NextResponse.json({ settings });

@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       name: data.name,
       accountName: data.account ?? undefined,
       amountArr: data.amountArr ?? 0, // Default to 0 if not provided
-      probability: data.probability ?? 10, // Default to 10% if not provided
+      confidenceLevel: data.confidenceLevel ?? 3, // Default to 3 (medium) if not provided
       nextStep: data.nextStep ?? undefined,
       closeDate: data.closeDate ? new Date(data.closeDate) : undefined,
       quarter: quarter ?? undefined,
@@ -93,6 +93,13 @@ export async function POST(req: NextRequest) {
       riskNotes: data.riskNotes ?? undefined,
       notes: data.notes ?? undefined,
       accountResearch: data.accountResearch ?? undefined,
+      // New fields from CSV
+      decisionMakers: data.decisionMakers ?? undefined,
+      competition: data.competition ?? undefined,
+      legalReviewStatus: data.legalReviewStatus ?? "not_started",
+      securityReviewStatus: data.securityReviewStatus ?? "not_started",
+      platformType: data.platformType ?? undefined,
+      businessCaseStatus: data.businessCaseStatus ?? "not_started",
       ownerId: data.ownerId ?? user.id, // Use provided ownerId or default to authenticated user's ID
       ...(accountId ? { accountId } : {}),
     };

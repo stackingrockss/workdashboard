@@ -41,7 +41,7 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
           </div>
           <div className="flex flex-col gap-1 shrink-0">
             <Badge variant="secondary" className="text-center">
-              {opportunity.probability}%
+              {opportunity.confidenceLevel}/5
             </Badge>
             {opportunity.forecastCategory && (
               <Badge

@@ -7,18 +7,18 @@ export type OpportunityStage =
   | "closedWon"
   | "closedLost";
 
-// Helper function to get default probability for each stage
-export function getDefaultProbability(stage: OpportunityStage): number {
-  const probabilityMap: Record<OpportunityStage, number> = {
-    discovery: 10,
-    demo: 20,
-    validateSolution: 40,
-    decisionMakerApproval: 60,
-    contracting: 90,
-    closedWon: 100,
-    closedLost: 0,
+// Helper function to get default confidence level for each stage (1-5 scale)
+export function getDefaultConfidenceLevel(stage: OpportunityStage): number {
+  const confidenceLevelMap: Record<OpportunityStage, number> = {
+    discovery: 1,
+    demo: 2,
+    validateSolution: 3,
+    decisionMakerApproval: 4,
+    contracting: 5,
+    closedWon: 5,
+    closedLost: 1,
   };
-  return probabilityMap[stage];
+  return confidenceLevelMap[stage];
 }
 
 // Helper function to get default forecast category for each stage
@@ -51,6 +51,10 @@ export function getStageLabel(stage: OpportunityStage): string {
 
 export type ForecastCategory = "pipeline" | "bestCase" | "forecast";
 
+export type ReviewStatus = "not_started" | "in_progress" | "complete" | "not_applicable";
+
+export type PlatformType = "oem" | "api" | "isv";
+
 export interface OpportunityOwner {
   id: string;
   name: string;
@@ -67,7 +71,7 @@ export interface Opportunity {
     name: string;
   };
   amountArr: number; // annual recurring revenue forecast
-  probability: number; // 0-100
+  confidenceLevel: number; // 1-5 scale (replaces probability)
   nextStep?: string;
   closeDate?: string; // ISO date string
   quarter?: string; // e.g., "Q1 2025", "Q2 2025"
@@ -77,6 +81,13 @@ export interface Opportunity {
   riskNotes?: string | null;
   notes?: string | null;
   accountResearch?: string | null;
+  // New fields from CSV
+  decisionMakers?: string | null;
+  competition?: string | null;
+  legalReviewStatus?: ReviewStatus | null;
+  securityReviewStatus?: ReviewStatus | null;
+  platformType?: PlatformType | null;
+  businessCaseStatus?: ReviewStatus | null;
   owner: OpportunityOwner;
   granolaNotes?: Array<{
     id: string;
@@ -116,6 +127,39 @@ export interface KanbanColumnConfig {
   userId?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+// Helper function to get display label for review status
+export function getReviewStatusLabel(status: ReviewStatus): string {
+  const labelMap: Record<ReviewStatus, string> = {
+    not_started: "Not Started",
+    in_progress: "In Progress",
+    complete: "Complete",
+    not_applicable: "N/A",
+  };
+  return labelMap[status];
+}
+
+// Helper function to get display label for platform type
+export function getPlatformTypeLabel(type: PlatformType): string {
+  const labelMap: Record<PlatformType, string> = {
+    oem: "OEM",
+    api: "API",
+    isv: "ISV",
+  };
+  return labelMap[type];
+}
+
+// Helper function to get display label for confidence level
+export function getConfidenceLevelLabel(level: number): string {
+  const labelMap: Record<number, string> = {
+    1: "Very Low",
+    2: "Low",
+    3: "Medium",
+    4: "High",
+    5: "Very High",
+  };
+  return labelMap[level] || "Unknown";
 }
 
 

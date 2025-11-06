@@ -52,30 +52,37 @@ model KanbanColumn {
 }
 
 model Opportunity {
-  id               String            @id @default(cuid())
-  name             String
-  amountArr        Int
-  probability      Int
-  nextStep         String?
-  closeDate        DateTime?
-  stage            OpportunityStage
-  ownerId          String
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  accountId        String?
-  accountName      String?
-  quarter          String?
-  forecastCategory ForecastCategory?
-  notes            String?
-  riskNotes        String?
-  accountResearch  String?
-  columnId         String?
-  contacts         Contact[]
-  gongCalls        GongCall[]
-  googleNotes      GoogleNote[]
-  granolaNotes     GranolaNote[]
-  account          Account?          @relation(fields: [accountId], references: [id])
-  owner            User              @relation(fields: [ownerId], references: [id])
+  id                   String            @id @default(cuid())
+  name                 String
+  amountArr            Int
+  confidenceLevel      Int               @default(3) // 1-5 scale (replaces probability)
+  nextStep             String?
+  closeDate            DateTime?
+  stage                OpportunityStage
+  ownerId              String
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  accountId            String?
+  accountName          String?
+  quarter              String?
+  forecastCategory     ForecastCategory?
+  notes                String?
+  riskNotes            String?
+  accountResearch      String?
+  columnId             String?
+  // New fields from CSV
+  decisionMakers       String?
+  competition          String?
+  legalReviewStatus    ReviewStatus?     @default(not_started)
+  securityReviewStatus ReviewStatus?     @default(not_started)
+  platformType         PlatformType?
+  businessCaseStatus   ReviewStatus?     @default(not_started)
+  contacts             Contact[]
+  gongCalls            GongCall[]
+  googleNotes          GoogleNote[]
+  granolaNotes         GranolaNote[]
+  account              Account?          @relation(fields: [accountId], references: [id])
+  owner                User              @relation(fields: [ownerId], references: [id])
 
   @@schema("opportunity_tracker")
 }
@@ -86,6 +93,7 @@ model GranolaNote {
   title         String
   url           String
   meetingDate   DateTime
+  noteType      NoteType    @default(customer)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
@@ -99,6 +107,7 @@ model GongCall {
   title         String
   url           String
   meetingDate   DateTime
+  noteType      NoteType    @default(customer)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
@@ -179,6 +188,30 @@ enum ContactSentiment {
   neutral
   negative
   unknown
+
+  @@schema("opportunity_tracker")
+}
+
+enum ReviewStatus {
+  not_started
+  in_progress
+  complete
+  not_applicable
+
+  @@schema("opportunity_tracker")
+}
+
+enum PlatformType {
+  oem
+  api
+  isv
+
+  @@schema("opportunity_tracker")
+}
+
+enum NoteType {
+  customer
+  internal
 
   @@schema("opportunity_tracker")
 }

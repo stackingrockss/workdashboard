@@ -11,7 +11,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, TrendingUp, Target, LayoutGrid, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { CalendarDays, TrendingUp, Target, LayoutGrid, Loader2, AlertTriangle } from "lucide-react";
 import { getColumnTemplates, type ColumnTemplateType } from "@/lib/templates/column-templates";
 
 const iconMap = {
@@ -24,8 +26,9 @@ const iconMap = {
 interface ColumnTemplateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSelectTemplate: (templateId: ColumnTemplateType) => Promise<void>;
+  onSelectTemplate: (templateId: ColumnTemplateType, replaceExisting?: boolean) => Promise<void>;
   fiscalYearStartMonth?: number;
+  hasExistingColumns?: boolean;
 }
 
 export function ColumnTemplateDialog({
@@ -33,9 +36,11 @@ export function ColumnTemplateDialog({
   onOpenChange,
   onSelectTemplate,
   fiscalYearStartMonth = 1,
+  hasExistingColumns = false,
 }: ColumnTemplateDialogProps) {
   const [selectedTemplate, setSelectedTemplate] = useState<ColumnTemplateType | null>(null);
   const [isApplying, setIsApplying] = useState(false);
+  const [replaceMode, setReplaceMode] = useState(false);
 
   const templates = getColumnTemplates(fiscalYearStartMonth);
 
@@ -43,7 +48,7 @@ export function ColumnTemplateDialog({
     setIsApplying(true);
     setSelectedTemplate(templateId);
     try {
-      await onSelectTemplate(templateId);
+      await onSelectTemplate(templateId, replaceMode);
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to apply template:", error);
@@ -147,12 +152,51 @@ export function ColumnTemplateDialog({
           })}
         </div>
 
-        <div className="mt-4 p-4 bg-muted rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            <strong>Note:</strong> Applying a template will not delete your existing columns. New columns will be added to your board.
-            You can edit or remove columns at any time.
-          </p>
-        </div>
+        {hasExistingColumns && (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center space-x-2 p-3 border rounded-lg">
+              <Checkbox
+                id="replace-mode"
+                checked={replaceMode}
+                onCheckedChange={(checked) => setReplaceMode(checked === true)}
+              />
+              <Label
+                htmlFor="replace-mode"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Replace existing columns
+              </Label>
+            </div>
+
+            {replaceMode ? (
+              <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-destructive">Warning: This will delete all existing columns</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Your current columns will be permanently deleted and replaced with the template. Opportunities will need to be reassigned to new columns.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  New columns will be added to your board. You can edit or remove columns at any time.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {!hasExistingColumns && (
+          <div className="mt-4 p-4 bg-muted rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              Select a template to get started. You can customize columns after applying.
+            </p>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

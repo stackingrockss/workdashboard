@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users } from "lucide-react";
-import { Opportunity, getStageLabel, OpportunityStage, getDefaultProbability, getDefaultForecastCategory } from "@/types/opportunity";
+import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
@@ -51,6 +51,27 @@ const forecastCategoryOptions = [
   { value: "forecast", label: "Forecast (Commit)" },
 ];
 
+const confidenceLevelOptions = [
+  { value: "1", label: "1 - Very Low" },
+  { value: "2", label: "2 - Low" },
+  { value: "3", label: "3 - Medium" },
+  { value: "4", label: "4 - High" },
+  { value: "5", label: "5 - Very High" },
+];
+
+const reviewStatusOptions = [
+  { value: "not_started", label: "Not Started" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "complete", label: "Complete" },
+  { value: "not_applicable", label: "N/A" },
+];
+
+const platformTypeOptions = [
+  { value: "oem", label: "OEM" },
+  { value: "api", label: "API" },
+  { value: "isv", label: "ISV" },
+];
+
 export function OpportunityDetailClient({ opportunity }: OpportunityDetailClientProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -74,12 +95,12 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
     value: string | number | null
   ) => {
     try {
-      // When updating stage, also update probability and forecastCategory
+      // When updating stage, also update confidenceLevel and forecastCategory
       if (field === "stage") {
         const stage = value as OpportunityStage;
         await updateOpportunity(opportunity.id, {
           stage,
-          probability: getDefaultProbability(stage),
+          confidenceLevel: getDefaultConfidenceLevel(stage),
           forecastCategory: getDefaultForecastCategory(stage),
         });
       } else {
@@ -220,56 +241,118 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         </TabsList>
 
         {/* Overview Tab */}
-        <TabsContent value="overview" className="space-y-4 mt-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <InlineSelect
-              label="Stage"
-              value={opportunity.stage}
-              onSave={async (value) => handleFieldUpdate("stage", value)}
-              options={stageOptions}
-              displayFormatter={(val) => getStageLabel(val as OpportunityStage)}
-            />
-            <InlineTextInput
-              label="Amount (ARR)"
-              value={opportunity.amountArr}
-              onSave={async (value) => handleFieldUpdate("amountArr", value)}
-              type="number"
-              min={0}
-              step={1000}
-              displayFormatter={(val) => `${formatCurrencyCompact(val as number)} ARR`}
-            />
-            <InlineTextInput
-              label="Probability"
-              value={opportunity.probability}
-              onSave={async (value) => handleFieldUpdate("probability", value)}
-              type="number"
-              min={0}
-              max={100}
-              displayFormatter={(val) => `${val}%`}
-            />
-            <InlineDatePicker
-              label="Close date"
-              value={opportunity.closeDate}
-              onSave={async (value) => handleFieldUpdate("closeDate", value)}
-              displayFormatter={(val) => formatDateShort(val as string)}
-            />
-            <InlineSelect
-              label="Forecast Category"
-              value={opportunity.forecastCategory || ""}
-              onSave={async (value) => handleFieldUpdate("forecastCategory", value || null)}
-              options={forecastCategoryOptions}
-              placeholder="Select category"
-              displayFormatter={(val) =>
-                val ? forecastCategoryOptions.find(o => o.value === val)?.label || "" : "—"
-              }
-            />
-            <InlineTextInput
-              label="Next step"
-              value={opportunity.nextStep || ""}
-              onSave={async (value) => handleFieldUpdate("nextStep", value)}
-              placeholder="e.g. Schedule demo call"
-              className="md:col-span-2 lg:col-span-3"
-            />
+        <TabsContent value="overview" className="space-y-6 mt-4">
+          {/* Core Deal Info */}
+          <div>
+            <h3 className="text-sm font-medium mb-3">Core Deal Info</h3>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <InlineSelect
+                label="Stage"
+                value={opportunity.stage}
+                onSave={async (value) => handleFieldUpdate("stage", value)}
+                options={stageOptions}
+                displayFormatter={(val) => getStageLabel(val as OpportunityStage)}
+              />
+              <InlineTextInput
+                label="Amount (ARR)"
+                value={opportunity.amountArr}
+                onSave={async (value) => handleFieldUpdate("amountArr", value)}
+                type="number"
+                min={0}
+                step={1000}
+                displayFormatter={(val) => `${formatCurrencyCompact(val as number)} ARR`}
+              />
+              <InlineSelect
+                label="Confidence Level"
+                value={String(opportunity.confidenceLevel)}
+                onSave={async (value) => handleFieldUpdate("confidenceLevel", parseInt(value))}
+                options={confidenceLevelOptions}
+                displayFormatter={(val) => `${val}/5`}
+              />
+              <InlineDatePicker
+                label="Close date"
+                value={opportunity.closeDate}
+                onSave={async (value) => handleFieldUpdate("closeDate", value)}
+                displayFormatter={(val) => formatDateShort(val as string)}
+              />
+              <InlineSelect
+                label="Forecast Category"
+                value={opportunity.forecastCategory || ""}
+                onSave={async (value) => handleFieldUpdate("forecastCategory", value || null)}
+                options={forecastCategoryOptions}
+                placeholder="Select category"
+                displayFormatter={(val) =>
+                  val ? forecastCategoryOptions.find(o => o.value === val)?.label || "" : "—"
+                }
+              />
+              <InlineTextInput
+                label="Next step"
+                value={opportunity.nextStep || ""}
+                onSave={async (value) => handleFieldUpdate("nextStep", value)}
+                placeholder="e.g. Schedule demo call"
+                className="md:col-span-2 lg:col-span-3"
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Deal Context */}
+          <div>
+            <h3 className="text-sm font-medium mb-3">Deal Context</h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              <InlineTextarea
+                label="Decision Makers"
+                value={opportunity.decisionMakers || ""}
+                onSave={async (value) => handleFieldUpdate("decisionMakers", value)}
+                placeholder="Who are the decision makers? Include names, titles, and roles..."
+                rows={3}
+              />
+              <InlineTextInput
+                label="Competition"
+                value={opportunity.competition || ""}
+                onSave={async (value) => handleFieldUpdate("competition", value)}
+                placeholder="e.g. Manual process, Healthstream, Checkr..."
+              />
+              <InlineSelect
+                label="Platform Type"
+                value={opportunity.platformType || ""}
+                onSave={async (value) => handleFieldUpdate("platformType", value || null)}
+                options={platformTypeOptions}
+                placeholder="Select platform type"
+                displayFormatter={(val) => val ? getPlatformTypeLabel(val as PlatformType) : "—"}
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Review Status */}
+          <div>
+            <h3 className="text-sm font-medium mb-3">Review Status</h3>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <InlineSelect
+                label="Legal Review"
+                value={opportunity.legalReviewStatus || "not_started"}
+                onSave={async (value) => handleFieldUpdate("legalReviewStatus", value)}
+                options={reviewStatusOptions}
+                displayFormatter={(val) => getReviewStatusLabel(val as ReviewStatus)}
+              />
+              <InlineSelect
+                label="Security Review"
+                value={opportunity.securityReviewStatus || "not_started"}
+                onSave={async (value) => handleFieldUpdate("securityReviewStatus", value)}
+                options={reviewStatusOptions}
+                displayFormatter={(val) => getReviewStatusLabel(val as ReviewStatus)}
+              />
+              <InlineSelect
+                label="Business Case"
+                value={opportunity.businessCaseStatus || "not_started"}
+                onSave={async (value) => handleFieldUpdate("businessCaseStatus", value)}
+                options={reviewStatusOptions}
+                displayFormatter={(val) => getReviewStatusLabel(val as ReviewStatus)}
+              />
+            </div>
           </div>
         </TabsContent>
 
@@ -342,7 +425,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
               name: opportunity.name,
               account: opportunity.account?.name || opportunity.accountName,
               amountArr: opportunity.amountArr,
-              probability: opportunity.probability,
+              confidenceLevel: opportunity.confidenceLevel,
               nextStep: opportunity.nextStep,
               closeDate: opportunity.closeDate,
               stage: opportunity.stage,
@@ -350,6 +433,12 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
               riskNotes: opportunity.riskNotes,
               notes: opportunity.notes,
               accountResearch: opportunity.accountResearch,
+              decisionMakers: opportunity.decisionMakers,
+              competition: opportunity.competition,
+              legalReviewStatus: opportunity.legalReviewStatus,
+              securityReviewStatus: opportunity.securityReviewStatus,
+              platformType: opportunity.platformType,
+              businessCaseStatus: opportunity.businessCaseStatus,
               ownerId: opportunity.owner.id,
             }}
             submitLabel="Update Opportunity"

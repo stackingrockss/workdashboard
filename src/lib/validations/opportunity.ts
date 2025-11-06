@@ -6,7 +6,7 @@ const baseOpportunitySchema = z.object({
   account: z.string().min(1).max(120).optional(),
   accountId: z.string().optional(),
   amountArr: z.number().int().nonnegative().optional().default(0),
-  probability: z.number().int().min(0).max(100).optional(),
+  confidenceLevel: z.number().int().min(1).max(5).optional().default(3), // 1-5 scale (replaces probability)
   nextStep: z.string().max(500).optional().nullable().transform(val => val === "" ? null : val),
   quarter: z.string().max(20).optional().nullable().transform(val => val === "" ? null : val),
   stage: z.enum([
@@ -24,6 +24,13 @@ const baseOpportunitySchema = z.object({
   notes: z.string().max(5000).optional().nullable().transform(val => val === "" ? null : val),
   accountResearch: z.string().max(50000).optional().nullable().transform(val => val === "" ? null : val),
   ownerId: z.string().optional(),
+  // New fields from CSV
+  decisionMakers: z.string().max(1000).optional().nullable().transform(val => val === "" ? null : val),
+  competition: z.string().max(200).optional().nullable().transform(val => val === "" ? null : val),
+  legalReviewStatus: z.enum(["not_started", "in_progress", "complete", "not_applicable"]).optional().nullable().default("not_started"),
+  securityReviewStatus: z.enum(["not_started", "in_progress", "complete", "not_applicable"]).optional().nullable().default("not_started"),
+  platformType: z.enum(["oem", "api", "isv"]).optional().nullable(),
+  businessCaseStatus: z.enum(["not_started", "in_progress", "complete", "not_applicable"]).optional().nullable().default("not_started"),
 });
 
 export const opportunityCreateSchema = baseOpportunitySchema

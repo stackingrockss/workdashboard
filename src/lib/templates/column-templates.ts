@@ -44,9 +44,10 @@ export function getTemplateById(
 }
 
 /**
- * Quarterly Forecast Template
+ * Quarterly Columns Template
  * Creates columns for current quarter + next 3 quarters
  * Ideal for: Sales forecasting, time-based pipeline tracking
+ * Note: This creates real database columns. Use "Quarterly View" mode for dynamic virtual columns.
  */
 export function getQuarterlyTemplate(fiscalYearStartMonth: number = 1): ColumnTemplate {
   const quarterStrings = getNextQuarters(4, fiscalYearStartMonth);
@@ -56,8 +57,8 @@ export function getQuarterlyTemplate(fiscalYearStartMonth: number = 1): ColumnTe
 
   return {
     id: "quarterly",
-    name: "Quarterly Forecast",
-    description: "Track opportunities by close quarter (current + next 3 quarters)",
+    name: "Quarter Columns",
+    description: "Create quarter columns for time-based tracking (current + next 3 quarters)",
     icon: "CalendarDays",
     columns: quarterStrings.map((quarter, index) => ({
       title: quarter,

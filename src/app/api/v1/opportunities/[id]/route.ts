@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { opportunityUpdateSchema } from "@/lib/validations/opportunity";
 import { requireAuth } from "@/lib/auth";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
-import { getDefaultProbability, getDefaultForecastCategory, OpportunityStage } from "@/types/opportunity";
+import { getDefaultConfidenceLevel, getDefaultForecastCategory, OpportunityStage } from "@/types/opportunity";
 
 export async function GET(
   _req: NextRequest,
@@ -88,7 +88,7 @@ export async function PATCH(
     if (data.name !== undefined) updateData.name = data.name;
     if (data.account !== undefined) updateData.accountName = data.account;
     if (data.amountArr !== undefined) updateData.amountArr = data.amountArr;
-    if (data.probability !== undefined) updateData.probability = data.probability;
+    if (data.confidenceLevel !== undefined) updateData.confidenceLevel = data.confidenceLevel;
     if (data.nextStep !== undefined) updateData.nextStep = data.nextStep;
     if (data.closeDate !== undefined) {
       updateData.closeDate = data.closeDate ? new Date(data.closeDate) : null;
@@ -138,9 +138,9 @@ export async function PATCH(
     if (data.stage !== undefined) {
       updateData.stage = data.stage;
 
-      // Auto-update probability if not explicitly provided
-      if (data.probability === undefined) {
-        updateData.probability = getDefaultProbability(data.stage as OpportunityStage);
+      // Auto-update confidenceLevel if not explicitly provided
+      if (data.confidenceLevel === undefined) {
+        updateData.confidenceLevel = getDefaultConfidenceLevel(data.stage as OpportunityStage);
       }
 
       // Auto-update forecastCategory if not explicitly provided
@@ -153,6 +153,13 @@ export async function PATCH(
     if (data.riskNotes !== undefined) updateData.riskNotes = data.riskNotes;
     if (data.notes !== undefined) updateData.notes = data.notes;
     if (data.accountResearch !== undefined) updateData.accountResearch = data.accountResearch;
+    // New fields from CSV
+    if (data.decisionMakers !== undefined) updateData.decisionMakers = data.decisionMakers;
+    if (data.competition !== undefined) updateData.competition = data.competition;
+    if (data.legalReviewStatus !== undefined) updateData.legalReviewStatus = data.legalReviewStatus;
+    if (data.securityReviewStatus !== undefined) updateData.securityReviewStatus = data.securityReviewStatus;
+    if (data.platformType !== undefined) updateData.platformType = data.platformType;
+    if (data.businessCaseStatus !== undefined) updateData.businessCaseStatus = data.businessCaseStatus;
     if (data.ownerId !== undefined) updateData.ownerId = data.ownerId;
     if (accountId) {
       updateData.accountId = accountId;

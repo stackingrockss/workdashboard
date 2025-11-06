@@ -11,8 +11,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ExternalLink, Plus, Trash2 } from "lucide-react";
-import { GranolaNote } from "@/types/granola-note";
+import { GranolaNote, NoteType } from "@/types/granola-note";
 import { createGranolaNote, deleteGranolaNote } from "@/lib/api/granola-notes";
 import { useRouter } from "next/navigation";
 import { formatDateShort } from "@/lib/format";
@@ -28,6 +35,7 @@ export function GranolaNotesSection({ opportunityId, notes }: GranolaNoteSection
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [meetingDate, setMeetingDate] = useState("");
+  const [noteType, setNoteType] = useState<NoteType>("customer");
   const router = useRouter();
 
   const handleAddNote = async (e: React.FormEvent) => {
@@ -42,13 +50,15 @@ export function GranolaNotesSection({ opportunityId, notes }: GranolaNoteSection
       await createGranolaNote(opportunityId, {
         title,
         url,
-        meetingDate: new Date(meetingDate).toISOString()
+        meetingDate: new Date(meetingDate).toISOString(),
+        noteType,
       });
       toast.success("Granola note added successfully!");
       setIsAddDialogOpen(false);
       setTitle("");
       setUrl("");
       setMeetingDate("");
+      setNoteType("customer");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to add Granola note");
@@ -168,6 +178,22 @@ export function GranolaNotesSection({ opportunityId, notes }: GranolaNoteSection
               />
               <p className="text-xs text-muted-foreground">
                 When did this meeting take place?
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="note-type">Note Type *</Label>
+              <Select value={noteType} onValueChange={(value) => setNoteType(value as NoteType)}>
+                <SelectTrigger id="note-type">
+                  <SelectValue placeholder="Select note type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="customer">Customer</SelectItem>
+                  <SelectItem value="internal">Internal</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Is this a customer-facing meeting or internal discussion?
               </p>
             </div>
 

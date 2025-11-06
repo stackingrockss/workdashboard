@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Filter, Columns, LayoutGrid, CalendarDays, ChevronDown, Sparkles } from "lucide-react";
@@ -56,11 +57,19 @@ export function KanbanBoardWrapper({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
   const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
+  const [isWelcomeDialogOpen, setIsWelcomeDialogOpen] = useState(false);
   const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [columns, setColumns] = useState<KanbanColumnConfig[]>(initialColumns || []);
   const [viewMode, setViewMode] = useState<ViewMode>("custom");
+  // Local state for optimistic updates
+  const [localOpportunities, setLocalOpportunities] = useState<Opportunity[]>(opportunities);
   const router = useRouter();
+
+  // Sync local opportunities with server data
+  useEffect(() => {
+    setLocalOpportunities(opportunities);
+  }, [opportunities]);
 
   // Load view mode preference from localStorage
   useEffect(() => {
@@ -86,6 +95,15 @@ export function KanbanBoardWrapper({
     }
   }, [initialColumns]);
 
+  // Show welcome dialog for new users (no columns)
+  useEffect(() => {
+    const hasSeenWelcome = localStorage.getItem("kanban-welcome-seen");
+    if (columns.length === 0 && !hasSeenWelcome) {
+      setIsWelcomeDialogOpen(true);
+      localStorage.setItem("kanban-welcome-seen", "true");
+    }
+  }, [columns.length]);
+
   // Generate virtual quarterly columns or use custom columns
   const displayColumns = useMemo(() => {
     if (viewMode === "quarterly") {
@@ -105,9 +123,9 @@ export function KanbanBoardWrapper({
     return Array.from(uniqueQuarters).sort();
   }, [opportunities]);
 
-  // Filter opportunities based on quarter and search
+  // Filter opportunities based on quarter and search (use local state for instant updates)
   const filteredOpportunities = useMemo(() => {
-    return opportunities.filter(opp => {
+    return localOpportunities.filter(opp => {
       // Quarter filter
       if (selectedQuarter !== "all") {
         if (selectedQuarter === "unassigned") {
@@ -129,7 +147,7 @@ export function KanbanBoardWrapper({
 
       return true;
     });
-  }, [opportunities, selectedQuarter, searchQuery]);
+  }, [localOpportunities, selectedQuarter, searchQuery]);
 
   const handleCreateOpportunity = async (data: OpportunityCreateInput) => {
     try {
@@ -158,11 +176,25 @@ export function KanbanBoardWrapper({
   };
 
   const handleColumnChange = async (opportunityId: string, newColumnId: string) => {
+    // Optimistic update: update local state immediately
+    const previousOpportunities = [...localOpportunities];
+
+    setLocalOpportunities(prev =>
+      prev.map(opp =>
+        opp.id === opportunityId
+          ? { ...opp, columnId: newColumnId }
+          : opp
+      )
+    );
+
     try {
+      // Update on server in background
       await updateOpportunity(opportunityId, { columnId: newColumnId });
-      toast.success("Opportunity moved successfully!");
+      // Refresh in background to sync with server (no await = non-blocking)
       router.refresh();
     } catch (error) {
+      // Rollback on error
+      setLocalOpportunities(previousOpportunities);
       toast.error(error instanceof Error ? error.message : "Failed to move opportunity");
       throw error;
     }
@@ -180,11 +212,19 @@ export function KanbanBoardWrapper({
     }
   };
 
-  const handleApplyTemplate = async (templateId: ColumnTemplateType) => {
+  const handleApplyTemplate = async (templateId: ColumnTemplateType, replaceExisting = false) => {
     try {
       // Get template with fiscal year configuration
       const template = getTemplateById(templateId, fiscalYearStartMonth);
       const columnsToCreate = prepareTemplateForCreation(template);
+
+      // If replace mode, delete all existing columns first
+      if (replaceExisting && columns.length > 0) {
+        const { deleteColumn } = await import("@/lib/api/columns");
+        for (const col of columns) {
+          await deleteColumn(col.id);
+        }
+      }
 
       // Create columns via API
       for (const col of columnsToCreate) {
@@ -193,6 +233,7 @@ export function KanbanBoardWrapper({
 
       toast.success(`${template.name} template applied successfully!`);
       setIsTemplateDialogOpen(false);
+      setIsWelcomeDialogOpen(false);
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to apply template");
@@ -232,18 +273,34 @@ export function KanbanBoardWrapper({
         </div>
         <div className="flex items-center gap-3">
           {/* View Mode Toggle */}
-          <Tabs value={viewMode} onValueChange={(value) => handleViewModeChange(value as ViewMode)}>
-            <TabsList>
-              <TabsTrigger value="custom" className="flex items-center gap-1.5">
-                <LayoutGrid className="h-3.5 w-3.5" />
-                Custom
-              </TabsTrigger>
-              <TabsTrigger value="quarterly" className="flex items-center gap-1.5">
-                <CalendarDays className="h-3.5 w-3.5" />
-                Quarterly
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <TooltipProvider>
+            <Tabs value={viewMode} onValueChange={(value) => handleViewModeChange(value as ViewMode)}>
+              <TabsList>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <TabsTrigger value="custom" className="flex items-center gap-1.5">
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      Custom
+                    </TabsTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Show your custom columns (editable, renameable)</p>
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <TabsTrigger value="quarterly" className="flex items-center gap-1.5">
+                      <CalendarDays className="h-3.5 w-3.5" />
+                      Quarterly
+                    </TabsTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Virtual view grouped by close date quarter (read-only)</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TabsList>
+            </Tabs>
+          </TooltipProvider>
 
           {/* Enhanced Add Column Button with Dropdown */}
           {viewMode === "custom" && (
@@ -316,6 +373,16 @@ export function KanbanBoardWrapper({
         onOpenChange={setIsTemplateDialogOpen}
         onSelectTemplate={handleApplyTemplate}
         fiscalYearStartMonth={fiscalYearStartMonth}
+        hasExistingColumns={columns.length > 0}
+      />
+
+      {/* Welcome template picker for new users */}
+      <ColumnTemplateDialog
+        open={isWelcomeDialogOpen}
+        onOpenChange={setIsWelcomeDialogOpen}
+        onSelectTemplate={handleApplyTemplate}
+        fiscalYearStartMonth={fiscalYearStartMonth}
+        hasExistingColumns={false}
       />
     </div>
   );

@@ -4,7 +4,6 @@
 import { KanbanBoardWrapper } from "@/components/kanban/KanbanBoardWrapper";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import { getQuarterlyTemplate, prepareTemplateForCreation } from "@/lib/templates/column-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -26,35 +25,8 @@ export default async function OpportunitiesPage() {
     orderBy: { order: "asc" },
   });
 
-  // Auto-create quarterly columns for new users (Option A)
-  let finalColumns = columnsFromDB;
-  if (columnsFromDB.length === 0) {
-    console.log("No columns found for user, auto-creating quarterly template...");
-
-    // Get quarterly template
-    const template = getQuarterlyTemplate(fiscalYearStartMonth);
-    const columnsToCreate = prepareTemplateForCreation(template);
-
-    // Create columns in database
-    const createdColumns = await Promise.all(
-      columnsToCreate.map((col) =>
-        prisma.kanbanColumn.create({
-          data: {
-            title: col.title,
-            order: col.order,
-            color: col.color || null,
-            userId: user.id,
-          },
-        })
-      )
-    );
-
-    finalColumns = createdColumns;
-    console.log(`Auto-created ${createdColumns.length} quarterly columns for new user`);
-  }
-
   // Transform columns to match expected type
-  const columns = finalColumns.map((col) => ({
+  const columns = columnsFromDB.map((col) => ({
     id: col.id,
     title: col.title,
     order: col.order,

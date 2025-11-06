@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { OpportunityStage, OpportunityOwner, ForecastCategory, getDefaultProbability } from "@/types/opportunity";
+import { OpportunityStage, OpportunityOwner, ForecastCategory, getDefaultConfidenceLevel } from "@/types/opportunity";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { getUsers } from "@/lib/api/users";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
@@ -50,11 +50,15 @@ export function OpportunityForm({
   const [users, setUsers] = useState<OpportunityOwner[]>([]);
   const [fiscalYearStartMonth, setFiscalYearStartMonth] = useState(1);
   const isEditMode = !!initialData?.ownerId; // Edit mode if ownerId is provided
+  // Store numeric fields as strings to allow empty state during editing
+  const [amountArrInput, setAmountArrInput] = useState<string>(
+    initialData?.amountArr?.toString() || ""
+  );
   const [formData, setFormData] = useState<OpportunityCreateInput>({
     name: initialData?.name || "",
     account: initialData?.account || "",
     amountArr: initialData?.amountArr || 0,
-    probability: initialData?.probability || getDefaultProbability("discovery"),
+    confidenceLevel: initialData?.confidenceLevel || getDefaultConfidenceLevel("discovery"),
     nextStep: initialData?.nextStep || "",
     closeDate: initialData?.closeDate || "",
     quarter: initialData?.quarter || "",
@@ -125,7 +129,7 @@ export function OpportunityForm({
     setFormData({
       ...formData,
       stage: newStage,
-      probability: getDefaultProbability(newStage)
+      confidenceLevel: getDefaultConfidenceLevel(newStage)
     });
   };
 
@@ -160,10 +164,13 @@ export function OpportunityForm({
           type="number"
           min="0"
           step="1000"
-          value={formData.amountArr}
-          onChange={(e) =>
-            setFormData({ ...formData, amountArr: parseInt(e.target.value) || 0 })
-          }
+          value={amountArrInput}
+          onChange={(e) => {
+            const value = e.target.value;
+            setAmountArrInput(value);
+            // Update formData with parsed number (or 0 if empty)
+            setFormData({ ...formData, amountArr: value ? parseInt(value) : 0 });
+          }}
           placeholder="0"
         />
       </div>
@@ -212,15 +219,43 @@ export function OpportunityForm({
         <Label htmlFor="closeDate">Close Date *</Label>
         <Input
           id="closeDate"
-          type="date"
+          type="text"
           required
           value={formData.closeDate ? formData.closeDate.split("T")[0] : ""}
-          onChange={(e) =>
-            setFormData({
-              ...formData,
-              closeDate: e.target.value ? new Date(e.target.value).toISOString() : "",
-            })
-          }
+          onChange={(e) => {
+            const value = e.target.value;
+            // Try to parse the date as user types
+            try {
+              if (value) {
+                const parsedDate = new Date(value);
+                // Check if it's a valid date
+                if (!isNaN(parsedDate.getTime())) {
+                  setFormData({
+                    ...formData,
+                    closeDate: parsedDate.toISOString(),
+                  });
+                } else {
+                  // Keep the raw value if it's not yet parseable (user still typing)
+                  setFormData({
+                    ...formData,
+                    closeDate: value,
+                  });
+                }
+              } else {
+                setFormData({
+                  ...formData,
+                  closeDate: "",
+                });
+              }
+            } catch {
+              // Keep the raw value if parsing fails
+              setFormData({
+                ...formData,
+                closeDate: value,
+              });
+            }
+          }}
+          placeholder="YYYY-MM-DD (e.g. 2024-12-31)"
         />
       </div>
 
