@@ -4,6 +4,7 @@ import { opportunityUpdateSchema } from "@/lib/validations/opportunity";
 import { requireAuth } from "@/lib/auth";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
 import { getDefaultConfidenceLevel, getDefaultForecastCategory, OpportunityStage } from "@/types/opportunity";
+import { mapPrismaOpportunityToOpportunity } from "@/lib/mappers/opportunity";
 
 export async function GET(
   _req: NextRequest,
@@ -11,7 +12,7 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const opportunity = await prisma.opportunity.findUnique({
+    const opportunityFromDB = await prisma.opportunity.findUnique({
       where: { id },
       include: {
         owner: true,
@@ -28,7 +29,8 @@ export async function GET(
         },
       },
     });
-    if (!opportunity) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!opportunityFromDB) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const opportunity = mapPrismaOpportunityToOpportunity(opportunityFromDB);
     return NextResponse.json({ opportunity });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch opportunity" }, { status: 500 });
@@ -173,7 +175,8 @@ export async function PATCH(
         account: true,
       },
     });
-    return NextResponse.json({ opportunity: updated });
+    const opportunity = mapPrismaOpportunityToOpportunity(updated);
+    return NextResponse.json({ opportunity });
   } catch (error) {
     console.error(`[PATCH /api/v1/opportunities/${id}] Error:`, error);
     return NextResponse.json({ error: "Failed to update opportunity" }, { status: 500 });

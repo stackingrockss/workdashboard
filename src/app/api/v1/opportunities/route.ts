@@ -3,12 +3,13 @@ import { prisma } from "@/lib/db";
 import { opportunityCreateSchema } from "@/lib/validations/opportunity";
 import { requireAuth } from "@/lib/auth";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
+import { mapPrismaOpportunitiesToOpportunities, mapPrismaOpportunityToOpportunity } from "@/lib/mappers/opportunity";
 
 export async function GET() {
   try {
     const user = await requireAuth();
 
-    const opportunities = await prisma.opportunity.findMany({
+    const opportunitiesFromDB = await prisma.opportunity.findMany({
       where: { ownerId: user.id },
       orderBy: { updatedAt: "desc" },
       include: {
@@ -17,6 +18,7 @@ export async function GET() {
       },
       take: 100,
     });
+    const opportunities = mapPrismaOpportunitiesToOpportunities(opportunitiesFromDB);
     return NextResponse.json({ opportunities });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
@@ -111,7 +113,8 @@ export async function POST(req: NextRequest) {
         account: true,
       },
     });
-    return NextResponse.json({ opportunity: created }, { status: 201 });
+    const opportunity = mapPrismaOpportunityToOpportunity(created);
+    return NextResponse.json({ opportunity }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
