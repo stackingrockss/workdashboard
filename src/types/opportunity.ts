@@ -58,6 +58,7 @@ export type PlatformType = "oem" | "api" | "isv";
 export interface OpportunityOwner {
   id: string;
   name: string;
+  email?: string;
   avatarUrl?: string;
 }
 
