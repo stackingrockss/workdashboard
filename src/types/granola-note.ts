@@ -1,4 +1,4 @@
-export type NoteType = "customer" | "internal";
+export type NoteType = "customer" | "internal" | "prospect";
 
 export interface GranolaNote {
   id: string;
