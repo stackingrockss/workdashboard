@@ -95,6 +95,7 @@ export interface Opportunity {
     title: string;
     url: string;
     meetingDate: string;
+    noteType: "customer" | "internal" | "prospect";
     createdAt: string;
     updatedAt: string;
   }>;
@@ -104,6 +105,7 @@ export interface Opportunity {
     title: string;
     url: string;
     meetingDate: string;
+    noteType: "customer" | "internal" | "prospect";
     createdAt: string;
     updatedAt: string;
   }>;
