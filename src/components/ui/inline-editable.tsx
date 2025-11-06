@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
 interface BaseEditableFieldProps {
   value: string | number | null | undefined;
   onSave: (value: string | number | null) => Promise<void>;
-  label: string;
+  label?: string;
   placeholder?: string;
   className?: string;
   displayFormatter?: (value: string | number | null | undefined) => string;
@@ -106,10 +106,12 @@ export function InlineTextInput({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">{label}</div>
-          <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
+        {label && (
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">{label}</div>
+            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        )}
         <div
           className={cn(
             "font-medium",
@@ -124,7 +126,7 @@ export function InlineTextInput({
 
   return (
     <div className={cn("rounded-lg border p-4 border-primary", className)}>
-      <div className="text-sm text-muted-foreground mb-2">{label}</div>
+      {label && <div className="text-sm text-muted-foreground mb-2">{label}</div>}
       <div className="flex items-center gap-2">
         <Input
           ref={inputRef}
@@ -221,10 +223,12 @@ export function InlineTextarea({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">{label}</div>
-          <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
+        {label && (
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">{label}</div>
+            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        )}
         <div
           className={cn(
             "font-medium whitespace-pre-wrap",
@@ -239,7 +243,7 @@ export function InlineTextarea({
 
   return (
     <div className={cn("rounded-lg border p-4 border-primary", className)}>
-      <div className="text-sm text-muted-foreground mb-2">{label}</div>
+      {label && <div className="text-sm text-muted-foreground mb-2">{label}</div>}
       <Textarea
         ref={textareaRef}
         value={editValue}
@@ -331,10 +335,12 @@ export function InlineSelect({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">{label}</div>
-          <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
+        {label && (
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">{label}</div>
+            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        )}
         <div
           className={cn(
             "font-medium",
@@ -349,7 +355,7 @@ export function InlineSelect({
 
   return (
     <div className={cn("rounded-lg border p-4 border-primary", className)}>
-      <div className="text-sm text-muted-foreground mb-2">{label}</div>
+      {label && <div className="text-sm text-muted-foreground mb-2">{label}</div>}
       <div className="flex items-center gap-2">
         <Select
           value={editValue}
@@ -470,10 +476,12 @@ export function InlineDatePicker({
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">{label}</div>
-          <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
+        {label && (
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">{label}</div>
+            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        )}
         <div
           className={cn(
             "font-medium",
@@ -488,7 +496,7 @@ export function InlineDatePicker({
 
   return (
     <div className={cn("rounded-lg border p-4 border-primary", className)}>
-      <div className="text-sm text-muted-foreground mb-2">{label}</div>
+      {label && <div className="text-sm text-muted-foreground mb-2">{label}</div>}
       <div className="flex items-center gap-2">
         <Input
           ref={inputRef}
