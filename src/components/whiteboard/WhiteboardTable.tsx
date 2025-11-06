@@ -168,7 +168,7 @@ export function WhiteboardTable({ opportunities }: WhiteboardTableProps) {
         <div className="min-w-[100px]">
           <InlineSelect
             value={String(row.original.confidenceLevel)}
-            onSave={async (value) => handleFieldUpdate(row.original.id, "confidenceLevel", parseInt(value))}
+            onSave={async (value) => handleFieldUpdate(row.original.id, "confidenceLevel", value ? parseInt(value as string) : null)}
             options={confidenceLevelOptions}
             displayFormatter={(val) => `${val}/5`}
           />
