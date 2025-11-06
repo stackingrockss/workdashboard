@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { OpportunityStage, getDefaultProbability, getStageLabel } from "@/types/opportunity";
+import { OpportunityStage, getDefaultConfidenceLevel, getStageLabel } from "@/types/opportunity";
 
 interface ConvertToOpportunityDialogProps {
   open: boolean;
@@ -41,7 +41,7 @@ export function ConvertToOpportunityDialog({
     name: string;
     amountArr: string;
     stage: OpportunityStage;
-    probability: string;
+    confidenceLevel: string;
     closeDate: string;
     quarter: string;
     forecastCategory: "pipeline" | "bestCase" | "forecast";
@@ -50,7 +50,7 @@ export function ConvertToOpportunityDialog({
     name: `${accountName} - Opportunity`,
     amountArr: "",
     stage: "discovery",
-    probability: getDefaultProbability("discovery").toString(),
+    confidenceLevel: getDefaultConfidenceLevel("discovery").toString(),
     closeDate: "",
     quarter: "",
     forecastCategory: "pipeline",
@@ -61,7 +61,7 @@ export function ConvertToOpportunityDialog({
     setFormData({
       ...formData,
       stage,
-      probability: getDefaultProbability(stage).toString(),
+      confidenceLevel: getDefaultConfidenceLevel(stage).toString(),
     });
   };
 
@@ -77,7 +77,7 @@ export function ConvertToOpportunityDialog({
           name: formData.name,
           amountArr: parseInt(formData.amountArr),
           stage: formData.stage,
-          probability: parseInt(formData.probability),
+          confidenceLevel: parseInt(formData.confidenceLevel),
           closeDate: formData.closeDate || null,
           quarter: formData.quarter || null,
           forecastCategory: formData.forecastCategory || null,
@@ -139,14 +139,14 @@ export function ConvertToOpportunityDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="probability">Probability (%)</Label>
+              <Label htmlFor="confidenceLevel">Confidence Level (1-5)</Label>
               <Input
-                id="probability"
+                id="confidenceLevel"
                 type="number"
-                min="0"
-                max="100"
-                value={formData.probability}
-                onChange={(e) => setFormData({ ...formData, probability: e.target.value })}
+                min="1"
+                max="5"
+                value={formData.confidenceLevel}
+                onChange={(e) => setFormData({ ...formData, confidenceLevel: e.target.value })}
               />
             </div>
           </div>

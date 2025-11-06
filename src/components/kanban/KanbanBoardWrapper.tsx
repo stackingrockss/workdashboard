@@ -33,7 +33,7 @@ import { KanbanBoard } from "./KanbanBoard";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { ColumnForm } from "@/components/forms/column-form";
 import { ColumnTemplateDialog } from "./ColumnTemplateDialog";
-import { Opportunity, OpportunityStage, KanbanColumnConfig, getDefaultProbability, getDefaultForecastCategory } from "@/types/opportunity";
+import { Opportunity, OpportunityStage, KanbanColumnConfig, getDefaultConfidenceLevel, getDefaultForecastCategory } from "@/types/opportunity";
 import { createOpportunity, updateOpportunity } from "@/lib/api/opportunities";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { getColumns, createColumn } from "@/lib/api/columns";
@@ -164,7 +164,7 @@ export function KanbanBoardWrapper({
     try {
       await updateOpportunity(opportunityId, {
         stage: newStage,
-        probability: getDefaultProbability(newStage),
+        confidenceLevel: getDefaultConfidenceLevel(newStage),
         forecastCategory: getDefaultForecastCategory(newStage),
       });
       toast.success("Opportunity moved successfully!");

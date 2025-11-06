@@ -18,6 +18,7 @@ import { ArrowUpDown, ExternalLink } from "lucide-react";
 import { Opportunity, getStageLabel, getReviewStatusLabel, getPlatformTypeLabel, ReviewStatus, PlatformType, OpportunityStage } from "@/types/opportunity";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 import { updateOpportunityField } from "@/lib/api/opportunities";
+import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { toast } from "sonner";
 import {
   InlineTextInput,
@@ -68,11 +69,11 @@ export function WhiteboardTable({ opportunities }: WhiteboardTableProps) {
 
   const handleFieldUpdate = async (
     opportunityId: string,
-    field: string,
+    field: keyof OpportunityUpdateInput,
     value: string | number | null
   ) => {
     try {
-      await updateOpportunityField(opportunityId, field as any, value);
+      await updateOpportunityField(opportunityId, field, value);
       toast.success("Updated successfully!");
       router.refresh();
     } catch (error) {
