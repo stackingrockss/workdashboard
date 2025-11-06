@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
             id: true,
             name: true,
             amountArr: true,
-            probability: true,
+            confidenceLevel: true,
             stage: true,
           },
         },

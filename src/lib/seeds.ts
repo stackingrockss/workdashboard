@@ -63,7 +63,7 @@ export async function seedDatabase() {
       name: "Claritev",
       accountName: "Claritev",
       amountArr: 85000,
-      probability: 75,
+      confidenceLevel: 4, // was 75%
       nextStep: "Final contract review",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 1, 15),
       stage: "negotiation" as OpportunityStage,
@@ -75,7 +75,7 @@ export async function seedDatabase() {
       name: "InnovAge",
       accountName: "InnovAge",
       amountArr: 120000,
-      probability: 60,
+      confidenceLevel: 3, // was 60%
       nextStep: "Schedule technical demo",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 2, 1),
       stage: "qualification" as OpportunityStage,
@@ -87,7 +87,7 @@ export async function seedDatabase() {
       name: "Loyal Source",
       accountName: "Loyal Source",
       amountArr: 95000,
-      probability: 80,
+      confidenceLevel: 4, // was 80%
       nextStep: "Send proposal",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 1, 30),
       stage: "proposal" as OpportunityStage,
@@ -99,7 +99,7 @@ export async function seedDatabase() {
       name: "Apple",
       accountName: "Apple",
       amountArr: 250000,
-      probability: 45,
+      confidenceLevel: 2, // was 45%
       nextStep: "Discovery call with procurement",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 3, 10),
       stage: "prospect" as OpportunityStage,
@@ -111,7 +111,7 @@ export async function seedDatabase() {
       name: "Defense Health Agency",
       accountName: "Defense Health Agency",
       amountArr: 180000,
-      probability: 70,
+      confidenceLevel: 4, // was 70%
       nextStep: "Security compliance review",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 2, 20),
       stage: "qualification" as OpportunityStage,
@@ -123,7 +123,7 @@ export async function seedDatabase() {
       name: "SummaCare",
       accountName: "SummaCare",
       amountArr: 65000,
-      probability: 85,
+      confidenceLevel: 4, // was 85%
       nextStep: "Final approval meeting",
       closeDate: new Date(today.getFullYear(), today.getMonth(), 28),
       stage: "negotiation" as OpportunityStage,
@@ -135,7 +135,7 @@ export async function seedDatabase() {
       name: "Concentra",
       accountName: "Concentra",
       amountArr: 110000,
-      probability: 55,
+      confidenceLevel: 3, // was 55%
       nextStep: "Product demonstration",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 2, 15),
       stage: "qualification" as OpportunityStage,
@@ -147,7 +147,7 @@ export async function seedDatabase() {
       name: "Premera",
       accountName: "Premera",
       amountArr: 140000,
-      probability: 65,
+      confidenceLevel: 3, // was 65%
       nextStep: "Draft MSA",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 1, 25),
       stage: "proposal" as OpportunityStage,
@@ -159,7 +159,7 @@ export async function seedDatabase() {
       name: "CareFirst",
       accountName: "CareFirst",
       amountArr: 95000,
-      probability: 50,
+      confidenceLevel: 3, // was 50%
       nextStep: "Initial needs assessment",
       closeDate: new Date(today.getFullYear(), today.getMonth() + 3, 5),
       stage: "prospect" as OpportunityStage,

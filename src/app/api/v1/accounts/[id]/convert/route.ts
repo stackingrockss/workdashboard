@@ -6,7 +6,7 @@ import { z } from "zod";
 const convertToOpportunitySchema = z.object({
   name: z.string().min(1, "Opportunity name is required"),
   amountArr: z.number().int().min(0, "Amount must be non-negative"),
-  probability: z.number().int().min(0).max(100, "Probability must be between 0 and 100"),
+  confidenceLevel: z.number().int().min(1).max(5, "Confidence level must be between 1 and 5"),
   stage: z.enum([
     "discovery",
     "demo",
@@ -57,7 +57,7 @@ export async function POST(
         data: {
           name: data.name,
           amountArr: data.amountArr,
-          probability: data.probability,
+          confidenceLevel: data.confidenceLevel,
           stage: data.stage,
           closeDate: data.closeDate ? new Date(data.closeDate) : null,
           quarter: data.quarter,

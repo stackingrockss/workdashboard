@@ -4,7 +4,7 @@ export interface DashboardStats {
   totalOpportunities: number;
   totalValue: number;
   weightedValue: number;
-  avgProbability: number;
+  avgConfidenceLevel: number;
   wonOpportunities: number;
   lostOpportunities: number;
   winRate: number;
@@ -31,12 +31,13 @@ export interface DashboardStats {
 export function calculateDashboardStats(opportunities: Opportunity[]): DashboardStats {
   const totalOpportunities = opportunities.length;
   const totalValue = opportunities.reduce((sum, opp) => sum + opp.amountArr, 0);
+  // Weighted value: confidence level 1-5 converted to percentage (20%, 40%, 60%, 80%, 100%)
   const weightedValue = opportunities.reduce(
-    (sum, opp) => sum + (opp.amountArr * opp.probability) / 100,
+    (sum, opp) => sum + (opp.amountArr * opp.confidenceLevel) / 5,
     0
   );
-  const avgProbability = totalOpportunities > 0
-    ? opportunities.reduce((sum, opp) => sum + opp.probability, 0) / totalOpportunities
+  const avgConfidenceLevel = totalOpportunities > 0
+    ? opportunities.reduce((sum, opp) => sum + opp.confidenceLevel, 0) / totalOpportunities
     : 0;
 
   const wonOpportunities = opportunities.filter(opp => opp.stage === "closedWon").length;
@@ -68,7 +69,7 @@ export function calculateDashboardStats(opportunities: Opportunity[]): Dashboard
     quarterMap.set(quarter, {
       count: current.count + 1,
       value: current.value + opp.amountArr,
-      weightedValue: current.weightedValue + (opp.amountArr * opp.probability) / 100,
+      weightedValue: current.weightedValue + (opp.amountArr * opp.confidenceLevel) / 5,
     });
   });
 
@@ -101,7 +102,7 @@ export function calculateDashboardStats(opportunities: Opportunity[]): Dashboard
     totalOpportunities,
     totalValue,
     weightedValue,
-    avgProbability,
+    avgConfidenceLevel,
     wonOpportunities,
     lostOpportunities,
     winRate,

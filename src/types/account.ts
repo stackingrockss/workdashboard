@@ -18,7 +18,7 @@ export interface AccountWithOpportunities extends Account {
     name: string;
     amountArr: number;
     stage: string;
-    probability: number;
+    confidenceLevel: number;
   }>;
 }
 
@@ -26,5 +26,5 @@ export interface AccountStats {
   totalOpportunities: number;
   totalValue: number;
   weightedValue: number;
-  avgProbability: number;
+  avgConfidenceLevel: number;
 }
