@@ -29,7 +29,7 @@ export default async function DashboardPage() {
       name: opp.account.name,
     } : undefined,
     amountArr: opp.amountArr,
-    probability: opp.probability,
+    confidenceLevel: opp.confidenceLevel,
     nextStep: opp.nextStep || undefined,
     closeDate: opp.closeDate?.toISOString() || undefined,
     quarter: opp.quarter || undefined,
