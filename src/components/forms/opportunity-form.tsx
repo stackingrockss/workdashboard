@@ -66,6 +66,9 @@ export function OpportunityForm({
     forecastCategory: initialData?.forecastCategory || "pipeline",
     riskNotes: initialData?.riskNotes || "",
     ownerId: initialData?.ownerId || "",
+    legalReviewStatus: initialData?.legalReviewStatus || "not_started",
+    securityReviewStatus: initialData?.securityReviewStatus || "not_started",
+    businessCaseStatus: initialData?.businessCaseStatus || "not_started",
   });
 
   // Load fiscal year settings
