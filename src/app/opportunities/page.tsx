@@ -66,10 +66,16 @@ export default async function OpportunitiesPage() {
     forecastCategory: opp.forecastCategory || undefined,
     riskNotes: opp.riskNotes || undefined,
     notes: opp.notes || undefined,
-    owner: {
+    owner: opp.owner ? {
       id: opp.owner.id,
       name: opp.owner.name,
+      email: opp.owner.email || undefined,
       avatarUrl: opp.owner.avatarUrl || undefined,
+    } : {
+      id: opp.ownerId,
+      name: "Unknown",
+      email: undefined,
+      avatarUrl: undefined,
     },
     createdAt: opp.createdAt.toISOString(),
     updatedAt: opp.updatedAt.toISOString(),
