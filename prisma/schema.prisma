@@ -77,6 +77,7 @@ model Opportunity {
   securityReviewStatus ReviewStatus?     @default(not_started)
   platformType         PlatformType?
   businessCaseStatus   ReviewStatus?     @default(not_started)
+  pinnedToWhiteboard   Boolean           @default(false)
   contacts             Contact[]
   gongCalls            GongCall[]
   googleNotes          GoogleNote[]

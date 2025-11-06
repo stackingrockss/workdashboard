@@ -9,9 +9,12 @@ import { Opportunity } from "@/types/opportunity";
 export default async function WhiteboardingPage() {
   const user = await requireAuth();
 
-  // Fetch opportunities for the authenticated user
+  // Fetch opportunities for the authenticated user (only pinned to whiteboard)
   const opportunitiesFromDB = await prisma.opportunity.findMany({
-    where: { ownerId: user.id },
+    where: {
+      ownerId: user.id,
+      pinnedToWhiteboard: true,
+    },
     include: {
       owner: true,
       account: true,
@@ -46,6 +49,7 @@ export default async function WhiteboardingPage() {
     securityReviewStatus: opp.securityReviewStatus || undefined,
     platformType: opp.platformType || undefined,
     businessCaseStatus: opp.businessCaseStatus || undefined,
+    pinnedToWhiteboard: opp.pinnedToWhiteboard,
     owner: {
       id: opp.owner.id,
       name: opp.owner.name,
@@ -74,14 +78,14 @@ export default async function WhiteboardingPage() {
 
       {opportunities.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 border border-dashed rounded-lg">
-          <h3 className="text-lg font-medium mb-2">No opportunities yet</h3>
+          <h3 className="text-lg font-medium mb-2">No pinned opportunities yet</h3>
           <p className="text-sm text-muted-foreground mb-4">
-            Get started by creating your first opportunity
+            Pin opportunities from the Kanban board or opportunities list to see them here
           </p>
           <Button asChild>
             <Link href="/opportunities">
               <Plus className="h-4 w-4 mr-2" />
-              Create Opportunity
+              View Opportunities
             </Link>
           </Button>
         </div>

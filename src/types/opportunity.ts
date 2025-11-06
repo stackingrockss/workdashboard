@@ -89,6 +89,7 @@ export interface Opportunity {
   securityReviewStatus?: ReviewStatus | null;
   platformType?: PlatformType | null;
   businessCaseStatus?: ReviewStatus | null;
+  pinnedToWhiteboard?: boolean;
   owner: OpportunityOwner;
   granolaNotes?: Array<{
     id: string;

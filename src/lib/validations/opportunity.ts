@@ -31,6 +31,7 @@ const baseOpportunitySchema = z.object({
   securityReviewStatus: z.enum(["not_started", "in_progress", "complete", "not_applicable"]).optional().nullable().default("not_started"),
   platformType: z.enum(["oem", "api", "isv"]).optional().nullable(),
   businessCaseStatus: z.enum(["not_started", "in_progress", "complete", "not_applicable"]).optional().nullable().default("not_started"),
+  pinnedToWhiteboard: z.boolean().optional(),
 });
 
 export const opportunityCreateSchema = baseOpportunitySchema

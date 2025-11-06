@@ -3,9 +3,12 @@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Opportunity } from "@/types/opportunity";
-import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle } from "lucide-react";
+import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle, Pin } from "lucide-react";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -13,6 +16,10 @@ export interface OpportunityCardProps {
 }
 
 export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) {
+  const router = useRouter();
+  const [isPinned, setIsPinned] = useState(opportunity.pinnedToWhiteboard ?? false);
+  const [isPinning, setIsPinning] = useState(false);
+
   const initials = opportunity.owner.name
     .split(" ")
     .map((n) => n[0])
@@ -28,6 +35,28 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
     forecast: "Commit",
   };
 
+  const handlePinToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    setIsPinning(true);
+
+    try {
+      const response = await fetch(`/api/v1/opportunities/${opportunity.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pinnedToWhiteboard: !isPinned }),
+      });
+
+      if (!response.ok) throw new Error("Failed to update pin status");
+
+      setIsPinned(!isPinned);
+      router.refresh(); // Refresh server components
+    } catch (error) {
+      console.error("Failed to toggle pin:", error);
+    } finally {
+      setIsPinning(false);
+    }
+  };
+
   return (
     <Card
       className="cursor-pointer hover:shadow-md transition-shadow"
@@ -35,22 +64,37 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
     >
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="truncate font-medium">{opportunity.name}</div>
             <div className="truncate text-muted-foreground text-sm">{accountName}</div>
           </div>
-          <div className="flex flex-col gap-1 shrink-0">
-            <Badge variant="secondary" className="text-center">
-              {opportunity.confidenceLevel}/5
-            </Badge>
-            {opportunity.forecastCategory && (
-              <Badge
-                variant={opportunity.forecastCategory === "forecast" ? "default" : "outline"}
-                className="text-center text-[10px]"
-              >
-                {forecastLabels[opportunity.forecastCategory]}
+          <div className="flex items-start gap-1 shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={handlePinToggle}
+              disabled={isPinning}
+              title={isPinned ? "Unpin from whiteboard" : "Pin to whiteboard"}
+            >
+              <Pin
+                size={14}
+                className={isPinned ? "fill-current text-primary" : ""}
+              />
+            </Button>
+            <div className="flex flex-col gap-1">
+              <Badge variant="secondary" className="text-center">
+                {opportunity.confidenceLevel}/5
               </Badge>
-            )}
+              {opportunity.forecastCategory && (
+                <Badge
+                  variant={opportunity.forecastCategory === "forecast" ? "default" : "outline"}
+                  className="text-center text-[10px]"
+                >
+                  {forecastLabels[opportunity.forecastCategory]}
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
 
