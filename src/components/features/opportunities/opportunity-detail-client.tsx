@@ -265,7 +265,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
               <InlineSelect
                 label="Confidence Level"
                 value={String(opportunity.confidenceLevel)}
-                onSave={async (value) => handleFieldUpdate("confidenceLevel", parseInt(value))}
+                onSave={async (value) => handleFieldUpdate("confidenceLevel", value ? parseInt(value) : null)}
                 options={confidenceLevelOptions}
                 displayFormatter={(val) => `${val}/5`}
               />
