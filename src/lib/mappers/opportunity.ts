@@ -76,6 +76,7 @@ export function mapPrismaOpportunityToOpportunity(
         },
     gongCalls: opp.gongCalls?.map((call) => ({
       id: call.id,
+      opportunityId: call.opportunityId,
       title: call.title,
       url: call.url,
       meetingDate: call.meetingDate.toISOString(),
@@ -85,6 +86,7 @@ export function mapPrismaOpportunityToOpportunity(
     })),
     granolaNotes: opp.granolaNotes?.map((note) => ({
       id: note.id,
+      opportunityId: note.opportunityId,
       title: note.title,
       url: note.url,
       meetingDate: note.meetingDate.toISOString(),
@@ -94,6 +96,7 @@ export function mapPrismaOpportunityToOpportunity(
     })),
     googleNotes: opp.googleNotes?.map((note) => ({
       id: note.id,
+      opportunityId: note.opportunityId,
       title: note.title,
       content: note.content,
       meetingDate: note.meetingDate.toISOString(),
