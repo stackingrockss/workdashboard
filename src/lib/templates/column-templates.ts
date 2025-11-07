@@ -13,7 +13,7 @@ export interface ColumnTemplate {
   name: string;
   description: string;
   icon: string; // lucide-react icon name
-  columns: Omit<ColumnCreateInput, "order">[];
+  columns: Omit<ColumnCreateInput, "order" | "viewId">[];
 }
 
 /**
@@ -163,11 +163,12 @@ export function getBlankTemplate(): ColumnTemplate {
 }
 
 /**
- * Convert template columns to API-ready format with order
+ * Convert template columns to API-ready format with order and viewId
  */
-export function prepareTemplateForCreation(template: ColumnTemplate): ColumnCreateInput[] {
+export function prepareTemplateForCreation(template: ColumnTemplate, viewId: string): ColumnCreateInput[] {
   return template.columns.map((col, index) => ({
     ...col,
     order: index,
+    viewId,
   }));
 }
