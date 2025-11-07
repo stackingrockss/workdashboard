@@ -28,23 +28,68 @@ function getQuarterColumnId(closeDate: Date): string {
 export async function seedDatabase() {
   console.log("🌱 Seeding database...");
 
+  // Create organization first
+  console.log("Creating organization...");
+  const organization = await prisma.organization.upsert({
+    where: { id: "org-seed-1" },
+    create: {
+      id: "org-seed-1",
+      name: "Seed Test Organization",
+      fiscalYearStartMonth: 1,
+    },
+    update: {
+      name: "Seed Test Organization",
+    },
+  });
+
   // Create user
-  const owner = { id: "u1", email: "matt.seelig@example.com", name: "Matt Seelig" };
+  const owner = {
+    id: "u1",
+    email: "matt.seelig@example.com",
+    name: "Matt Seelig",
+    organizationId: organization.id,
+  };
 
   console.log("Creating user...");
   await prisma.user.upsert({
     where: { id: owner.id },
-    create: { id: owner.id, email: owner.email, name: owner.name },
-    update: { email: owner.email, name: owner.name },
+    create: {
+      id: owner.id,
+      email: owner.email,
+      name: owner.name,
+      organizationId: owner.organizationId,
+    },
+    update: {
+      email: owner.email,
+      name: owner.name,
+      organizationId: owner.organizationId,
+    },
+  });
+
+  console.log("Creating default kanban view...");
+  const defaultView = await prisma.kanbanView.upsert({
+    where: { id: "view-seed-default" },
+    create: {
+      id: "view-seed-default",
+      name: "Quarterly View",
+      viewType: "quarterly",
+      isActive: true,
+      isDefault: true,
+      organizationId: organization.id,
+    },
+    update: {
+      name: "Quarterly View",
+      isActive: true,
+    },
   });
 
   console.log("Creating default kanban columns...");
   const defaultColumns = [
-    { id: "col-q1-2025", title: "Q1 2025", order: 0 },
-    { id: "col-q2-2025", title: "Q2 2025", order: 1 },
-    { id: "col-q3-2025", title: "Q3 2025", order: 2 },
-    { id: "col-q4-2025", title: "Q4 2025", order: 3 },
-    { id: "col-closed-lost", title: "Closed Lost", order: 4, color: "#ef4444" },
+    { id: "col-q1-2025", title: "Q1 2025", order: 0, viewId: defaultView.id },
+    { id: "col-q2-2025", title: "Q2 2025", order: 1, viewId: defaultView.id },
+    { id: "col-q3-2025", title: "Q3 2025", order: 2, viewId: defaultView.id },
+    { id: "col-q4-2025", title: "Q4 2025", order: 3, viewId: defaultView.id },
+    { id: "col-closed-lost", title: "Closed Lost", order: 4, color: "#ef4444", viewId: defaultView.id },
   ];
 
   for (const col of defaultColumns) {
@@ -69,6 +114,7 @@ export async function seedDatabase() {
       stage: "negotiation" as OpportunityStage,
       columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 1, 15)),
       ownerId: "u1",
+      organizationId: organization.id,
     },
     {
       id: "opp-002",
@@ -81,6 +127,7 @@ export async function seedDatabase() {
       stage: "qualification" as OpportunityStage,
       columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 2, 1)),
       ownerId: "u1",
+      organizationId: organization.id,
     },
     {
       id: "opp-003",
@@ -93,6 +140,7 @@ export async function seedDatabase() {
       stage: "proposal" as OpportunityStage,
       columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 1, 30)),
       ownerId: "u1",
+      organizationId: organization.id,
     },
     {
       id: "opp-004",
@@ -105,6 +153,7 @@ export async function seedDatabase() {
       stage: "prospect" as OpportunityStage,
       columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 3, 10)),
       ownerId: "u1",
+      organizationId: organization.id,
     },
     {
       id: "opp-005",
@@ -117,6 +166,7 @@ export async function seedDatabase() {
       stage: "qualification" as OpportunityStage,
       columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 2, 20)),
       ownerId: "u1",
+      organizationId: organization.id,
     },
     {
       id: "opp-006",
@@ -129,6 +179,7 @@ export async function seedDatabase() {
       stage: "negotiation" as OpportunityStage,
       columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth(), 28)),
       ownerId: "u1",
+      organizationId: organization.id,
     },
     {
       id: "opp-007",
@@ -141,6 +192,7 @@ export async function seedDatabase() {
       stage: "qualification" as OpportunityStage,
       columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 2, 15)),
       ownerId: "u1",
+      organizationId: organization.id,
     },
     {
       id: "opp-008",
@@ -153,6 +205,7 @@ export async function seedDatabase() {
       stage: "proposal" as OpportunityStage,
       columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 1, 25)),
       ownerId: "u1",
+      organizationId: organization.id,
     },
     {
       id: "opp-009",
@@ -165,6 +218,7 @@ export async function seedDatabase() {
       stage: "prospect" as OpportunityStage,
       columnId: getQuarterColumnId(new Date(today.getFullYear(), today.getMonth() + 3, 5)),
       ownerId: "u1",
+      organizationId: organization.id,
     },
   ];
 
