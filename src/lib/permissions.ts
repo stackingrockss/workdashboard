@@ -262,6 +262,13 @@ export function canManageOrgSettings(user: User): boolean {
 }
 
 /**
+ * Alias for canManageOrgSettings
+ */
+export function canManageOrganization(user: User): boolean {
+  return canManageOrgSettings(user);
+}
+
+/**
  * Check if user can view organization settings
  */
 export function canViewOrgSettings(user: User): boolean {

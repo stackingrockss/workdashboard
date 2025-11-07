@@ -297,7 +297,7 @@ export async function deleteInvitation(id: string): Promise<void> {
 /**
  * Generate a unique invitation token
  */
-function generateInvitationToken(): string {
+export function generateInvitationToken(): string {
   // Use crypto for secure random token
   const array = new Uint8Array(32);
   crypto.getRandomValues(array);
