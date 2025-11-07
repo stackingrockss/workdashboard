@@ -21,9 +21,11 @@ export function UserMenu() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const supabase = createClient();
 
   useEffect(() => {
+    // Only create Supabase client in the browser (useEffect)
+    const supabase = createClient();
+
     const getUser = async () => {
       const {
         data: { user },
@@ -41,7 +43,7 @@ export function UserMenu() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth]);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
