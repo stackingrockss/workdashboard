@@ -67,6 +67,7 @@ export async function POST(
           accountName: account.name,
           notes: account.notes, // Copy notes from account to opportunity
           ownerId: user.id,
+          organizationId: user.organization.id, // Required field
         },
       });
 

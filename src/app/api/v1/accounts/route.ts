@@ -8,20 +8,13 @@ export async function GET(request: NextRequest) {
   try {
     const user = await requireAuth();
 
-    // Get accounts that have opportunities owned by the current user
+    // Get accounts within user's organization
     const accounts = await prisma.account.findMany({
       where: {
-        opportunities: {
-          some: {
-            ownerId: user.id,
-          },
-        },
+        organizationId: user.organization.id,
       },
       include: {
         opportunities: {
-          where: {
-            ownerId: user.id,
-          },
           select: {
             id: true,
             name: true,
@@ -30,6 +23,7 @@ export async function GET(request: NextRequest) {
             stage: true,
           },
         },
+        owner: true,
       },
       orderBy: { name: "asc" },
     });
@@ -49,7 +43,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAuth(); // Just verify authentication, accounts aren't user-specific
+    const user = await requireAuth();
 
     const body = await request.json();
     const data = accountCreateSchema.parse(body);
@@ -61,6 +55,8 @@ export async function POST(request: NextRequest) {
         priority: data.priority,
         health: data.health,
         notes: data.notes,
+        organizationId: user.organization.id, // Required field
+        ownerId: data.ownerId ?? user.id, // Use provided ownerId or default to current user
       },
     });
 

@@ -9,19 +9,20 @@ datasource db {
 }
 
 model Account {
-  id             String        @id
-  name           String        @unique
+  id             String        @id @default(cuid())
+  name           String
   industry       String?
   priority       String        @default("medium")
   health         String        @default("good")
   notes          String?
   createdAt      DateTime      @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime      @updatedAt
   ownerId        String?
   organizationId String
-  Organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  Contact        Contact[]
-  Opportunity    Opportunity[]
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?         @relation("AccountOwner", fields: [ownerId], references: [id])
+  contacts       Contact[]
+  opportunities  Opportunity[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -30,20 +31,20 @@ model Account {
 }
 
 model CompanySettings {
-  id                   String   @id
+  id                   String   @id @default(cuid())
   userId               String   @unique
   companyName          String?
   companyWebsite       String?
   fiscalYearStartMonth Int      @default(1)
   createdAt            DateTime @default(now())
-  updatedAt            DateTime
-  User                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updatedAt            DateTime @updatedAt
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@schema("opportunity_tracker")
 }
 
 model Contact {
-  id            String           @id
+  id            String           @id @default(cuid())
   firstName     String
   lastName      String
   title         String?
@@ -57,12 +58,12 @@ model Contact {
   positionY     Float?
   notes         String?
   createdAt     DateTime         @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime         @updatedAt
   accountId     String?
-  Account       Account?         @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  Contact       Contact?         @relation("ContactToContact", fields: [managerId], references: [id])
-  other_Contact Contact[]        @relation("ContactToContact")
-  Opportunity   Opportunity?     @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  account       Account?         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  manager       Contact?         @relation("ContactReports", fields: [managerId], references: [id])
+  directReports Contact[]        @relation("ContactReports")
+  opportunity   Opportunity?     @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
   @@index([accountId])
@@ -70,78 +71,81 @@ model Contact {
 }
 
 model GongCall {
-  id            String      @id
+  id            String      @id @default(cuid())
   opportunityId String
   title         String
   url           String
   createdAt     DateTime    @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime    @updatedAt
   meetingDate   DateTime
   noteType      NoteType?   @default(customer)
-  Opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
   @@schema("opportunity_tracker")
 }
 
 model GoogleNote {
-  id            String      @id
+  id            String      @id @default(cuid())
   opportunityId String
   title         String
   url           String
   createdAt     DateTime    @default(now())
-  updatedAt     DateTime
-  Opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  updatedAt     DateTime    @updatedAt
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
   @@schema("opportunity_tracker")
 }
 
 model GranolaNote {
-  id            String      @id
+  id            String      @id @default(cuid())
   opportunityId String
   title         String
   url           String
   createdAt     DateTime    @default(now())
-  updatedAt     DateTime
+  updatedAt     DateTime    @updatedAt
   meetingDate   DateTime
   noteType      NoteType?   @default(customer)
-  Opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
   @@schema("opportunity_tracker")
 }
 
 model Invitation {
-  id             String    @id
+  id             String       @id @default(cuid())
   email          String
-  role           UserRole  @default(REP)
+  role           UserRole     @default(REP)
   organizationId String
   invitedById    String
-  token          String
+  token          String       @unique @default(cuid())
   expiresAt      DateTime
   acceptedAt     DateTime?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy      User         @relation(fields: [invitedById], references: [id])
 
+  @@unique([organizationId, email])
   @@schema("opportunity_tracker")
 }
 
 model KanbanColumn {
-  id         String     @id
-  title      String
-  order      Int
-  color      String?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime
-  viewId     String
-  KanbanView KanbanView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  id        String     @id @default(cuid())
+  title     String
+  order     Int
+  color     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  viewId    String
+  view      KanbanView @relation(fields: [viewId], references: [id], onDelete: Cascade)
 
   @@unique([viewId, order])
   @@schema("opportunity_tracker")
 }
 
 model KanbanView {
-  id             String         @id
+  id             String         @id @default(cuid())
   name           String
   viewType       ViewType
   isActive       Boolean        @default(false)
@@ -151,14 +155,20 @@ model KanbanView {
   lastAccessedAt DateTime?
   isShared       Boolean        @default(false)
   createdAt      DateTime       @default(now())
-  updatedAt      DateTime
-  KanbanColumn   KanbanColumn[]
+  updatedAt      DateTime       @updatedAt
+  columns        KanbanColumn[]
+  user           User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, name])
+  @@unique([organizationId, name])
+  @@index([userId, isActive])
+  @@index([organizationId, isActive])
   @@schema("opportunity_tracker")
 }
 
 model Opportunity {
-  id                   String            @id
+  id                   String            @id @default(cuid())
   name                 String
   amountArr            Int
   nextStep             String?
@@ -166,7 +176,7 @@ model Opportunity {
   stage                OpportunityStage
   ownerId              String
   createdAt            DateTime          @default(now())
-  updatedAt            DateTime
+  updatedAt            DateTime          @updatedAt
   accountId            String?
   accountName          String?
   quarter              String?
@@ -184,12 +194,12 @@ model Opportunity {
   businessCaseStatus   ReviewStatus?     @default(not_started)
   pinnedToWhiteboard   Boolean           @default(false)
   organizationId       String
-  Contact              Contact[]
-  GongCall             GongCall[]
-  GoogleNote           GoogleNote[]
-  GranolaNote          GranolaNote[]
-  Account              Account?          @relation(fields: [accountId], references: [id])
-  Organization         Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contacts             Contact[]
+  gongCalls            GongCall[]
+  googleNotes          GoogleNote[]
+  granolaNotes         GranolaNote[]
+  account              Account?          @relation(fields: [accountId], references: [id])
+  organization         Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner                User              @relation(fields: [ownerId], references: [id])
 
   @@index([organizationId])
@@ -201,44 +211,55 @@ model Opportunity {
 }
 
 model Organization {
-  id                   String        @id
+  id                   String                @id @default(cuid())
   name                 String
-  domain               String?
+  domain               String?               @unique
   logo                 String?
-  fiscalYearStartMonth Int           @default(1)
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime
-  Account              Account[]
-  Opportunity          Opportunity[]
+  fiscalYearStartMonth Int                   @default(1)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  accounts             Account[]
+  opportunities        Opportunity[]
+  users                User[]
+  kanbanViews          KanbanView[]
+  invitations          Invitation[]
+  settings             OrganizationSettings?
 
   @@schema("opportunity_tracker")
 }
 
 model OrganizationSettings {
-  id                      String   @id
-  organizationId          String
+  id                      String       @id @default(cuid())
+  organizationId          String       @unique
   defaultKanbanView       String?
   defaultKanbanTemplateId String?
-  allowSelfSignup         Boolean  @default(false)
-  allowDomainAutoJoin     Boolean  @default(false)
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime
+  allowSelfSignup         Boolean      @default(false)
+  allowDomainAutoJoin     Boolean      @default(false)
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@schema("opportunity_tracker")
 }
 
 model User {
-  id              String           @id
+  id              String           @id @default(cuid())
   email           String           @unique
   name            String
   avatarUrl       String?
   createdAt       DateTime         @default(now())
   supabaseId      String?          @unique
   managerId       String?
-  organizationId  String?
-  role            UserRole         @default(ADMIN)
-  CompanySettings CompanySettings?
-  Opportunity     Opportunity[]
+  organizationId  String
+  role            UserRole         @default(REP)
+  companySettings CompanySettings?
+  opportunities   Opportunity[]
+  ownedAccounts   Account[]        @relation("AccountOwner")
+  invitations     Invitation[]
+  kanbanViews     KanbanView[]
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  manager         User?            @relation("ManagerReps", fields: [managerId], references: [id])
+  directReports   User[]           @relation("ManagerReps")
 
   @@index([organizationId])
   @@index([managerId])

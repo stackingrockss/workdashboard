@@ -81,10 +81,17 @@ export async function PATCH(
     let accountId = data.accountId;
     if (data.account && !accountId) {
       const account = await prisma.account.upsert({
-        where: { name: data.account },
+        where: {
+          organizationId_name: {
+            organizationId: user.organization.id,
+            name: data.account,
+          },
+        },
         update: {},
         create: {
           name: data.account,
+          organizationId: user.organization.id,
+          ownerId: user.id,
           priority: "medium",
           health: "good",
         },
@@ -128,7 +135,10 @@ export async function PATCH(
         // Auto-assign columnId based on new quarter
         const matchingColumn = await prisma.kanbanColumn.findFirst({
           where: {
-            userId: user.id,
+            view: {
+              userId: user.id,
+              isActive: true,
+            },
             title: newQuarter,
           },
         });
@@ -148,7 +158,10 @@ export async function PATCH(
       if (data.quarter) {
         const matchingColumn = await prisma.kanbanColumn.findFirst({
           where: {
-            userId: user.id,
+            view: {
+              userId: user.id,
+              isActive: true,
+            },
             title: data.quarter,
           },
         });

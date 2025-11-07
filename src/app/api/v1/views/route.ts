@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 import { viewCreateSchema, viewQuerySchema } from "@/lib/validations/view";
 import { SerializedKanbanView, MAX_VIEWS_PER_USER } from "@/types/view";
 import { getAllBuiltInViews } from "@/lib/utils/built-in-views";
@@ -15,6 +16,9 @@ import { getAllBuiltInViews } from "@/lib/utils/built-in-views";
  */
 export async function GET(request: NextRequest) {
   try {
+    // Require authentication
+    const user = await requireAuth();
+
     const { searchParams } = new URL(request.url);
     const params = viewQuerySchema.parse({
       userId: searchParams.get("userId"),
@@ -23,11 +27,14 @@ export async function GET(request: NextRequest) {
       activeOnly: searchParams.get("activeOnly"),
     });
 
-    // Require either userId or organizationId
-    if (!params.userId && !params.organizationId) {
+    // Default to authenticated user's ID
+    const userId = params.userId || user.id;
+
+    // Authorization: user can only fetch their own views
+    if (userId !== user.id) {
       return NextResponse.json(
-        { error: "Either userId or organizationId is required" },
-        { status: 400 }
+        { error: "Unauthorized: Cannot fetch other users' views" },
+        { status: 403 }
       );
     }
 
@@ -42,7 +49,7 @@ export async function GET(request: NextRequest) {
       where,
       include: params.includeColumns
         ? {
-            KanbanColumn: {
+            columns: {
               orderBy: { order: "asc" },
             },
           }
@@ -64,7 +71,7 @@ export async function GET(request: NextRequest) {
       createdAt: view.createdAt.toISOString(),
       updatedAt: view.updatedAt.toISOString(),
       columns: params.includeColumns
-        ? (view as any).KanbanColumn.map((col: any) => ({
+        ? (view as any).columns.map((col: any) => ({
             id: col.id,
             title: col.title,
             order: col.order,
@@ -120,21 +127,25 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Require authentication
+    const user = await requireAuth();
+
     const body = await request.json();
     const validatedData = viewCreateSchema.parse(body);
 
-    // Require either userId or organizationId
-    if (!validatedData.userId && !validatedData.organizationId) {
+    // Default to authenticated user's ID
+    const userId = validatedData.userId || user.id;
+
+    // Authorization: user can only create views for themselves
+    if (userId !== user.id) {
       return NextResponse.json(
-        { error: "Either userId or organizationId is required" },
-        { status: 400 }
+        { error: "Unauthorized: Cannot create views for other users" },
+        { status: 403 }
       );
     }
 
     // Check view count limit
-    const where: any = {};
-    if (validatedData.userId) where.userId = validatedData.userId;
-    if (validatedData.organizationId) where.organizationId = validatedData.organizationId;
+    const where: any = { userId: user.id };
 
     const existingViewCount = await prisma.kanbanView.count({ where });
 
@@ -176,7 +187,7 @@ export async function POST(request: NextRequest) {
         isActive: true, // New views are automatically activated
       },
       include: {
-        KanbanColumn: {
+        columns: {
           orderBy: { order: "asc" },
         },
       },

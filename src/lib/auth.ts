@@ -140,8 +140,12 @@ export async function getCurrentUser(): Promise<(PrismaUser & {
 /**
  * Requires authentication - throws error if user is not authenticated
  * Use this in API routes to enforce authentication
+ * Returns user with organization and directReports relations
  */
-export async function requireAuth(): Promise<PrismaUser> {
+export async function requireAuth(): Promise<PrismaUser & {
+  organization: { id: string; name: string; fiscalYearStartMonth: number };
+  directReports: PrismaUser[];
+}> {
   const user = await getCurrentUser();
 
   if (!user) {

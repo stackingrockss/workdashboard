@@ -23,7 +23,7 @@ export async function PATCH(
     const currentColumn = await prisma.kanbanColumn.findFirst({
       where: { id },
       include: {
-        KanbanView: true,
+        view: true,
       },
     });
 
@@ -32,7 +32,7 @@ export async function PATCH(
     }
 
     // Check if user has access to the view this column belongs to
-    const view = currentColumn.KanbanView;
+    const view = currentColumn.view;
     const hasAccess =
       view.userId === user.id ||
       view.organizationId === user.organization.id ||
@@ -101,7 +101,7 @@ export async function DELETE(
     const column = await prisma.kanbanColumn.findFirst({
       where: { id },
       include: {
-        KanbanView: true,
+        view: true,
       },
     });
 
@@ -110,7 +110,7 @@ export async function DELETE(
     }
 
     // Check if user has access to the view this column belongs to
-    const view = column.KanbanView;
+    const view = column.view;
     const hasAccess =
       view.userId === user.id ||
       view.organizationId === user.organization.id ||

@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 import { viewUpdateSchema } from "@/lib/validations/view";
 import { SerializedKanbanView, isBuiltInView } from "@/types/view";
 
@@ -18,6 +19,9 @@ interface RouteParams {
  */
 export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
+    // Require authentication
+    const user = await requireAuth();
+
     const { id } = params;
 
     // Check if it's a built-in view
@@ -31,7 +35,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const view = await prisma.kanbanView.findUnique({
       where: { id },
       include: {
-        KanbanColumn: {
+        columns: {
           orderBy: { order: "asc" },
         },
       },
@@ -39,6 +43,14 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     if (!view) {
       return NextResponse.json({ error: "View not found" }, { status: 404 });
+    }
+
+    // Authorization: user can only fetch their own views
+    if (view.userId !== user.id) {
+      return NextResponse.json(
+        { error: "Unauthorized: Cannot access other users' views" },
+        { status: 403 }
+      );
     }
 
     // Transform to serialized format
@@ -78,6 +90,9 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
  */
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    // Require authentication
+    const user = await requireAuth();
+
     const { id } = params;
 
     // Prevent updating built-in views
@@ -98,6 +113,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     if (!existingView) {
       return NextResponse.json({ error: "View not found" }, { status: 404 });
+    }
+
+    // Authorization: user can only update their own views
+    if (existingView.userId !== user.id) {
+      return NextResponse.json(
+        { error: "Unauthorized: Cannot update other users' views" },
+        { status: 403 }
+      );
     }
 
     // If changing name, check for duplicates
@@ -154,7 +177,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       where: { id },
       data: validatedData,
       include: {
-        KanbanColumn: {
+        columns: {
           orderBy: { order: "asc" },
         },
       },
@@ -202,6 +225,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
  */
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
   try {
+    // Require authentication
+    const user = await requireAuth();
+
     const { id } = params;
 
     // Prevent deleting built-in views
@@ -219,6 +245,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     if (!existingView) {
       return NextResponse.json({ error: "View not found" }, { status: 404 });
+    }
+
+    // Authorization: user can only delete their own views
+    if (existingView.userId !== user.id) {
+      return NextResponse.json(
+        { error: "Unauthorized: Cannot delete other users' views" },
+        { status: 403 }
+      );
     }
 
     // Prevent deleting the only view

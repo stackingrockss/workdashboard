@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 import { SerializedKanbanView, isBuiltInView } from "@/types/view";
 
 interface RouteParams {
@@ -17,6 +18,9 @@ interface RouteParams {
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    // Require authentication
+    const user = await requireAuth();
+
     const { id } = params;
 
     // Built-in views can be "activated" (tracked in localStorage on client)
@@ -43,6 +47,14 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: "View not found" }, { status: 404 });
     }
 
+    // Authorization: user can only activate their own views
+    if (existingView.userId !== user.id) {
+      return NextResponse.json(
+        { error: "Unauthorized: Cannot activate other users' views" },
+        { status: 403 }
+      );
+    }
+
     // Deactivate all other views for this user/org
     const where: any = {};
     if (existingView.userId) where.userId = existingView.userId;
@@ -64,7 +76,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         lastAccessedAt: new Date(),
       },
       include: {
-        KanbanColumn: {
+        columns: {
           orderBy: { order: "asc" },
         },
       },
@@ -83,7 +95,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       isShared: view.isShared,
       createdAt: view.createdAt.toISOString(),
       updatedAt: view.updatedAt.toISOString(),
-      columns: (view as any).KanbanColumn.map((col: any) => ({
+      columns: (view as any).columns.map((col: any) => ({
         id: col.id,
         title: col.title,
         order: col.order,

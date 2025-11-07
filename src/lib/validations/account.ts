@@ -6,6 +6,7 @@ export const accountCreateSchema = z.object({
   priority: z.enum(["low", "medium", "high"]).default("medium"),
   health: z.enum(["good", "at-risk", "critical"]).default("good"),
   notes: z.string().optional(),
+  ownerId: z.string().optional(), // Optional, defaults to current user in API
 });
 
 export const accountUpdateSchema = accountCreateSchema.partial();

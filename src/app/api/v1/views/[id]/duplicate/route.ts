@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/auth";
 import { viewDuplicateSchema } from "@/lib/validations/view";
 import { SerializedKanbanView, MAX_VIEWS_PER_USER, isBuiltInView, getViewTypeFromBuiltInId } from "@/types/view";
 import { getBuiltInColumns } from "@/lib/utils/built-in-views";
@@ -19,6 +20,9 @@ interface RouteParams {
  */
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    // Require authentication
+    const user = await requireAuth();
+
     const { id } = params;
     const body = await request.json();
     const validatedData = viewDuplicateSchema.parse(body);
@@ -35,16 +39,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: "Invalid built-in view ID" }, { status: 400 });
       }
 
-      // For built-in views, we need userId or organizationId from request
+      // For built-in views, use authenticated user's ID
       const { userId: requestUserId, organizationId: requestOrgId } = body;
-      if (!requestUserId && !requestOrgId) {
+
+      // Authorization: ensure userId from request matches authenticated user
+      if (requestUserId && requestUserId !== user.id) {
         return NextResponse.json(
-          { error: "userId or organizationId required to duplicate built-in view" },
-          { status: 400 }
+          { error: "Unauthorized: Cannot duplicate view for other users" },
+          { status: 403 }
         );
       }
 
-      userId = requestUserId || null;
+      userId = requestUserId || user.id;
       organizationId = requestOrgId || null;
 
       // Get fiscal year start month
@@ -70,7 +76,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       sourceView = await prisma.kanbanView.findUnique({
         where: { id },
         include: {
-          KanbanColumn: {
+          columns: {
             orderBy: { order: "asc" },
           },
         },
@@ -80,9 +86,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         return NextResponse.json({ error: "View not found" }, { status: 404 });
       }
 
+      // Authorization: user can only duplicate their own views
+      if (sourceView.userId !== user.id) {
+        return NextResponse.json(
+          { error: "Unauthorized: Cannot duplicate other users' views" },
+          { status: 403 }
+        );
+      }
+
       userId = sourceView.userId;
       organizationId = sourceView.organizationId;
-      sourceColumns = (sourceView as any).KanbanColumn;
+      sourceColumns = (sourceView as any).columns;
     }
 
     // Check view count limit
@@ -148,7 +162,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     const createdView = await prisma.kanbanView.findUnique({
       where: { id: newView.id },
       include: {
-        KanbanColumn: {
+        columns: {
           orderBy: { order: "asc" },
         },
       },

@@ -28,7 +28,7 @@ export default async function OpportunitiesPage() {
       ],
     },
     include: {
-      KanbanColumn: {
+      columns: {
         orderBy: { order: "asc" },
       },
     },
