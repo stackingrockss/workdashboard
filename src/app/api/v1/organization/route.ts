@@ -8,7 +8,7 @@ import { canManageOrganization } from "@/lib/permissions";
  * GET /api/v1/organization
  * Get the authenticated user's organization details and settings
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const user = await requireAuth();
 

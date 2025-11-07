@@ -1,15 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import { userUpdateSchema } from "@/lib/validations/user";
-import { canManageUsers } from "@/lib/permissions";
 
 /**
  * GET /api/v1/users
  * List all users in the authenticated user's organization
  * Returns users with their roles, managers, and direct reports
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const user = await requireAuth();
 

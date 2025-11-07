@@ -195,10 +195,16 @@ export async function PATCH(
             avatarUrl: true,
           },
         },
+        _count: {
+          select: {
+            opportunities: true,
+            ownedAccounts: true,
+          },
+        },
       },
     });
 
-    // Sanitize response
+    // Sanitize response (consistent with GET endpoint)
     const sanitizedUser = {
       id: updatedUser.id,
       email: updatedUser.email,
@@ -208,6 +214,9 @@ export async function PATCH(
       managerId: updatedUser.managerId,
       manager: updatedUser.manager,
       directReports: updatedUser.directReports,
+      opportunityCount: updatedUser._count.opportunities,
+      accountCount: updatedUser._count.ownedAccounts,
+      createdAt: updatedUser.createdAt.toISOString(),
     };
 
     return NextResponse.json({ user: sanitizedUser }, { status: 200 });

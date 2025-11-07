@@ -9,7 +9,7 @@ import { generateInvitationToken } from "@/lib/organization";
  * GET /api/v1/invitations
  * List all pending invitations for the organization
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const user = await requireAuth();
 
