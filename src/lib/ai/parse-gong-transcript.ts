@@ -130,7 +130,7 @@ Return your analysis as JSON only.`;
       "gemini-2.5-pro" // Use Pro model for superior reasoning and nuance detection
     );
 
-    if (!response.success || !response.text) {
+    if (response.error || !response.text) {
       return {
         success: false,
         error: response.error || "Failed to generate analysis",
