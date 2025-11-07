@@ -625,6 +625,68 @@ As the app grows, Claude should:
 
 ---
 
+## 🤖 Subagent Configuration
+
+This project uses specialized subagents for different domains, located in `.claude/agents/`:
+
+### Available Subagents
+
+1. **context-navigator** - Code exploration and architecture understanding
+   - **Purpose:** Explore codebase structure, trace data flows, map component relationships
+   - **Tools:** Read, Grep, Glob (read-only)
+   - **Use cases:** "How does the column template system work?", "Where are opportunities filtered?", "Explain the Kanban architecture"
+
+2. **api-architect** - REST API design and validation patterns
+   - **Purpose:** Design, implement, and review API endpoints following project conventions
+   - **Tools:** Read, Write, Edit, Grep, Glob
+   - **Use cases:** "Design an API for notes", "Review the opportunities endpoint", "Add pagination to the API"
+
+3. **testing-architect** - Testing infrastructure and test generation
+   - **Purpose:** Set up Jest/React Testing Library, generate tests for components and APIs
+   - **Tools:** Read, Write, Edit, Bash, Grep, Glob
+   - **Use cases:** "Set up testing infrastructure", "Generate tests for OpportunityCard", "Test the API routes"
+
+4. **database-expert** - Prisma schema design and query optimization
+   - **Purpose:** Design schemas, create migrations, optimize queries, ensure data integrity
+   - **Tools:** Read, Write, Edit, Bash, Grep, Glob
+   - **Use cases:** "Add a Note model", "Optimize Kanban queries", "Review this migration", "Add indexes for performance"
+
+5. **code-reviewer** - Code quality and pre-commit review specialist
+   - **Purpose:** Review code changes for quality, conventions, security, and best practices before committing
+   - **Tools:** Read, Grep, Glob (read-only)
+   - **Use cases:** "Review my changes", "Check this component before committing", "Review this PR", "Audit code quality"
+
+### Using Subagents
+
+**Automatic Delegation:** Claude Code automatically activates the appropriate subagent based on your request:
+```
+"How does the quarterly view work?" → context-navigator
+"Design an API for activity tracking" → api-architect
+"Set up Jest for this project" → testing-architect
+"Add a new field to Opportunity model" → database-expert
+"Review my changes before I commit" → code-reviewer
+```
+
+**Explicit Invocation:** Request a specific subagent directly:
+```
+"Use the context-navigator to explain the Kanban column system"
+"Have the api-architect design the notes endpoints"
+"Ask the testing-architect to generate OpportunityForm tests"
+"Use the database-expert to add a Note model"
+"Use the code-reviewer to check my OpportunityForm component"
+```
+
+**List Available Subagents:** Use `/agents` command to see all configured subagents
+
+### Subagent Benefits
+
+- **Specialized expertise** - Each agent focuses on specific domain knowledge
+- **Consistent patterns** - Agents follow project conventions and best practices
+- **Context isolation** - Prevents mixing concerns across different task types
+- **Better results** - Domain-specific prompts lead to higher quality outputs
+
+---
+
 ## 🚦 Quick Reference
 
 **Common Commands:**
@@ -653,3 +715,4 @@ npm run lint
 - Type definitions: `src/types/`
 - shadcn/ui components: `src/components/ui/`
 - Business components: `src/components/`
+- **Subagent configurations:** `.claude/agents/`

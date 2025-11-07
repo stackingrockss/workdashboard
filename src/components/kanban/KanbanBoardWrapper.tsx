@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * KanbanBoardWrapper Component
+ * Main wrapper for the Kanban board with view management, filtering, and dialogs
+ */
+
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -11,106 +16,92 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Filter, Columns, LayoutGrid, CalendarDays, ChevronDown, Sparkles } from "lucide-react";
+import { Plus, Filter, Columns, FileText, Copy } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
+import { ViewSelector } from "./ViewSelector";
+import { WelcomeViewDialog } from "./WelcomeViewDialog";
+import { ManageViewsDialog } from "./ManageViewsDialog";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { ColumnForm } from "@/components/forms/column-form";
-import { ColumnTemplateDialog } from "./ColumnTemplateDialog";
-import { Opportunity, OpportunityStage, KanbanColumnConfig, getDefaultConfidenceLevel, getDefaultForecastCategory } from "@/types/opportunity";
+import { ParseGongTranscriptDialog } from "@/components/features/opportunities/parse-gong-transcript-dialog";
+import { Opportunity, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory } from "@/types/opportunity";
+import { SerializedKanbanView, SerializedKanbanColumn, isBuiltInView } from "@/types/view";
 import { createOpportunity, updateOpportunity } from "@/lib/api/opportunities";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
-import { getColumns, createColumn } from "@/lib/api/columns";
+import { createColumn } from "@/lib/api/columns";
 import { ColumnCreateInput } from "@/lib/validations/column";
-import { generateQuarterlyColumns, groupOpportunitiesByQuarter } from "@/lib/utils/quarterly-view";
-import { getTemplateById, prepareTemplateForCreation, type ColumnTemplateType } from "@/lib/templates/column-templates";
-
-type ViewMode = "custom" | "quarterly";
+import { createView, activateView, duplicateView } from "@/lib/api/views";
+import { ViewType } from "@prisma/client";
 
 interface KanbanBoardWrapperProps {
   opportunities: Opportunity[];
-  initialColumns?: KanbanColumnConfig[];
+  views: SerializedKanbanView[];
+  activeView: SerializedKanbanView;
+  isNewUser?: boolean;
+  userId?: string;
+  organizationId?: string;
   fiscalYearStartMonth?: number;
 }
 
 export function KanbanBoardWrapper({
   opportunities,
-  initialColumns,
+  views: initialViews,
+  activeView: initialActiveView,
+  isNewUser = false,
+  userId,
+  organizationId,
   fiscalYearStartMonth = 1
 }: KanbanBoardWrapperProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
-  const [isTemplateDialogOpen, setIsTemplateDialogOpen] = useState(false);
   const [isWelcomeDialogOpen, setIsWelcomeDialogOpen] = useState(false);
+  const [isManageViewsDialogOpen, setIsManageViewsDialogOpen] = useState(false);
+  const [isParseTranscriptDialogOpen, setIsParseTranscriptDialogOpen] = useState(false);
   const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [columns, setColumns] = useState<KanbanColumnConfig[]>(initialColumns || []);
-  const [viewMode, setViewMode] = useState<ViewMode>("custom");
-  // Local state for optimistic updates
+
+  // Local state for views and active view (for optimistic updates)
+  const [views, setViews] = useState<SerializedKanbanView[]>(initialViews);
+  const [activeView, setActiveView] = useState<SerializedKanbanView>(initialActiveView);
+
+  // Local state for opportunities (for optimistic updates)
   const [localOpportunities, setLocalOpportunities] = useState<Opportunity[]>(opportunities);
+
   const router = useRouter();
 
-  // Sync local opportunities with server data
+  // Sync local state with server data
   useEffect(() => {
     setLocalOpportunities(opportunities);
   }, [opportunities]);
 
-  // Load view mode preference from localStorage
   useEffect(() => {
-    const savedMode = localStorage.getItem("kanban-view-mode");
-    if (savedMode === "quarterly" || savedMode === "custom") {
-      setViewMode(savedMode);
-    }
-  }, []);
+    setViews(initialViews);
+  }, [initialViews]);
 
-  // Save view mode preference to localStorage
-  const handleViewModeChange = (mode: ViewMode) => {
-    setViewMode(mode);
-    localStorage.setItem("kanban-view-mode", mode);
-  };
-
-  // Fetch columns on mount if not provided
   useEffect(() => {
-    if (!initialColumns) {
-      getColumns().then(setColumns).catch((error) => {
-        console.error("Failed to fetch columns:", error);
-        toast.error("Failed to load kanban columns");
-      });
-    }
-  }, [initialColumns]);
+    setActiveView(initialActiveView);
+  }, [initialActiveView]);
 
-  // Show welcome dialog for new users (no columns)
+  // Show welcome dialog for new users
   useEffect(() => {
     const hasSeenWelcome = localStorage.getItem("kanban-welcome-seen");
-    if (columns.length === 0 && !hasSeenWelcome) {
+    if (isNewUser && !hasSeenWelcome) {
       setIsWelcomeDialogOpen(true);
-      localStorage.setItem("kanban-welcome-seen", "true");
     }
-  }, [columns.length]);
+  }, [isNewUser]);
 
-  // Generate virtual quarterly columns or use custom columns
+  // Get display columns based on active view
   const displayColumns = useMemo(() => {
-    if (viewMode === "quarterly") {
-      return generateQuarterlyColumns(opportunities, fiscalYearStartMonth);
-    }
-    return columns;
-  }, [viewMode, opportunities, columns, fiscalYearStartMonth]);
+    return activeView.columns;
+  }, [activeView]);
 
   // Get unique quarters from opportunities (for filter dropdown)
   const quarters = useMemo(() => {
@@ -123,7 +114,7 @@ export function KanbanBoardWrapper({
     return Array.from(uniqueQuarters).sort();
   }, [opportunities]);
 
-  // Filter opportunities based on quarter and search (use local state for instant updates)
+  // Filter opportunities based on quarter and search
   const filteredOpportunities = useMemo(() => {
     return localOpportunities.filter(opp => {
       // Quarter filter
@@ -148,6 +139,93 @@ export function KanbanBoardWrapper({
       return true;
     });
   }, [localOpportunities, selectedQuarter, searchQuery]);
+
+  // Check if current view is read-only (built-in view)
+  const isReadOnlyView = isBuiltInView(activeView.id);
+
+  // Handle view selection (optimistic update)
+  const handleSelectView = async (viewId: string) => {
+    // Find the view
+    const newView = views.find(v => v.id === viewId);
+    if (!newView) return;
+
+    // Optimistic update
+    setActiveView(newView);
+
+    try {
+      // Update on server (only for custom views)
+      if (!isBuiltInView(viewId)) {
+        await activateView(viewId);
+      }
+
+      // Refresh to sync
+      router.refresh();
+    } catch (error) {
+      console.error("Error activating view:", error);
+      toast.error("Failed to switch view");
+      // Rollback would happen on refresh
+    }
+  };
+
+  // Handle creating a new custom view
+  const handleCreateView = async () => {
+    try {
+      const newView = await createView({
+        name: "New Custom View",
+        viewType: "custom",
+        userId,
+        organizationId,
+      });
+
+      toast.success("View created! You can rename it in Manage Views.");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create view");
+    }
+  };
+
+  // Handle welcome dialog view selection
+  const handleWelcomeViewSelection = async (viewType: ViewType) => {
+    try {
+      if (viewType === "custom") {
+        // Create blank custom view
+        await createView({
+          name: "My Custom View",
+          viewType: "custom",
+          userId,
+          organizationId,
+          isDefault: true,
+        });
+      } else {
+        // For built-in views, just activate them (they're already in the list)
+        const builtInView = views.find(v => v.viewType === viewType && isBuiltInView(v.id));
+        if (builtInView) {
+          setActiveView(builtInView);
+        }
+      }
+
+      localStorage.setItem("kanban-welcome-seen", "true");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to set up view");
+      throw error;
+    }
+  };
+
+  // Handle duplicating built-in view to custom
+  const handleDuplicateView = async () => {
+    try {
+      await duplicateView(activeView.id, {
+        newName: `${activeView.name} (Custom)`,
+        includeColumns: true,
+      });
+
+      toast.success("View duplicated as custom view!");
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to duplicate view");
+    }
+  };
 
   const handleCreateOpportunity = async (data: OpportunityCreateInput) => {
     try {
@@ -190,7 +268,7 @@ export function KanbanBoardWrapper({
     try {
       // Update on server in background
       await updateOpportunity(opportunityId, { columnId: newColumnId });
-      // Refresh in background to sync with server (no await = non-blocking)
+      // Refresh in background to sync with server (non-blocking)
       router.refresh();
     } catch (error) {
       // Rollback on error
@@ -202,8 +280,12 @@ export function KanbanBoardWrapper({
 
   const handleCreateColumn = async (data: ColumnCreateInput) => {
     try {
-      const maxOrder = columns.length > 0 ? Math.max(...columns.map(c => c.order)) : -1;
-      await createColumn({ ...data, order: maxOrder + 1 });
+      const maxOrder = displayColumns.length > 0 ? Math.max(...displayColumns.map(c => c.order)) : -1;
+      await createColumn({
+        ...data,
+        order: maxOrder + 1,
+        viewId: activeView.id
+      });
       toast.success("Column created successfully!");
       setIsColumnDialogOpen(false);
       router.refresh();
@@ -212,33 +294,8 @@ export function KanbanBoardWrapper({
     }
   };
 
-  const handleApplyTemplate = async (templateId: ColumnTemplateType, replaceExisting = false) => {
-    try {
-      // Get template with fiscal year configuration
-      const template = getTemplateById(templateId, fiscalYearStartMonth);
-      const columnsToCreate = prepareTemplateForCreation(template);
-
-      // If replace mode, delete all existing columns first
-      if (replaceExisting && columns.length > 0) {
-        const { deleteColumn } = await import("@/lib/api/columns");
-        for (const col of columns) {
-          await deleteColumn(col.id);
-        }
-      }
-
-      // Create columns via API
-      for (const col of columnsToCreate) {
-        await createColumn(col);
-      }
-
-      toast.success(`${template.name} template applied successfully!`);
-      setIsTemplateDialogOpen(false);
-      setIsWelcomeDialogOpen(false);
-      router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to apply template");
-      throw error;
-    }
+  const handleViewsChanged = () => {
+    router.refresh();
   };
 
   return (
@@ -271,76 +328,59 @@ export function KanbanBoardWrapper({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-3">
-          {/* View Mode Toggle */}
-          <TooltipProvider>
-            <Tabs value={viewMode} onValueChange={(value) => handleViewModeChange(value as ViewMode)}>
-              <TabsList>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="custom" className="flex items-center gap-1.5">
-                      <LayoutGrid className="h-3.5 w-3.5" />
-                      Custom
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Show your custom columns (editable, renameable)</p>
-                  </TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <TabsTrigger value="quarterly" className="flex items-center gap-1.5">
-                      <CalendarDays className="h-3.5 w-3.5" />
-                      Quarterly
-                    </TabsTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Virtual view grouped by close date quarter (read-only)</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TabsList>
-            </Tabs>
-          </TooltipProvider>
 
-          {/* Enhanced Add Column Button with Dropdown */}
-          {viewMode === "custom" && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="sm" variant="outline">
-                  <Columns className="h-4 w-4 mr-2" />
-                  Add Column
-                  <ChevronDown className="h-3.5 w-3.5 ml-1 opacity-50" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem onClick={() => setIsColumnDialogOpen(true)}>
-                  <Columns className="h-4 w-4 mr-2" />
-                  Add Single Column
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setIsTemplateDialogOpen(true)}>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Apply Template...
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <div className="flex items-center gap-3">
+          {/* View Selector */}
+          <ViewSelector
+            views={views}
+            activeView={activeView}
+            onSelectView={handleSelectView}
+            onCreateView={handleCreateView}
+            onManageViews={() => setIsManageViewsDialogOpen(true)}
+          />
+
+          {/* Duplicate built-in view button */}
+          {isReadOnlyView && (
+            <Button size="sm" variant="outline" onClick={handleDuplicateView}>
+              <Copy className="h-4 w-4 mr-2" />
+              Duplicate as Custom
+            </Button>
           )}
+
+          {/* Add Column Button (only for custom views) */}
+          {!isReadOnlyView && (
+            <Button size="sm" variant="outline" onClick={() => setIsColumnDialogOpen(true)}>
+              <Columns className="h-4 w-4 mr-2" />
+              Add Column
+            </Button>
+          )}
+
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsParseTranscriptDialogOpen(true)}
+          >
+            <FileText className="h-4 w-4 mr-2" /> Parse Gong Transcript
+          </Button>
 
           <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> New Opportunity
           </Button>
         </div>
       </div>
+
       <Separator />
+
       <KanbanBoard
         opportunities={filteredOpportunities}
         columns={displayColumns}
         onStageChange={handleStageChange}
         onColumnChange={handleColumnChange}
-        isVirtualMode={viewMode === "quarterly"}
+        isVirtualMode={isReadOnlyView}
         fiscalYearStartMonth={fiscalYearStartMonth}
       />
 
+      {/* Create Opportunity Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -354,6 +394,7 @@ export function KanbanBoardWrapper({
         </DialogContent>
       </Dialog>
 
+      {/* Add Column Dialog */}
       <Dialog open={isColumnDialogOpen} onOpenChange={setIsColumnDialogOpen}>
         <DialogContent>
           <DialogHeader>
@@ -363,26 +404,30 @@ export function KanbanBoardWrapper({
             onSubmit={handleCreateColumn}
             onCancel={() => setIsColumnDialogOpen(false)}
             submitLabel="Add Column"
-            defaultOrder={columns.length}
+            defaultOrder={displayColumns.length}
           />
         </DialogContent>
       </Dialog>
 
-      <ColumnTemplateDialog
-        open={isTemplateDialogOpen}
-        onOpenChange={setIsTemplateDialogOpen}
-        onSelectTemplate={handleApplyTemplate}
-        fiscalYearStartMonth={fiscalYearStartMonth}
-        hasExistingColumns={columns.length > 0}
-      />
-
-      {/* Welcome template picker for new users */}
-      <ColumnTemplateDialog
+      {/* Welcome View Dialog (for new users) */}
+      <WelcomeViewDialog
         open={isWelcomeDialogOpen}
         onOpenChange={setIsWelcomeDialogOpen}
-        onSelectTemplate={handleApplyTemplate}
-        fiscalYearStartMonth={fiscalYearStartMonth}
-        hasExistingColumns={false}
+        onSelectViewType={handleWelcomeViewSelection}
+      />
+
+      {/* Manage Views Dialog */}
+      <ManageViewsDialog
+        open={isManageViewsDialogOpen}
+        onOpenChange={setIsManageViewsDialogOpen}
+        views={views}
+        onViewsChanged={handleViewsChanged}
+      />
+
+      {/* Parse Gong Transcript Dialog */}
+      <ParseGongTranscriptDialog
+        open={isParseTranscriptDialogOpen}
+        onOpenChange={setIsParseTranscriptDialogOpen}
       />
     </div>
   );

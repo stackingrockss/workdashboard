@@ -1,0 +1,446 @@
+# Claude Agent Rules for Sales Opportunity Tracker
+
+## 🧠 General Philosophy
+
+- **Always prioritize clarity, modularity, and developer experience**
+- Follow convention over configuration where applicable
+- If unsure about implementation choices, ask for clarification or default to modern best practices
+- Optimize for performance using React.memo, useCallback, and useMemo where appropriate, especially in Kanban components, data tables, and opportunity lists
+- Ensure accessibility by using semantic HTML, ARIA attributes, and keyboard navigation for all interactive elements (especially drag-and-drop, modals, and filters)
+- **Business logic focus**: This is a sales/CRM tool—prioritize data accuracy, validation, and clear user workflows for sales teams
+
+---
+
+## 📦 Project Stack
+
+| Technology | Purpose |
+|-----------|---------|
+| **Framework** | Next.js 15+ (App Router) |
+| **Language** | TypeScript (strict mode) |
+| **Styling** | TailwindCSS v4 |
+| **UI Kit** | shadcn/ui (Radix UI primitives) |
+| **Database** | Prisma + PostgreSQL |
+| **Auth** | *To be determined* (Supabase or NextAuth) |
+| **State** | useState, Context, Zustand if needed |
+| **Validation** | Zod |
+| **Icons** | lucide-react |
+| **Deployment** | Vercel |
+| **Error Tracking** | *Optional*: Sentry or LogRocket |
+| **Analytics** | *Optional*: Vercel Analytics or Mixpanel |
+
+---
+
+## 📁 Folder Structure
+
+```
+/opportunity-tracker
+  /src
+    /app
+      /opportunities
+        /[id]
+      /api
+        /v1
+          /opportunities
+      layout.tsx
+      page.tsx
+    /components
+      /kanban
+      /ui (shadcn components)
+    /lib
+      validations/
+      utils.ts
+      db.ts
+      format.ts
+    /types
+      opportunity.ts
+    /data
+      mock-opportunities.ts (temporary, replace with DB)
+  /prisma
+    schema.prisma
+  /public
+    /images
+```
+
+**Rules:**
+- Keep all app routes under `/src/app`
+- Store reusable business components in `/src/components` (e.g., `KanbanBoard`, `OpportunityCard`)
+- Store shadcn/ui components in `/src/components/ui`
+- Place Prisma schema and migrations in `/prisma`
+- Store utility functions, validation schemas, and DB helpers in `/src/lib`
+- Define TypeScript types in `/src/types`
+
+---
+
+## 🧩 Component Rules
+
+- **Use function components with arrow syntax**
+- Always define props via TypeScript interfaces (never use `any`)
+- Destructure props in function signatures for clarity:
+  ```tsx
+  export const OpportunityCard = ({ opportunity, onOpen }: OpportunityCardProps) => { ... }
+  ```
+- Co-locate small, page-specific components within the page folder when they're not reusable
+- **Reuse common components** like:
+  - `<OpportunityCard />`
+  - `<KanbanBoard />`
+  - `<KanbanColumn />`
+  - `<OpportunityDialog />`
+  - `<OpportunityForm />`
+- Document reusable components with JSDoc comments including props, usage examples, and dependencies
+- **Kanban-specific rules:**
+  - Always memoize filtered/grouped opportunity data using `useMemo`
+  - Use unique keys based on `opportunity.id`, not array index
+  - Handle loading and empty states explicitly
+
+---
+
+## 🗄️ Database & Prisma Rules
+
+**Current Schema:**
+- **User**: `id`, `email`, `name`, `avatarUrl`
+- **Opportunity**: `id`, `name`, `account`, `amountArr`, `probability`, `nextStep`, `closeDate`, `stage`, `ownerId`
+- **OpportunityStage** enum: `prospect`, `qualification`, `proposal`, `negotiation`, `closedWon`, `closedLost`
+
+**Rules:**
+- ✅ **Use Prisma for all database access**—no raw SQL
+- Always validate inputs with Zod before database operations
+- Use `@prisma/client` types directly in TypeScript interfaces
+- Run `npx prisma generate` after schema changes
+- Run `npx prisma migrate dev --name <description>` for new migrations
+- **Always scope queries by `ownerId`** when dealing with user-specific data
+- Use `prisma/client` singleton from `/src/lib/db.ts`
+- Follow Prisma naming conventions:
+  - Models: PascalCase (e.g., `Opportunity`, `User`)
+  - Fields: camelCase (e.g., `amountArr`, `closeDate`)
+  - Relations: pluralize for one-to-many (e.g., `opportunities: Opportunity[]`)
+
+---
+
+## 🔐 Auth Rules
+
+**Status:** Auth not yet implemented.
+
+**When implementing:**
+- Use Supabase Auth (preferred) or NextAuth.js
+- Wrap protected routes with session checks (e.g., `createServerComponentClient()` for Supabase)
+- Redirect unauthenticated users to `/login`
+- Store user info in session and link opportunities to `ownerId`
+- Implement role-based access control (RBAC) if needed (e.g., admin vs. sales rep)
+- Use middleware to protect `/opportunities` and `/api/v1/*` routes
+
+---
+
+## 🚀 API Rules
+
+**Current API structure:**
+- `POST /api/v1/opportunities` → Create opportunity
+- `GET /api/v1/opportunities` → List opportunities (with filters)
+- `GET /api/v1/opportunities/[id]` → Get single opportunity
+- `PATCH /api/v1/opportunities/[id]` → Update opportunity
+- `DELETE /api/v1/opportunities/[id]` → Delete opportunity
+
+**Rules:**
+- Always validate request body with Zod schemas (from `/src/lib/validations/`)
+- Return consistent JSON responses:
+  ```ts
+  // Success
+  return NextResponse.json({ data: opportunity }, { status: 200 });
+  // Error
+  return NextResponse.json({ error: "Invalid input" }, { status: 400 });
+  ```
+- Wrap async logic in `try/catch` blocks
+- Use `skip` and `take` for pagination on list endpoints
+- Version all API routes under `/api/v1/` to allow future changes
+- Always scope queries by user session (once auth is implemented)
+- Use HTTP status codes correctly: `200` (OK), `201` (Created), `400` (Bad Request), `401` (Unauthorized), `404` (Not Found), `500` (Server Error)
+
+---
+
+## 🔧 Form Handling Rules
+
+- Use **React Hook Form + Zod** for all forms
+- Define Zod schemas in `/src/lib/validations/`
+- Display inline errors for each field
+- Show loading state on submit button (e.g., `disabled` + spinner)
+- Use `onSubmit` with `async/await`, not `.then()`
+- Debounce real-time inputs (e.g., search, filters) using `lodash.debounce` or a custom hook
+- Ensure forms are accessible:
+  - Use `<label>` tags with `htmlFor`
+  - Use ARIA attributes for errors (`aria-invalid`, `aria-describedby`)
+  - Ensure keyboard navigation works (Tab, Enter, Escape)
+
+**Example form structure:**
+```tsx
+const form = useForm<OpportunityFormData>({
+  resolver: zodResolver(opportunitySchema),
+});
+
+const onSubmit = async (data: OpportunityFormData) => {
+  try {
+    await fetch('/api/v1/opportunities', { ... });
+    toast.success("Opportunity created!");
+  } catch (error) {
+    toast.error("Failed to create opportunity");
+  }
+};
+```
+
+---
+
+## 💅 UI/UX Standards
+
+- **Use shadcn/ui** for all inputs, buttons, dialogs, dropdowns, etc.
+- Always use Tailwind utility classes for styling (no inline CSS or styled-components)
+- Ensure responsive design using Tailwind breakpoints (`sm:`, `md:`, `lg:`, `xl:`, `2xl:`)
+- Use **lucide-react** for all icons
+- Prefer semantic HTML: `<section>`, `<nav>`, `<form>`, `<article>`
+- Support dark mode using Tailwind's `dark:` prefix
+- Use skeleton loaders (e.g., shadcn/ui `<Skeleton />`) for loading states
+- **Provide fallback UI** for:
+  - Empty states (e.g., "No opportunities found")
+  - Loading states (e.g., skeleton cards)
+  - Error states (e.g., toast notifications)
+
+**Kanban UI Rules:**
+- Each column should have a clear header with stage name and count
+- Cards should be visually distinct with borders and hover effects
+- Use consistent spacing (e.g., `gap-4` between columns, `p-4` inside cards)
+- Display key info on cards: opportunity name, account, ARR, probability, close date
+- Use badges to indicate stage, status, or priority
+
+---
+
+## 📊 Testing & Quality Rules
+
+- Use **ESLint** and **Prettier** for code formatting
+- Use **Jest + React Testing Library** for unit tests
+- Test critical components: `OpportunityCard`, `KanbanBoard`, `OpportunityForm`
+- Test API routes with mock Prisma client
+- Aim for **80%+ test coverage** on critical paths
+- Mock external services (e.g., Prisma, auth) using `msw` or Vitest mocks
+- Use Playwright for e2e tests (post-MVP)
+
+---
+
+## ✍️ Naming Conventions
+
+| Entity | Convention | Example |
+|--------|-----------|---------|
+| **Components** | PascalCase.tsx | `OpportunityCard.tsx`, `KanbanBoard.tsx` |
+| **Variables** | camelCase | `opportunities`, `filterText`, `amountArr` |
+| **DB Models** | PascalCase | `Opportunity`, `User` |
+| **Routes** | kebab-case folders | `/opportunities`, `/api/v1/opportunities` |
+| **API handlers** | RESTful + HTTP methods | `GET /api/v1/opportunities`, `POST /api/v1/opportunities` |
+| **Constants** | UPPER_SNAKE_CASE | `API_BASE_URL`, `DEFAULT_STAGE` |
+| **Custom Hooks** | usePascalCase | `useOpportunities`, `useKanbanFilters` |
+| **Enums** | PascalCase | `OpportunityStage` |
+
+---
+
+## ⚠️ Avoid
+
+- ❌ No inline CSS or styled-components
+- ❌ No use of `any` in TypeScript
+- ❌ No console logs in production code (use error tracking instead)
+- ❌ No business logic in `page.tsx` files—isolate to helpers, components, or API routes
+- ❌ No hardcoded values—use constants, environment variables, or database data
+- ❌ Avoid adding new dependencies without justification
+- ❌ Avoid client-side fetching of sensitive data when server-side rendering or API routes can be used
+
+---
+
+## ✅ Output Formatting for Claude
+
+**Always include:**
+- The **filename**
+- The **relative path** (e.g., `src/app/opportunities/page.tsx`)
+- A **brief summary** of what the code does
+
+**Use proper code blocks:**
+```tsx
+// src/components/kanban/OpportunityCard.tsx
+// Displays a single opportunity card with ARR, probability, and next steps
+```
+
+**For updates:**
+- Provide **minimal diffs** (only changed lines) to simplify reviews
+- For significant changes, include a **changelog comment** at the top explaining what was added, modified, or removed
+
+---
+
+## 📣 Claude Should Ask
+
+When implementing features, always clarify:
+- "Would you like me to scaffold the route/component/API as a placeholder or build it to completion with full logic and UI?"
+- "Should this form be part of the dashboard, a modal, or on its own page?"
+- "What data source should this component pull from (e.g., Prisma query, API route, mock data)?"
+- "Should this feature be scoped to a specific user (via `ownerId`) or global?"
+
+---
+
+## 📋 Claude Prompt Templates
+
+### 🧱 Scaffold a Page
+
+```
+Create a new page component for the route `/dashboard`. It should:
+- Display key sales metrics (total ARR, win rate, deals in pipeline)
+- Fetch data from the database via Prisma
+- Use shadcn/ui Card components for metrics
+- Use Tailwind for responsive layout
+- Handle loading and error states
+```
+
+### 🧪 Create a Form with Validation
+
+```
+Build an `OpportunityForm.tsx` component. It should:
+- Allow users to create/edit an opportunity with fields: name, account, amountArr, probability, nextStep, closeDate, stage
+- Use React Hook Form + Zod for validation
+- Display inline errors for each field
+- Use shadcn/ui components (Input, Select, Button, DatePicker)
+- On submit, send data to `/api/v1/opportunities` via POST
+- Show a success toast on completion
+```
+
+### 🔐 Protect a Page with Auth
+
+```
+Wrap the `/opportunities` page so it only renders if the user is authenticated.
+- If not authenticated, redirect to `/login`
+- Use `createServerComponentClient()` (Supabase) to get the session
+- Pass `session.user.id` as `ownerId` to scope queries
+```
+
+### 🔎 Create a Reusable Component
+
+```
+Create an `OpportunityCard.tsx` component that accepts:
+- `opportunity: Opportunity` (Prisma type)
+- `onOpen: (id: string) => void` callback
+- Displays: name, account, ARR (formatted as currency), probability, stage badge, close date
+- Has a "View Details" button that triggers `onOpen`
+- Uses shadcn/ui Card and Badge components
+- Responsive and styled with Tailwind
+```
+
+### 📊 Generate a Dashboard Chart
+
+```
+Create a chart component using Recharts that shows total ARR by stage.
+- Fetch opportunity data grouped by stage
+- X-axis: stage name; Y-axis: total ARR
+- Title: "Pipeline by Stage"
+- Responsive and styled with Tailwind
+```
+
+### ⚙️ Add API Endpoint
+
+```
+Create a `GET /api/v1/opportunities/stats` API route that returns:
+- Total number of opportunities
+- Total ARR across all stages
+- Win rate (closedWon / (closedWon + closedLost))
+- Average deal size
+- Validate user session and scope to `ownerId`
+- Return JSON with proper error handling
+```
+
+### 🧪 Unit Test a Component
+
+```
+Write a Jest test for the `OpportunityCard.tsx` component.
+- Mock a sample `Opportunity` object
+- Check that the opportunity name, account, and ARR render correctly
+- Verify the "View Details" button triggers the `onOpen` callback
+- Ensure the stage badge displays the correct color
+```
+
+### 🧩 Update an Existing Component
+
+```
+Update the `KanbanBoard.tsx` component to:
+- Add a dropdown filter for "My Opportunities" vs. "All Opportunities"
+- Update the filtering logic to support `ownerId` filtering
+- Ensure TypeScript types are updated
+- Use shadcn/ui DropdownMenu component
+- Include tests for the new filter in `/tests/unit/KanbanBoard.test.tsx`
+```
+
+### 🗄️ Update Prisma Schema
+
+```
+Update `prisma/schema.prisma` to add a new model or field:
+- Add a `Note` model with fields for `id`, `content`, `opportunityId`, `authorId`, `createdAt`
+- Add a relation to the `Opportunity` model
+- Generate and apply migrations using `npx prisma migrate dev`
+- Update related API routes and types in `/src/types`
+```
+
+---
+
+## 🔍 Claude AI Code Review Checklist
+
+When reviewing code (Claude- or dev-generated), ensure:
+
+✅ **TypeScript safe** (no `any`, proper interfaces used)
+✅ **Follows project conventions** (folder structure, naming, etc.)
+✅ **Uses shadcn/ui and Tailwind appropriately**
+✅ **Business logic is isolated** from `page.tsx` (moved to `/lib` or components)
+✅ **Includes try/catch for async calls**
+✅ **Includes Zod validation** where inputs exist
+✅ **Avoids hardcoded values** (uses database, constants, or environment variables)
+✅ **Reuses functions or components** (no logic duplication)
+✅ **Descriptive prop names and comments** for non-obvious logic
+✅ **Fallback UI states** (loading, empty, error)
+✅ **No performance bottlenecks** (excessive API calls, unoptimized loops, large state updates)
+✅ **No unnecessary dependencies** introduced
+✅ **Data is scoped to users** (queries include `ownerId` where appropriate)
+
+---
+
+## 🌍 Additional Considerations
+
+- **Prepare for internationalization**: Structure strings to support `next-intl` or similar libraries (avoid hardcoded text in components)
+- **Support offline functionality** (future): Cache opportunity data locally and sync when online
+- **Follow consistent commit message format**: `feat: add opportunity form validation`, `fix: resolve Kanban filter bug`, `refactor: extract Kanban logic to hooks`
+- **Use feature branches** for development (e.g., `feature/opportunity-form`, `fix/kanban-drag-drop`)
+- **Sales-specific considerations**:
+  - Always format ARR as currency (e.g., `$50,000`)
+  - Validate probability is between 0-100
+  - Ensure close dates are in the future for open opportunities
+  - Use clear stage transitions in UI (e.g., Prospect → Qualification → Proposal → Negotiation → Closed)
+  - Provide audit trails for opportunity updates (e.g., `updatedAt` timestamps)
+
+---
+
+## 🧱 Scaling Rules for AI Assistance
+
+As the app grows, Claude should:
+
+1. **Respect the Source of Truth**
+   - Always reference `prisma/schema.prisma`, not inferred field names
+   - Use exported types from `/src/types` or Prisma Client instead of `any`
+   - Do not assume routes or folders exist—check structure or ask
+
+2. **State and Data Discipline**
+   - Favor local state or context over prop drilling
+   - Use Zod schemas for API input validation and form parsing
+   - Add comments when state flows across more than one component
+
+3. **Avoid Logic Duplication**
+   - Do not rewrite logic already in `/src/lib` or `/src/components`—import it instead
+   - If logic looks similar to an existing function, ask the dev or reuse it
+
+4. **Stick to the UI Design System**
+   - Use shadcn/ui components
+   - Never use raw HTML inputs or create custom styles unless instructed
+   - Reuse existing components like `OpportunityCard`, `KanbanBoard`, `KanbanColumn`
+
+5. **Add Error Handling and Feedback**
+   - Always wrap async actions in `try/catch` blocks
+   - Display UI feedback (e.g., toast) for success/failure
+   - Log and handle edge cases: no data, API failure, invalid auth, etc.
+
+6. **Ask When Ambiguous**
+   - If you're not sure what the route should be called, where logic belongs, or what props a component expects, **ask for clarification**

@@ -1,0 +1,150 @@
+/**
+ * TypeScript types for Kanban Views
+ * Extends Prisma-generated types with application-specific interfaces
+ */
+
+import { KanbanView as PrismaKanbanView, KanbanColumn as PrismaKanbanColumn, ViewType } from "@prisma/client";
+
+/**
+ * Column configuration with all fields
+ */
+export interface KanbanColumnConfig {
+  id: string;
+  title: string;
+  order: number;
+  color?: string | null;
+  viewId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * View with included columns relation
+ */
+export interface KanbanViewWithColumns extends PrismaKanbanView {
+  columns: KanbanColumnConfig[];
+}
+
+/**
+ * Serializable view (for passing from server to client components)
+ */
+export interface SerializedKanbanView {
+  id: string;
+  name: string;
+  viewType: ViewType;
+  isActive: boolean;
+  isDefault: boolean;
+  userId: string | null;
+  organizationId: string | null;
+  lastAccessedAt: string | null;
+  isShared: boolean;
+  createdAt: string;
+  updatedAt: string;
+  columns: SerializedKanbanColumn[];
+}
+
+/**
+ * Serializable column
+ */
+export interface SerializedKanbanColumn {
+  id: string;
+  title: string;
+  order: number;
+  color?: string | null;
+  viewId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Input for creating a new view
+ */
+export interface ViewCreateInput {
+  name: string;
+  viewType: ViewType;
+  userId?: string;
+  organizationId?: string;
+  isDefault?: boolean;
+}
+
+/**
+ * Input for updating an existing view
+ */
+export interface ViewUpdateInput {
+  name?: string;
+  isActive?: boolean;
+  isDefault?: boolean;
+  lastAccessedAt?: Date;
+}
+
+/**
+ * Built-in view IDs (virtual views, not stored in database)
+ */
+export const BUILT_IN_VIEW_IDS = {
+  QUARTERLY: "built-in-quarterly",
+  STAGES: "built-in-stages",
+  FORECAST: "built-in-forecast",
+} as const;
+
+/**
+ * Check if a view ID belongs to a built-in view
+ */
+export function isBuiltInView(viewId: string): boolean {
+  return Object.values(BUILT_IN_VIEW_IDS).includes(viewId as any);
+}
+
+/**
+ * Get view type from built-in view ID
+ */
+export function getViewTypeFromBuiltInId(viewId: string): ViewType | null {
+  switch (viewId) {
+    case BUILT_IN_VIEW_IDS.QUARTERLY:
+      return "quarterly";
+    case BUILT_IN_VIEW_IDS.STAGES:
+      return "stages";
+    case BUILT_IN_VIEW_IDS.FORECAST:
+      return "forecast";
+    default:
+      return null;
+  }
+}
+
+/**
+ * View metadata for display
+ */
+export interface ViewMetadata {
+  id: string;
+  name: string;
+  viewType: ViewType;
+  isBuiltIn: boolean;
+  isActive: boolean;
+  columnCount: number;
+  lastAccessed: Date | null;
+}
+
+/**
+ * View type labels for UI
+ */
+export const VIEW_TYPE_LABELS: Record<ViewType, string> = {
+  custom: "Custom View",
+  quarterly: "Quarterly View",
+  stages: "Sales Stages",
+  forecast: "Forecast Categories",
+};
+
+/**
+ * View type descriptions for UI
+ */
+export const VIEW_TYPE_DESCRIPTIONS: Record<ViewType, string> = {
+  custom: "Create and manage your own custom columns",
+  quarterly: "Auto-organized by close date quarters (read-only)",
+  stages: "Track deals through standard sales stages (read-only)",
+  forecast: "Group by forecast confidence level (read-only)",
+};
+
+/**
+ * Max views per user/organization
+ */
+export const MAX_VIEWS_PER_USER = 20;
+
+export type { ViewType };

@@ -8,128 +8,42 @@ datasource db {
   schemas  = ["opportunity_tracker"]
 }
 
-model User {
-  id              String           @id @default(cuid())
-  email           String           @unique
-  name            String
-  avatarUrl       String?
-  createdAt       DateTime         @default(now())
-  supabaseId      String?          @unique
-  kanbanColumns   KanbanColumn[]
-  opportunities   Opportunity[]
-  companySettings CompanySettings?
-
-  @@schema("opportunity_tracker")
-}
-
 model Account {
-  id            String        @id @default(cuid())
-  name          String        @unique
-  industry      String?
-  priority      String        @default("medium")
-  health        String        @default("good")
-  notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  opportunities Opportunity[]
-  contacts      Contact[]
+  id             String        @id
+  name           String        @unique
+  industry       String?
+  priority       String        @default("medium")
+  health         String        @default("good")
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime
+  ownerId        String?
+  organizationId String
+  Organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  Contact        Contact[]
+  Opportunity    Opportunity[]
 
+  @@unique([organizationId, name])
+  @@index([organizationId])
+  @@index([ownerId])
   @@schema("opportunity_tracker")
 }
 
-model KanbanColumn {
-  id        String   @id @default(cuid())
-  title     String
-  order     Int
-  color     String?
-  userId    String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User?    @relation(fields: [userId], references: [id])
-
-  @@unique([userId, order])
-  @@schema("opportunity_tracker")
-}
-
-model Opportunity {
-  id                   String            @id @default(cuid())
-  name                 String
-  amountArr            Int
-  confidenceLevel      Int               @default(3) // 1-5 scale (replaces probability)
-  nextStep             String?
-  closeDate            DateTime?
-  stage                OpportunityStage
-  ownerId              String
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
-  accountId            String?
-  accountName          String?
-  quarter              String?
-  forecastCategory     ForecastCategory?
-  notes                String?
-  riskNotes            String?
-  accountResearch      String?
-  columnId             String?
-  // New fields from CSV
-  decisionMakers       String?
-  competition          String?
-  legalReviewStatus    ReviewStatus?     @default(not_started)
-  securityReviewStatus ReviewStatus?     @default(not_started)
-  platformType         PlatformType?
-  businessCaseStatus   ReviewStatus?     @default(not_started)
-  pinnedToWhiteboard   Boolean           @default(false)
-  contacts             Contact[]
-  gongCalls            GongCall[]
-  googleNotes          GoogleNote[]
-  granolaNotes         GranolaNote[]
-  account              Account?          @relation(fields: [accountId], references: [id])
-  owner                User              @relation(fields: [ownerId], references: [id])
-
-  @@schema("opportunity_tracker")
-}
-
-model GranolaNote {
-  id            String      @id @default(cuid())
-  opportunityId String
-  title         String
-  url           String
-  meetingDate   DateTime
-  noteType      NoteType    @default(customer)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
-
-  @@schema("opportunity_tracker")
-}
-
-model GongCall {
-  id            String      @id @default(cuid())
-  opportunityId String
-  title         String
-  url           String
-  meetingDate   DateTime
-  noteType      NoteType    @default(customer)
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
-
-  @@schema("opportunity_tracker")
-}
-
-model GoogleNote {
-  id            String      @id @default(cuid())
-  opportunityId String
-  title         String
-  url           String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+model CompanySettings {
+  id                   String   @id
+  userId               String   @unique
+  companyName          String?
+  companyWebsite       String?
+  fiscalYearStartMonth Int      @default(1)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime
+  User                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@schema("opportunity_tracker")
 }
 
 model Contact {
-  id            String           @id @default(cuid())
+  id            String           @id
   firstName     String
   lastName      String
   title         String?
@@ -138,38 +52,196 @@ model Contact {
   role          ContactRole
   sentiment     ContactSentiment @default(unknown)
   opportunityId String?
-  accountId     String?
   managerId     String?
   positionX     Float?
   positionY     Float?
   notes         String?
   createdAt     DateTime         @default(now())
-  updatedAt     DateTime         @updatedAt
-  manager       Contact?         @relation("ContactReports", fields: [managerId], references: [id])
-  directReports Contact[]        @relation("ContactReports")
-  opportunity   Opportunity?     @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
-  account       Account?         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  updatedAt     DateTime
+  accountId     String?
+  Account       Account?         @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  Contact       Contact?         @relation("ContactToContact", fields: [managerId], references: [id])
+  other_Contact Contact[]        @relation("ContactToContact")
+  Opportunity   Opportunity?     @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId])
+  @@index([accountId])
+  @@schema("opportunity_tracker")
+}
+
+model GongCall {
+  id            String      @id
+  opportunityId String
+  title         String
+  url           String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime
+  meetingDate   DateTime
+  noteType      NoteType?   @default(customer)
+  Opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId])
+  @@schema("opportunity_tracker")
+}
+
+model GoogleNote {
+  id            String      @id
+  opportunityId String
+  title         String
+  url           String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime
+  Opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId])
+  @@schema("opportunity_tracker")
+}
+
+model GranolaNote {
+  id            String      @id
+  opportunityId String
+  title         String
+  url           String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime
+  meetingDate   DateTime
+  noteType      NoteType?   @default(customer)
+  Opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId])
+  @@schema("opportunity_tracker")
+}
+
+model Invitation {
+  id             String    @id
+  email          String
+  role           UserRole  @default(REP)
+  organizationId String
+  invitedById    String
+  token          String
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime  @default(now())
 
   @@schema("opportunity_tracker")
 }
 
-enum OpportunityStage {
-  discovery
-  demo
-  validateSolution
-  decisionMakerApproval
-  contracting
-  closedWon
-  closedLost
+model KanbanColumn {
+  id         String     @id
+  title      String
+  order      Int
+  color      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime
+  viewId     String
+  KanbanView KanbanView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+
+  @@unique([viewId, order])
+  @@schema("opportunity_tracker")
+}
+
+model KanbanView {
+  id             String         @id
+  name           String
+  viewType       ViewType
+  isActive       Boolean        @default(false)
+  isDefault      Boolean        @default(false)
+  userId         String?
+  organizationId String?
+  lastAccessedAt DateTime?
+  isShared       Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime
+  KanbanColumn   KanbanColumn[]
 
   @@schema("opportunity_tracker")
 }
 
-enum ForecastCategory {
-  pipeline
-  bestCase
-  forecast
+model Opportunity {
+  id                   String            @id
+  name                 String
+  amountArr            Int
+  nextStep             String?
+  closeDate            DateTime?
+  stage                OpportunityStage
+  ownerId              String
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime
+  accountId            String?
+  accountName          String?
+  quarter              String?
+  forecastCategory     ForecastCategory?
+  notes                String?
+  riskNotes            String?
+  columnId             String?
+  accountResearch      String?
+  confidenceLevel      Int               @default(3)
+  decisionMakers       String?
+  competition          String?
+  legalReviewStatus    ReviewStatus?     @default(not_started)
+  securityReviewStatus ReviewStatus?     @default(not_started)
+  platformType         PlatformType?
+  businessCaseStatus   ReviewStatus?     @default(not_started)
+  pinnedToWhiteboard   Boolean           @default(false)
+  organizationId       String
+  Contact              Contact[]
+  GongCall             GongCall[]
+  GoogleNote           GoogleNote[]
+  GranolaNote          GranolaNote[]
+  Account              Account?          @relation(fields: [accountId], references: [id])
+  Organization         Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner                User              @relation(fields: [ownerId], references: [id])
 
+  @@index([organizationId])
+  @@index([ownerId])
+  @@index([accountId])
+  @@index([columnId])
+  @@index([closeDate])
+  @@schema("opportunity_tracker")
+}
+
+model Organization {
+  id                   String        @id
+  name                 String
+  domain               String?
+  logo                 String?
+  fiscalYearStartMonth Int           @default(1)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime
+  Account              Account[]
+  Opportunity          Opportunity[]
+
+  @@schema("opportunity_tracker")
+}
+
+model OrganizationSettings {
+  id                      String   @id
+  organizationId          String
+  defaultKanbanView       String?
+  defaultKanbanTemplateId String?
+  allowSelfSignup         Boolean  @default(false)
+  allowDomainAutoJoin     Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime
+
+  @@schema("opportunity_tracker")
+}
+
+model User {
+  id              String           @id
+  email           String           @unique
+  name            String
+  avatarUrl       String?
+  createdAt       DateTime         @default(now())
+  supabaseId      String?          @unique
+  managerId       String?
+  organizationId  String?
+  role            UserRole         @default(ADMIN)
+  CompanySettings CompanySettings?
+  Opportunity     Opportunity[]
+
+  @@index([organizationId])
+  @@index([managerId])
   @@schema("opportunity_tracker")
 }
 
@@ -193,11 +265,29 @@ enum ContactSentiment {
   @@schema("opportunity_tracker")
 }
 
-enum ReviewStatus {
-  not_started
-  in_progress
-  complete
-  not_applicable
+enum ForecastCategory {
+  pipeline
+  bestCase
+  forecast
+
+  @@schema("opportunity_tracker")
+}
+
+enum NoteType {
+  customer
+  internal
+
+  @@schema("opportunity_tracker")
+}
+
+enum OpportunityStage {
+  discovery
+  demo
+  validateSolution
+  decisionMakerApproval
+  contracting
+  closedWon
+  closedLost
 
   @@schema("opportunity_tracker")
 }
@@ -210,22 +300,29 @@ enum PlatformType {
   @@schema("opportunity_tracker")
 }
 
-enum NoteType {
-  customer
-  internal
+enum ReviewStatus {
+  not_started
+  in_progress
+  complete
+  not_applicable
 
   @@schema("opportunity_tracker")
 }
 
-model CompanySettings {
-  id                   String   @id @default(cuid())
-  userId               String   @unique
-  companyName          String?
-  companyWebsite       String?
-  fiscalYearStartMonth Int      @default(1)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+enum UserRole {
+  ADMIN
+  MANAGER
+  REP
+  VIEWER
+
+  @@schema("opportunity_tracker")
+}
+
+enum ViewType {
+  custom
+  quarterly
+  stages
+  forecast
 
   @@schema("opportunity_tracker")
 }

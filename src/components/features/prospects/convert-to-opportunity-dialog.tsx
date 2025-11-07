@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -37,6 +37,7 @@ export function ConvertToOpportunityDialog({
 }: ConvertToOpportunityDialogProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const [formData, setFormData] = useState<{
     name: string;
     amountArr: string;
@@ -56,6 +57,11 @@ export function ConvertToOpportunityDialog({
     forecastCategory: "pipeline",
     nextStep: "",
   });
+
+  // Ensure client-side only rendering to prevent hydration mismatches
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleStageChange = (stage: OpportunityStage) => {
     setFormData({
@@ -101,6 +107,11 @@ export function ConvertToOpportunityDialog({
       setIsSubmitting(false);
     }
   };
+
+  // Prevent hydration mismatch by only rendering on client
+  if (!isClient) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

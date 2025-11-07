@@ -35,8 +35,23 @@ export function generateQuarterlyColumns(
     }
   });
 
-  // Convert to sorted array
-  const quarters = Array.from(quarterSet).sort();
+  // Convert to sorted array and sort chronologically (not alphabetically)
+  const quarters = Array.from(quarterSet).sort((a, b) => {
+    // Parse "Q1 2025" format
+    const matchA = a.match(/Q(\d)\s+(\d{4})/);
+    const matchB = b.match(/Q(\d)\s+(\d{4})/);
+
+    if (!matchA || !matchB) return 0;
+
+    const [, qA, yearA] = matchA;
+    const [, qB, yearB] = matchB;
+
+    // Sort by year first, then by quarter
+    if (yearA !== yearB) {
+      return parseInt(yearA) - parseInt(yearB);
+    }
+    return parseInt(qA) - parseInt(qB);
+  });
 
   // Create virtual column configs
   const columns: KanbanColumnConfig[] = quarters.map((quarter, index) => ({

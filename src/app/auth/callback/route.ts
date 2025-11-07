@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * OAuth callback handler for Supabase authentication
+ * Exchanges authorization code for session and redirects to app
+ *
+ * Note: User creation and org assignment is handled by getCurrentUser()
+ * in lib/auth.ts when the user first accesses a protected route
+ */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
@@ -11,6 +18,7 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
+      // User creation and org assignment happens in getCurrentUser() on first protected route access
       const forwardedHost = request.headers.get("x-forwarded-host");
       const isLocalEnv = process.env.NODE_ENV === "development";
 

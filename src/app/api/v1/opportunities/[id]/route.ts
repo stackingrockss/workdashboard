@@ -12,8 +12,13 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const opportunityFromDB = await prisma.opportunity.findUnique({
-      where: { id },
+    const user = await requireAuth();
+
+    const opportunityFromDB = await prisma.opportunity.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id, // Security: scope to user's organization
+      },
       include: {
         owner: true,
         account: true,
@@ -33,6 +38,9 @@ export async function GET(
     const opportunity = mapPrismaOpportunityToOpportunity(opportunityFromDB);
     return NextResponse.json({ opportunity });
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Failed to fetch opportunity" }, { status: 500 });
   }
 }
@@ -82,6 +90,18 @@ export async function PATCH(
         },
       });
       accountId = account.id;
+    }
+
+    // Security: Verify opportunity belongs to user's organization before updating
+    const existingOpportunity = await prisma.opportunity.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id,
+      },
+    });
+
+    if (!existingOpportunity) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
     const updateData: Record<string, unknown> = {};
@@ -189,9 +209,26 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
+    const user = await requireAuth();
+
+    // Security: Verify opportunity belongs to user's organization before deleting
+    const existingOpportunity = await prisma.opportunity.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id,
+      },
+    });
+
+    if (!existingOpportunity) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     await prisma.opportunity.delete({ where: { id } });
     return NextResponse.json({ ok: true });
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.json({ error: "Failed to delete opportunity" }, { status: 500 });
   }
 }

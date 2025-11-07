@@ -4,13 +4,22 @@ import { opportunityCreateSchema } from "@/lib/validations/opportunity";
 import { requireAuth } from "@/lib/auth";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
 import { mapPrismaOpportunitiesToOpportunities, mapPrismaOpportunityToOpportunity } from "@/lib/mappers/opportunity";
+import { getVisibleUserIds, isAdmin } from "@/lib/permissions";
 
 export async function GET() {
   try {
     const user = await requireAuth();
 
+    // Get visible user IDs based on role and direct reports
+    const visibleUserIds = getVisibleUserIds(user, user.directReports);
+
+    // Build where clause based on visibility
+    const whereClause = isAdmin(user)
+      ? { organizationId: user.organization.id } // Admin sees all in org
+      : { ownerId: { in: visibleUserIds } }; // Others see based on visibility
+
     const opportunitiesFromDB = await prisma.opportunity.findMany({
-      where: { ownerId: user.id },
+      where: whereClause,
       orderBy: { updatedAt: "desc" },
       include: {
         owner: true,
@@ -43,10 +52,17 @@ export async function POST(req: NextRequest) {
     let accountId = data.accountId;
     if (!accountId && data.account) {
       const account = await prisma.account.upsert({
-        where: { name: data.account },
+        where: {
+          organizationId_name: {
+            organizationId: user.organization.id,
+            name: data.account,
+          },
+        },
         update: {},
         create: {
           name: data.account,
+          organizationId: user.organization.id,
+          ownerId: user.id,
           priority: "medium",
           health: "good",
         },
@@ -54,11 +70,8 @@ export async function POST(req: NextRequest) {
       accountId = account.id;
     }
 
-    // Get user's fiscal year settings to calculate quarter
-    const settings = await prisma.companySettings.findUnique({
-      where: { userId: user.id },
-    });
-    const fiscalYearStartMonth = settings?.fiscalYearStartMonth ?? 1;
+    // Get organization's fiscal year settings to calculate quarter
+    const fiscalYearStartMonth = user.organization.fiscalYearStartMonth;
 
     // Calculate quarter from close date if provided
     let quarter = data.quarter;
@@ -72,8 +85,14 @@ export async function POST(req: NextRequest) {
     if (quarter) {
       const matchingColumn = await prisma.kanbanColumn.findFirst({
         where: {
-          userId: user.id,
+          view: {
+            userId: user.id,
+            isActive: true,
+          },
           title: quarter,
+        },
+        include: {
+          view: true,
         },
       });
       if (matchingColumn) {
@@ -103,6 +122,7 @@ export async function POST(req: NextRequest) {
       platformType: data.platformType ?? undefined,
       businessCaseStatus: data.businessCaseStatus ?? "not_started",
       ownerId: data.ownerId ?? user.id, // Use provided ownerId or default to authenticated user's ID
+      organizationId: user.organization.id, // Always set to user's organization
       ...(accountId ? { accountId } : {}),
     };
 

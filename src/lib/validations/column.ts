@@ -4,7 +4,7 @@ export const columnCreateSchema = z.object({
   title: z.string().min(1).max(100),
   order: z.number().int().nonnegative(),
   color: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
-  userId: z.string().optional(),
+  viewId: z.string(), // Required: columns must belong to a view
 });
 
 export const columnUpdateSchema = z.object({

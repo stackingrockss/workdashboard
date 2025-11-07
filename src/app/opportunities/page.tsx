@@ -1,9 +1,11 @@
 // app/opportunities/page.tsx
-// Displays a Kanban view of opportunities fetched from the database
+// Displays a Kanban view of opportunities with view management
 
 import { KanbanBoardWrapper } from "@/components/kanban/KanbanBoardWrapper";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
+import { SerializedKanbanView } from "@/types/view";
+import { getAllBuiltInViews } from "@/lib/utils/built-in-views";
 
 export const dynamic = "force-dynamic";
 
@@ -17,24 +19,68 @@ export default async function OpportunitiesPage() {
   });
   const fiscalYearStartMonth = settings?.fiscalYearStartMonth ?? 1;
 
-  // Fetch columns from database (user-specific + global)
-  const columnsFromDB = await prisma.kanbanColumn.findMany({
+  // Fetch custom views from database (user-specific + organization-specific)
+  const dbViews = await prisma.kanbanView.findMany({
     where: {
-      OR: [{ userId: user.id }, { userId: null }],
+      OR: [
+        { userId: user.id },
+        { organizationId: null, userId: null }, // Global views
+      ],
     },
-    orderBy: { order: "asc" },
+    include: {
+      KanbanColumn: {
+        orderBy: { order: "asc" },
+      },
+    },
+    orderBy: [
+      { isActive: "desc" },
+      { lastAccessedAt: "desc" },
+      { createdAt: "desc" },
+    ],
   });
 
-  // Transform columns to match expected type
-  const columns = columnsFromDB.map((col) => ({
-    id: col.id,
-    title: col.title,
-    order: col.order,
-    color: col.color || undefined,
-    userId: col.userId || undefined,
-    createdAt: col.createdAt.toISOString(),
-    updatedAt: col.updatedAt.toISOString(),
+  // Transform custom views to serialized format
+  const customViews: SerializedKanbanView[] = dbViews.map((view) => ({
+    id: view.id,
+    name: view.name,
+    viewType: view.viewType,
+    isActive: view.isActive,
+    isDefault: view.isDefault,
+    userId: view.userId,
+    organizationId: view.organizationId,
+    lastAccessedAt: view.lastAccessedAt?.toISOString() || null,
+    isShared: view.isShared,
+    createdAt: view.createdAt.toISOString(),
+    updatedAt: view.updatedAt.toISOString(),
+    columns: (view as any).KanbanColumn.map((col: any) => ({
+      id: col.id,
+      title: col.title,
+      order: col.order,
+      color: col.color,
+      viewId: col.viewId,
+      createdAt: col.createdAt.toISOString(),
+      updatedAt: col.updatedAt.toISOString(),
+    })),
   }));
+
+  // Generate built-in views
+  const builtInViews = getAllBuiltInViews(fiscalYearStartMonth, user.id);
+
+  // Combine all views (built-in first, then custom)
+  const allViews = [...builtInViews, ...customViews];
+
+  // Determine active view
+  // Priority: 1) Active custom view, 2) Default custom view, 3) Quarterly view (first built-in)
+  let activeView = customViews.find((v) => v.isActive);
+  if (!activeView) {
+    activeView = customViews.find((v) => v.isDefault);
+  }
+  if (!activeView) {
+    activeView = builtInViews[0]; // Default to Quarterly View
+  }
+
+  // Check if user is new (no custom views)
+  const isNewUser = customViews.length === 0;
 
   // Fetch opportunities from database
   const opportunitiesFromDB = await prisma.opportunity.findMany({
@@ -52,10 +98,12 @@ export default async function OpportunitiesPage() {
     name: opp.name,
     accountId: opp.accountId || undefined,
     accountName: opp.accountName || undefined,
-    account: opp.account ? {
-      id: opp.account.id,
-      name: opp.account.name,
-    } : undefined,
+    account: opp.account
+      ? {
+          id: opp.account.id,
+          name: opp.account.name,
+        }
+      : undefined,
     amountArr: opp.amountArr,
     confidenceLevel: opp.confidenceLevel,
     nextStep: opp.nextStep || undefined,
@@ -74,17 +122,19 @@ export default async function OpportunitiesPage() {
     platformType: opp.platformType || undefined,
     businessCaseStatus: opp.businessCaseStatus || undefined,
     pinnedToWhiteboard: opp.pinnedToWhiteboard,
-    owner: opp.owner ? {
-      id: opp.owner.id,
-      name: opp.owner.name,
-      email: opp.owner.email || undefined,
-      avatarUrl: opp.owner.avatarUrl || undefined,
-    } : {
-      id: opp.ownerId,
-      name: "Unknown",
-      email: undefined,
-      avatarUrl: undefined,
-    },
+    owner: opp.owner
+      ? {
+          id: opp.owner.id,
+          name: opp.owner.name,
+          email: opp.owner.email || undefined,
+          avatarUrl: opp.owner.avatarUrl || undefined,
+        }
+      : {
+          id: opp.ownerId,
+          name: "Unknown",
+          email: undefined,
+          avatarUrl: undefined,
+        },
     createdAt: opp.createdAt.toISOString(),
     updatedAt: opp.updatedAt.toISOString(),
   }));
@@ -94,16 +144,17 @@ export default async function OpportunitiesPage() {
       <div className="mb-4">
         <h1 className="text-2xl font-semibold tracking-tight">Opportunities</h1>
         <p className="text-sm text-muted-foreground">
-          Track deals, next steps, and forecast in a Kanban view
+          Track deals, next steps, and forecast across multiple views
         </p>
       </div>
       <KanbanBoardWrapper
         opportunities={opportunities}
-        initialColumns={columns}
+        views={allViews}
+        activeView={activeView}
+        isNewUser={isNewUser}
+        userId={user.id}
         fiscalYearStartMonth={fiscalYearStartMonth}
       />
     </div>
   );
 }
-
-

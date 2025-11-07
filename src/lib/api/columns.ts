@@ -61,6 +61,22 @@ export async function createColumn(input: ColumnCreateInput): Promise<KanbanColu
   return data.column;
 }
 
+export async function createColumnsBatch(inputs: ColumnCreateInput[]): Promise<KanbanColumnConfig[]> {
+  const response = await fetch(`${API_BASE}/columns`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(inputs),
+  });
+
+  if (!response.ok) {
+    const error: ErrorResponse = await response.json();
+    throw new Error(error.error || "Failed to create columns");
+  }
+
+  const data: { columns: KanbanColumnConfig[] } = await response.json();
+  return data.columns;
+}
+
 export async function updateColumn(
   id: string,
   input: ColumnUpdateInput
