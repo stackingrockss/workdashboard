@@ -196,6 +196,7 @@ export async function PATCH(
     if (data.platformType !== undefined) updateData.platformType = data.platformType;
     if (data.businessCaseStatus !== undefined) updateData.businessCaseStatus = data.businessCaseStatus;
     if (data.ownerId !== undefined) updateData.ownerId = data.ownerId;
+    if (data.pinnedToWhiteboard !== undefined) updateData.pinnedToWhiteboard = data.pinnedToWhiteboard;
     if (accountId) {
       updateData.accountId = accountId;
     }
