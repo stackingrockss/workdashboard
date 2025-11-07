@@ -3,7 +3,8 @@
  * opportunities by their calculated quarter instead of using database columns.
  */
 
-import { Opportunity, KanbanColumnConfig } from "@/types/opportunity";
+import { Opportunity } from "@/types/opportunity";
+import { SerializedKanbanColumn } from "@/types/view";
 import { getQuarterFromDate } from "./quarter";
 
 export const UNASSIGNED_QUARTER_ID = "unassigned";
@@ -20,7 +21,7 @@ export const UNASSIGNED_QUARTER_TITLE = "Unassigned";
 export function generateQuarterlyColumns(
   opportunities: Opportunity[],
   fiscalYearStartMonth: number = 1
-): KanbanColumnConfig[] {
+): SerializedKanbanColumn[] {
   // Extract unique quarters from opportunities with close dates
   const quarterSet = new Set<string>();
 
@@ -54,11 +55,15 @@ export function generateQuarterlyColumns(
   });
 
   // Create virtual column configs
-  const columns: KanbanColumnConfig[] = quarters.map((quarter, index) => ({
+  const now = new Date().toISOString();
+  const columns: SerializedKanbanColumn[] = quarters.map((quarter, index) => ({
     id: `virtual-${quarter.replace(/\s+/g, "-")}`, // e.g., "virtual-Q1-2025"
     title: quarter,
     order: index,
     color: getQuarterColor(index),
+    viewId: "virtual-quarterly",
+    createdAt: now,
+    updatedAt: now,
   }));
 
   // Add "Unassigned" column for opportunities without close dates
@@ -69,6 +74,9 @@ export function generateQuarterlyColumns(
       title: UNASSIGNED_QUARTER_TITLE,
       order: columns.length,
       color: "#6b7280", // gray-500
+      viewId: "virtual-quarterly",
+      createdAt: now,
+      updatedAt: now,
     });
   }
 

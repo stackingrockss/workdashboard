@@ -127,10 +127,10 @@ export interface KanbanColumnConfig {
   id: string;
   title: string;
   order: number;
-  color?: string;
-  userId?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  color: string | null | undefined;
+  viewId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Helper function to get display label for review status

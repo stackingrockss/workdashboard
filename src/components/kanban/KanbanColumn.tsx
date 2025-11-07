@@ -23,14 +23,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Pencil, Check, X, MoreVertical, Trash2 } from "lucide-react";
-import { Opportunity, KanbanColumnConfig } from "@/types/opportunity";
+import { Opportunity } from "@/types/opportunity";
+import { SerializedKanbanColumn } from "@/types/view";
 import { DraggableOpportunityCard } from "./DraggableOpportunityCard";
 import { updateColumn, deleteColumn } from "@/lib/api/columns";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
 export interface KanbanColumnProps {
-  column: KanbanColumnConfig;
+  column: SerializedKanbanColumn;
   opportunities: Opportunity[];
   onOpenOpportunity?: (id: string) => void;
   isVirtualMode?: boolean;
