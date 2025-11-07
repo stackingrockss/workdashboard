@@ -4,7 +4,7 @@ import { accountCreateSchema } from "@/lib/validations/account";
 import { requireAuth } from "@/lib/auth";
 import { z } from "zod";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const user = await requireAuth();
 

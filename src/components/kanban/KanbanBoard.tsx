@@ -3,14 +3,15 @@
 import { useMemo } from "react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useState } from "react";
-import { Opportunity, OpportunityStage, KanbanColumnConfig } from "@/types/opportunity";
+import { Opportunity, OpportunityStage } from "@/types/opportunity";
+import { SerializedKanbanColumn } from "@/types/view";
 import { KanbanColumn } from "./KanbanColumn";
 import { OpportunityCard } from "./OpportunityCard";
 import { groupOpportunitiesByQuarter } from "@/lib/utils/quarterly-view";
 
 export interface KanbanBoardProps {
   opportunities: Opportunity[];
-  columns: KanbanColumnConfig[];
+  columns: SerializedKanbanColumn[];
   onStageChange?: (opportunityId: string, newStage: OpportunityStage) => Promise<void>;
   onColumnChange?: (opportunityId: string, newColumnId: string) => Promise<void>;
   isVirtualMode?: boolean;
