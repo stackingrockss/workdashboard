@@ -156,7 +156,7 @@ export function isOpportunityInQuarterColumn(
     const quarter = getQuarterFromDate(new Date(opportunity.closeDate), fiscalYearStartMonth);
     const expectedId = `virtual-${quarter.replace(/\s+/g, "-")}`;
     return virtualColumnId === expectedId;
-  } catch (error) {
+  } catch {
     return false;
   }
 }

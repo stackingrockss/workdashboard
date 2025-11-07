@@ -12,7 +12,7 @@ export async function DELETE(
       where: { id: callId },
     });
     return NextResponse.json({ ok: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to delete Gong call" }, { status: 500 });
   }
 }

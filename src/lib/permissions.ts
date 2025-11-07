@@ -271,7 +271,7 @@ export function canManageOrganization(user: User): boolean {
 /**
  * Check if user can view organization settings
  */
-export function canViewOrgSettings(user: User): boolean {
+export function canViewOrgSettings(): boolean {
   // All users can view basic org settings
   return true;
 }

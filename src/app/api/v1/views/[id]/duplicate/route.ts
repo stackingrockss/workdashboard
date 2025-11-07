@@ -7,11 +7,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { viewDuplicateSchema } from "@/lib/validations/view";
-import { SerializedKanbanView, MAX_VIEWS_PER_USER, isBuiltInView, getViewTypeFromBuiltInId } from "@/types/view";
+import { SerializedKanbanView, MAX_VIEWS_PER_USER, isBuiltInView, getViewTypeFromBuiltInId, PrismaViewWithColumns, PrismaWhereClause } from "@/types/view";
 import { getBuiltInColumns } from "@/lib/utils/built-in-views";
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -23,12 +23,12 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Require authentication
     const user = await requireAuth();
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const validatedData = viewDuplicateSchema.parse(body);
 
-    let sourceView: any;
-    let sourceColumns: any[] = [];
+    let sourceView: PrismaViewWithColumns | null = null;
+    let sourceColumns: Array<{ title: string; order: number; color?: string | null }> = [];
     let userId: string | null = null;
     let organizationId: string | null = null;
 
@@ -96,11 +96,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
       userId = sourceView.userId;
       organizationId = sourceView.organizationId;
-      sourceColumns = (sourceView as any).columns;
+      sourceColumns = sourceView.columns;
     }
 
     // Check view count limit
-    const where: any = {};
+    const where: PrismaWhereClause = {};
     if (userId) where.userId = userId;
     if (organizationId) where.organizationId = organizationId;
 
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Copy columns if requested
     if (validatedData.includeColumns && sourceColumns.length > 0) {
       await prisma.kanbanColumn.createMany({
-        data: sourceColumns.map((col: any, index: number) => ({
+        data: sourceColumns.map((col, index: number) => ({
           title: col.title,
           order: index,
           color: col.color || null,
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       isShared: createdView.isShared,
       createdAt: createdView.createdAt.toISOString(),
       updatedAt: createdView.updatedAt.toISOString(),
-      columns: (createdView as any).KanbanColumn.map((col: any) => ({
+      columns: (createdView as PrismaViewWithColumns).columns.map((col) => ({
         id: col.id,
         title: col.title,
         order: col.order,

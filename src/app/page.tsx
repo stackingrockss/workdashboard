@@ -3,7 +3,7 @@ import { calculateDashboardStats } from "@/lib/stats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/format";
-import { TrendingUp, Target, DollarSign, Percent, Award, AlertCircle } from "lucide-react";
+import { TrendingUp, Target, DollarSign, Award } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";

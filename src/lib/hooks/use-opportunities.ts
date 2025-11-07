@@ -70,7 +70,8 @@ export function useOpportunity(id: string): UseOpportunityResult {
     if (id) {
       fetchOpportunity();
     }
-  }, [id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]); // fetchOpportunity is stable and doesn't need to be in dependencies
 
   return {
     opportunity,

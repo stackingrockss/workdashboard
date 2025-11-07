@@ -150,7 +150,8 @@ export function OrgChartView({
     if (!hasPositions && contacts.length > 0) {
       onLayout();
     }
-  }, []); // Only run once on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount, intentionally ignoring contacts and onLayout
 
   if (contacts.length === 0) {
     return (

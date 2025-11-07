@@ -6,10 +6,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import { SerializedKanbanView, isBuiltInView } from "@/types/view";
+import { SerializedKanbanView, isBuiltInView, PrismaViewWithColumns, PrismaWhereClause } from "@/types/view";
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     // Require authentication
     const user = await requireAuth();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Built-in views can be "activated" (tracked in localStorage on client)
     // but we don't store them in database, so just return success
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
 
     // Deactivate all other views for this user/org
-    const where: any = {};
+    const where: PrismaWhereClause = {};
     if (existingView.userId) where.userId = existingView.userId;
     if (existingView.organizationId) where.organizationId = existingView.organizationId;
 
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       isShared: view.isShared,
       createdAt: view.createdAt.toISOString(),
       updatedAt: view.updatedAt.toISOString(),
-      columns: (view as any).columns.map((col: any) => ({
+      columns: (view as PrismaViewWithColumns).columns.map((col) => ({
         id: col.id,
         title: col.title,
         order: col.order,

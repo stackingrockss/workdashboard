@@ -52,7 +52,7 @@ export default async function OpportunitiesPage() {
     isShared: view.isShared,
     createdAt: view.createdAt.toISOString(),
     updatedAt: view.updatedAt.toISOString(),
-    columns: (view as any).KanbanColumn.map((col: any) => ({
+    columns: view.columns.map((col) => ({
       id: col.id,
       title: col.title,
       order: col.order,

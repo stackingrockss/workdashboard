@@ -20,7 +20,6 @@ export interface KanbanBoardProps {
 export function KanbanBoard({
   opportunities,
   columns,
-  onStageChange,
   onColumnChange,
   isVirtualMode = false,
   fiscalYearStartMonth = 1,

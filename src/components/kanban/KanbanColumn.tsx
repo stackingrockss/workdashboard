@@ -166,7 +166,7 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Column</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete "{column.title}"?
+            Are you sure you want to delete &quot;{column.title}&quot;?
             {count > 0 && (
               <span className="block mt-2 font-medium text-destructive">
                 Warning: This column contains {count} {count === 1 ? "opportunity" : "opportunities"}.

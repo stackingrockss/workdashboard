@@ -71,7 +71,7 @@ export function WelcomeViewDialog({
         <DialogHeader>
           <DialogTitle className="text-2xl">Welcome to Your Kanban Board!</DialogTitle>
           <DialogDescription className="text-base">
-            Choose how you'd like to organize your opportunities. You can always create more views or switch between them later.
+            Choose how you&apos;d like to organize your opportunities. You can always create more views or switch between them later.
           </DialogDescription>
         </DialogHeader>
 
@@ -131,7 +131,7 @@ export function WelcomeViewDialog({
         </div>
 
         <div className="mt-4 text-sm text-muted-foreground text-center">
-          💡 Tip: Built-in views (Quarterly, Stages, Forecast) are read-only. Choose "Custom" to create your own editable columns.
+          💡 Tip: Built-in views (Quarterly, Stages, Forecast) are read-only. Choose &quot;Custom&quot; to create your own editable columns.
         </div>
       </DialogContent>
     </Dialog>

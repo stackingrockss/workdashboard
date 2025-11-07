@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { UserRole } from "@prisma/client";
 import {
   Dialog,
   DialogContent,
@@ -136,7 +137,7 @@ export function EditUserDialog({
             <Label htmlFor="role">Role</Label>
             <Select
               value={selectedRole}
-              onValueChange={(value) => setValue("role", value as any)}
+              onValueChange={(value) => setValue("role", value as UserRole)}
               disabled={loading}
             >
               <SelectTrigger>

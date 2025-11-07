@@ -26,6 +26,7 @@ export function ColumnForm({ onSubmit, onCancel, submitLabel = "Save", defaultOr
       await onSubmit({
         title,
         order: defaultOrder,
+        viewId: "", // Will be filled by the parent component
         color: color || undefined,
       });
     } finally {

@@ -12,7 +12,7 @@ export async function DELETE(
       where: { id: noteId },
     });
     return NextResponse.json({ ok: true });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to delete Granola note" }, { status: 500 });
   }
 }

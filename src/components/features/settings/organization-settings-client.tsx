@@ -239,7 +239,7 @@ export function OrganizationSettingsClient() {
         <CardHeader>
           <CardTitle>Organization Details</CardTitle>
           <CardDescription>
-            Update your organization's name, domain, and fiscal year settings
+            Update your organization&apos;s name, domain, and fiscal year settings
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -22,7 +22,7 @@ export default async function OrganizationSettingsPage() {
       <div>
         <h1 className="text-3xl font-bold">Organization Settings</h1>
         <p className="text-muted-foreground mt-2">
-          Manage your organization's configuration and preferences
+          Manage your organization&apos;s configuration and preferences
         </p>
       </div>
 

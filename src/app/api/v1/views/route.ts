@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { viewCreateSchema, viewQuerySchema } from "@/lib/validations/view";
-import { SerializedKanbanView, MAX_VIEWS_PER_USER } from "@/types/view";
+import { SerializedKanbanView, MAX_VIEWS_PER_USER, PrismaViewWithColumns, PrismaWhereClause } from "@/types/view";
 import { getAllBuiltInViews } from "@/lib/utils/built-in-views";
 
 /**
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build where clause
-    const where: any = {};
+    const where: PrismaWhereClause = {};
     if (params.userId) where.userId = params.userId;
     if (params.organizationId) where.organizationId = params.organizationId;
     if (params.activeOnly) where.isActive = true;
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
       createdAt: view.createdAt.toISOString(),
       updatedAt: view.updatedAt.toISOString(),
       columns: params.includeColumns
-        ? (view as any).columns.map((col: any) => ({
+        ? (view as PrismaViewWithColumns).columns.map((col) => ({
             id: col.id,
             title: col.title,
             order: col.order,
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check view count limit
-    const where: any = { userId: user.id };
+    const where: PrismaWhereClause = { userId: user.id };
 
     const existingViewCount = await prisma.kanbanView.count({ where });
 
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
       isShared: view.isShared,
       createdAt: view.createdAt.toISOString(),
       updatedAt: view.updatedAt.toISOString(),
-      columns: (view as any).KanbanColumn.map((col: any) => ({
+      columns: (view as PrismaViewWithColumns).columns.map((col) => ({
         id: col.id,
         title: col.title,
         order: col.order,

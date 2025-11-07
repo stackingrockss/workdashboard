@@ -5,6 +5,27 @@
 
 import { KanbanView as PrismaKanbanView, KanbanColumn as PrismaKanbanColumn, ViewType } from "@prisma/client";
 
+// Re-export PrismaKanbanColumn to avoid unused import warning
+export type { PrismaKanbanColumn };
+
+/**
+ * Prisma query result types for views with included relations
+ */
+export type PrismaViewWithColumns = PrismaKanbanView & {
+  columns: PrismaKanbanColumn[];
+};
+
+/**
+ * Type for Prisma where clause objects
+ */
+export type PrismaWhereClause = {
+  userId?: string;
+  organizationId?: string;
+  isActive?: boolean;
+  id?: { not?: string };
+  name?: string;
+};
+
 /**
  * Column configuration with all fields
  */
@@ -12,10 +33,10 @@ export interface KanbanColumnConfig {
   id: string;
   title: string;
   order: number;
-  color?: string | null;
+  color: string | null | undefined;
   viewId: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 /**
@@ -50,7 +71,7 @@ export interface SerializedKanbanColumn {
   id: string;
   title: string;
   order: number;
-  color?: string | null;
+  color: string | null | undefined;
   viewId: string;
   createdAt: string;
   updatedAt: string;
@@ -90,7 +111,7 @@ export const BUILT_IN_VIEW_IDS = {
  * Check if a view ID belongs to a built-in view
  */
 export function isBuiltInView(viewId: string): boolean {
-  return Object.values(BUILT_IN_VIEW_IDS).includes(viewId as any);
+  return Object.values(BUILT_IN_VIEW_IDS).includes(viewId as typeof BUILT_IN_VIEW_IDS[keyof typeof BUILT_IN_VIEW_IDS]);
 }
 
 /**

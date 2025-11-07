@@ -297,6 +297,7 @@ enum ForecastCategory {
 enum NoteType {
   customer
   internal
+  prospect
 
   @@schema("opportunity_tracker")
 }

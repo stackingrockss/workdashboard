@@ -14,7 +14,7 @@ export async function GET(
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json({ calls });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch Gong calls" }, { status: 500 });
   }
 }
@@ -49,7 +49,7 @@ export async function POST(
       },
     });
     return NextResponse.json({ call }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to create Gong call" }, { status: 500 });
   }
 }

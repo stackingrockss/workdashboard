@@ -14,7 +14,7 @@ export async function GET(
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json({ notes });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch Google notes" }, { status: 500 });
   }
 }
@@ -48,7 +48,7 @@ export async function POST(
       },
     });
     return NextResponse.json({ note }, { status: 201 });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to create Google note" }, { status: 500 });
   }
 }

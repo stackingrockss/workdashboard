@@ -15,7 +15,6 @@ import {
 import { Settings, Building2, Calendar, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { FISCAL_YEAR_MONTHS } from "@/lib/utils/quarter";
-import { CompanySettings } from "@/types/company-settings";
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);

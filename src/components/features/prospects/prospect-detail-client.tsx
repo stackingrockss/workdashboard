@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { OrgChartSection } from "@/components/contacts/OrgChartSection";
 import { ConvertToOpportunityDialog } from "./convert-to-opportunity-dialog";
 
@@ -31,7 +30,6 @@ interface ProspectDetailClientProps {
 
 export function ProspectDetailClient({ account }: ProspectDetailClientProps) {
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
-  const router = useRouter();
 
   const priorityColors = {
     low: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100",

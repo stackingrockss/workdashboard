@@ -20,11 +20,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import {
   ClipboardCopy,
   Loader2,
-  AlertCircle,
   CheckCircle2,
   Users,
   Target,

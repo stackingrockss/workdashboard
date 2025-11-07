@@ -4,7 +4,6 @@
  */
 
 import { z } from "zod";
-import { ViewType } from "@prisma/client";
 
 /**
  * View type enum schema

@@ -22,7 +22,7 @@ export default async function UsersPage() {
       <div>
         <h1 className="text-3xl font-bold">Team Members</h1>
         <p className="text-muted-foreground mt-2">
-          Manage your organization's users, roles, and reporting structure
+          Manage your organization&apos;s users, roles, and reporting structure
         </p>
       </div>
 

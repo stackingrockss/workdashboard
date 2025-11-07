@@ -33,7 +33,7 @@ import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { ColumnForm } from "@/components/forms/column-form";
 import { ParseGongTranscriptDialog } from "@/components/features/opportunities/parse-gong-transcript-dialog";
 import { Opportunity, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory } from "@/types/opportunity";
-import { SerializedKanbanView, SerializedKanbanColumn, isBuiltInView } from "@/types/view";
+import { SerializedKanbanView, isBuiltInView } from "@/types/view";
 import { createOpportunity, updateOpportunity } from "@/lib/api/opportunities";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { createColumn } from "@/lib/api/columns";
@@ -170,9 +170,10 @@ export function KanbanBoardWrapper({
   // Handle creating a new custom view
   const handleCreateView = async () => {
     try {
-      const newView = await createView({
+      await createView({
         name: "New Custom View",
         viewType: "custom",
+        isDefault: false,
         userId,
         organizationId,
       });

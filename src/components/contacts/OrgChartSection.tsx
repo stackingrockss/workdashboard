@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -53,14 +53,7 @@ export function OrgChartSection({
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Load contacts
-  useEffect(() => {
-    if (effectiveApiEndpoint) {
-      loadContacts();
-    }
-  }, [effectiveApiEndpoint]);
-
-  const loadContacts = async () => {
+  const loadContacts = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(effectiveApiEndpoint);
@@ -76,7 +69,14 @@ export function OrgChartSection({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [effectiveApiEndpoint]);
+
+  // Load contacts
+  useEffect(() => {
+    if (effectiveApiEndpoint) {
+      loadContacts();
+    }
+  }, [effectiveApiEndpoint, loadContacts]);
 
   // Create contact
   const handleCreateContact = async (data: ContactCreateInput | ContactUpdateInput) => {

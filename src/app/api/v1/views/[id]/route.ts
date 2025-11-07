@@ -7,10 +7,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { viewUpdateSchema } from "@/lib/validations/view";
-import { SerializedKanbanView, isBuiltInView } from "@/types/view";
+import { SerializedKanbanView, isBuiltInView, PrismaViewWithColumns, PrismaWhereClause } from "@/types/view";
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 /**
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     // Require authentication
     const user = await requireAuth();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Check if it's a built-in view
     if (isBuiltInView(id)) {
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       isShared: view.isShared,
       createdAt: view.createdAt.toISOString(),
       updatedAt: view.updatedAt.toISOString(),
-      columns: (view as any).KanbanColumn.map((col: any) => ({
+      columns: (view as PrismaViewWithColumns).columns.map((col) => ({
         id: col.id,
         title: col.title,
         order: col.order,
@@ -93,7 +93,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // Require authentication
     const user = await requireAuth();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Prevent updating built-in views
     if (isBuiltInView(id)) {
@@ -125,7 +125,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // If changing name, check for duplicates
     if (validatedData.name && validatedData.name !== existingView.name) {
-      const where: any = {};
+      const where: PrismaWhereClause = {};
       if (existingView.userId) where.userId = existingView.userId;
       if (existingView.organizationId) where.organizationId = existingView.organizationId;
 
@@ -144,7 +144,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // If setting as default, unset other defaults
     if (validatedData.isDefault === true) {
-      const where: any = {};
+      const where: PrismaWhereClause = {};
       if (existingView.userId) where.userId = existingView.userId;
       if (existingView.organizationId) where.organizationId = existingView.organizationId;
 
@@ -159,7 +159,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     // If activating, deactivate others
     if (validatedData.isActive === true) {
-      const where: any = {};
+      const where: PrismaWhereClause = {};
       if (existingView.userId) where.userId = existingView.userId;
       if (existingView.organizationId) where.organizationId = existingView.organizationId;
 
@@ -196,7 +196,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       isShared: view.isShared,
       createdAt: view.createdAt.toISOString(),
       updatedAt: view.updatedAt.toISOString(),
-      columns: (view as any).KanbanColumn.map((col: any) => ({
+      columns: (view as PrismaViewWithColumns).columns.map((col) => ({
         id: col.id,
         title: col.title,
         order: col.order,
@@ -228,7 +228,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     // Require authentication
     const user = await requireAuth();
 
-    const { id } = params;
+    const { id } = await params;
 
     // Prevent deleting built-in views
     if (isBuiltInView(id)) {
@@ -256,7 +256,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
     }
 
     // Prevent deleting the only view
-    const where: any = {};
+    const where: PrismaWhereClause = {};
     if (existingView.userId) where.userId = existingView.userId;
     if (existingView.organizationId) where.organizationId = existingView.organizationId;
 
