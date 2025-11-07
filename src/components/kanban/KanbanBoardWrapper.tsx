@@ -90,11 +90,14 @@ export function KanbanBoardWrapper({
     setActiveView(initialActiveView);
   }, [initialActiveView]);
 
-  // Show welcome dialog for new users
+  // Show welcome dialog for new users (client-side only to avoid hydration mismatch)
   useEffect(() => {
-    const hasSeenWelcome = localStorage.getItem("kanban-welcome-seen");
-    if (isNewUser && !hasSeenWelcome) {
-      setIsWelcomeDialogOpen(true);
+    // Only access localStorage in useEffect to avoid SSR hydration issues
+    if (typeof window !== 'undefined') {
+      const hasSeenWelcome = localStorage.getItem("kanban-welcome-seen");
+      if (isNewUser && !hasSeenWelcome) {
+        setIsWelcomeDialogOpen(true);
+      }
     }
   }, [isNewUser]);
 
