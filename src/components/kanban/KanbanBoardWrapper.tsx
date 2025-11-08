@@ -386,7 +386,7 @@ export function KanbanBoardWrapper({
 
   const handleCreateColumn = async (data: ColumnCreateInput) => {
     try {
-      const maxOrder = displayColumns.length > 0 ? Math.max(...displayColumns.map(c => c.order)) : -1;
+      const maxOrder = displayColumns.length > 0 ? Math.max(...displayColumns.map((c) => c.order)) : -1;
       await createColumn({
         ...data,
         order: maxOrder + 1,
