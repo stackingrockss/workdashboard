@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Filter, Columns, FileText, Copy, Eye, EyeOff } from "lucide-react";
+import { Plus, Filter, Columns, FileText, Eye, EyeOff } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { ViewSelector } from "./ViewSelector";
 import { WelcomeViewDialog } from "./WelcomeViewDialog";
@@ -38,7 +38,7 @@ import { createOpportunity, updateOpportunity } from "@/lib/api/opportunities";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { createColumn } from "@/lib/api/columns";
 import { ColumnCreateInput } from "@/lib/validations/column";
-import { createView, activateView, duplicateView, deactivateAllViews } from "@/lib/api/views";
+import { createView, activateView, deactivateAllViews } from "@/lib/api/views";
 import { ViewType } from "@prisma/client";
 import { formatDateShort } from "@/lib/format";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
@@ -289,22 +289,6 @@ export function KanbanBoardWrapper({
     }
   };
 
-  // Handle duplicating built-in view to custom
-  const handleDuplicateView = async () => {
-    try {
-      await duplicateView(activeView.id, {
-        newName: `${activeView.name} (Custom)`,
-        includeColumns: true,
-        userId,
-        organizationId,
-      });
-
-      toast.success("View duplicated as custom view!");
-      router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to duplicate view");
-    }
-  };
 
   const handleCreateOpportunity = async (data: OpportunityCreateInput) => {
     try {
@@ -475,14 +459,6 @@ export function KanbanBoardWrapper({
                   ({hiddenOpportunitiesCount} hidden)
                 </span>
               )}
-            </Button>
-          )}
-
-          {/* Duplicate built-in view button */}
-          {isReadOnlyView && (
-            <Button size="sm" variant="outline" onClick={handleDuplicateView}>
-              <Copy className="h-4 w-4 mr-2" />
-              Duplicate as Custom
             </Button>
           )}
 
