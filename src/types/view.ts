@@ -75,6 +75,10 @@ export interface SerializedKanbanColumn {
   viewId: string;
   createdAt: string;
   updatedAt: string;
+  subtitle?: string; // Optional subtitle (e.g., month range for quarterly view)
+  metadata?: {
+    quarterStatus?: "past" | "current" | "future";
+  };
 }
 
 /**

@@ -290,24 +290,26 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       }
     }
 
+    // Get column IDs before deleting the view
+    const columns = await prisma.kanbanColumn.findMany({
+      where: { viewId: id },
+      select: { id: true },
+    });
+    const columnIds = columns.map((c) => c.id);
+
+    // Unassign opportunities that were in this view's columns
+    if (columnIds.length > 0) {
+      await prisma.opportunity.updateMany({
+        where: {
+          columnId: { in: columnIds },
+        },
+        data: { columnId: null },
+      });
+    }
+
     // Delete view (columns cascade automatically)
     await prisma.kanbanView.delete({
       where: { id },
-    });
-
-    // Unassign opportunities that were in deleted view's columns
-    await prisma.opportunity.updateMany({
-      where: {
-        columnId: {
-          in: await prisma.kanbanColumn
-            .findMany({
-              where: { viewId: id },
-              select: { id: true },
-            })
-            .then((cols) => cols.map((c) => c.id)),
-        },
-      },
-      data: { columnId: null },
     });
 
     return NextResponse.json({ success: true }, { status: 200 });

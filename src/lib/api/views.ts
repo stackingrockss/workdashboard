@@ -164,3 +164,18 @@ export async function createViewColumns(
     throw new Error(error.error || "Failed to create columns");
   }
 }
+
+/**
+ * Deactivate all views for the current user
+ * Used when switching to a built-in view
+ */
+export async function deactivateAllViews(): Promise<void> {
+  const response = await fetch("/api/v1/views/deactivate-all", {
+    method: "POST",
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to deactivate views");
+  }
+}

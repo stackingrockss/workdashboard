@@ -229,3 +229,86 @@ export function getNextQuarters(
 
   return quarters;
 }
+
+/**
+ * Format the month range for a quarter (e.g., "Jan - Mar").
+ *
+ * @param quarterString - Quarter string like "Q1 2025"
+ * @param fiscalYearStartMonth - Month when fiscal year starts (1=January, 2=February, etc.)
+ * @returns Formatted month range (e.g., "Jan - Mar")
+ */
+export function getQuarterMonthRange(
+  quarterString: string,
+  fiscalYearStartMonth: number = 1
+): string {
+  const { start, end } = getQuarterDateRange(quarterString, fiscalYearStartMonth);
+
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  const startMonth = monthNames[start.getMonth()];
+  const endMonth = monthNames[end.getMonth()];
+
+  return `${startMonth} - ${endMonth}`;
+}
+
+/**
+ * Determine the status of a quarter relative to the current date.
+ *
+ * @param quarterString - Quarter string like "Q1 2025"
+ * @param fiscalYearStartMonth - Month when fiscal year starts (1=January, 2=February, etc.)
+ * @returns "past" | "current" | "future"
+ */
+export function getQuarterStatus(
+  quarterString: string,
+  fiscalYearStartMonth: number = 1
+): "past" | "current" | "future" {
+  const current = getCurrentQuarter(fiscalYearStartMonth);
+  const { start, end } = getQuarterDateRange(quarterString, fiscalYearStartMonth);
+  const now = new Date();
+
+  // If today is before the quarter starts, it's future
+  if (now < start) {
+    return "future";
+  }
+
+  // If today is after the quarter ends, it's past
+  if (now > end) {
+    return "past";
+  }
+
+  // Otherwise, it's current
+  return "current";
+}
+
+/**
+ * Get previous N quarters starting from the current quarter (going backwards).
+ *
+ * @param count - Number of quarters to return (not including current quarter)
+ * @param fiscalYearStartMonth - Month when fiscal year starts (1=January, 2=February, etc.)
+ * @returns Array of quarter strings in chronological order (oldest to newest)
+ *
+ * @example
+ * // If current quarter is Q3 2025 and fiscal year starts in January
+ * getPreviousQuarters(2, 1) // => ["Q1 2025", "Q2 2025"]
+ */
+export function getPreviousQuarters(
+  count: number,
+  fiscalYearStartMonth: number = 1
+): string[] {
+  const current = getCurrentQuarter(fiscalYearStartMonth);
+  const quarters: string[] = [];
+
+  let q = current.quarter;
+  let y = current.fiscalYear;
+
+  for (let i = 0; i < count; i++) {
+    q--;
+    if (q < 1) {
+      q = 4;
+      y--;
+    }
+    quarters.unshift(`Q${q} ${y}`);
+  }
+
+  return quarters;
+}

@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Filter, Columns, FileText, Copy } from "lucide-react";
+import { Plus, Filter, Columns, FileText, Copy, Eye, EyeOff } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { ViewSelector } from "./ViewSelector";
 import { WelcomeViewDialog } from "./WelcomeViewDialog";
@@ -38,8 +38,11 @@ import { createOpportunity, updateOpportunity } from "@/lib/api/opportunities";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { createColumn } from "@/lib/api/columns";
 import { ColumnCreateInput } from "@/lib/validations/column";
-import { createView, activateView, duplicateView } from "@/lib/api/views";
+import { createView, activateView, duplicateView, deactivateAllViews } from "@/lib/api/views";
 import { ViewType } from "@prisma/client";
+import { formatDateShort } from "@/lib/format";
+import { getQuarterFromDate } from "@/lib/utils/quarter";
+import { countHiddenOpportunities } from "@/lib/utils/quarterly-view";
 
 interface KanbanBoardWrapperProps {
   opportunities: Opportunity[];
@@ -67,6 +70,7 @@ export function KanbanBoardWrapper({
   const [isParseTranscriptDialogOpen, setIsParseTranscriptDialogOpen] = useState(false);
   const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAllQuarters, setShowAllQuarters] = useState(false);
 
   // Local state for views and active view (for optimistic updates)
   const [views, setViews] = useState<SerializedKanbanView[]>(initialViews);
@@ -90,7 +94,28 @@ export function KanbanBoardWrapper({
     setActiveView(initialActiveView);
   }, [initialActiveView]);
 
+  // Check localStorage for selected built-in view preference on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedBuiltInViewId = localStorage.getItem("selected-built-in-view");
+      if (savedBuiltInViewId && isBuiltInView(savedBuiltInViewId)) {
+        // If a built-in view was previously selected and we're not already on it,
+        // and there's no active custom view, switch to it
+        const hasActiveCustomView = views.some(v => !isBuiltInView(v.id) && v.isActive);
+        if (!hasActiveCustomView && activeView.id !== savedBuiltInViewId) {
+          const savedView = views.find(v => v.id === savedBuiltInViewId);
+          if (savedView) {
+            setActiveView(savedView);
+          }
+        }
+      }
+    }
+    // Only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Show welcome dialog for new users (client-side only to avoid hydration mismatch)
+  // This should only run once on mount
   useEffect(() => {
     // Only access localStorage in useEffect to avoid SSR hydration issues
     if (typeof window !== 'undefined') {
@@ -99,12 +124,34 @@ export function KanbanBoardWrapper({
         setIsWelcomeDialogOpen(true);
       }
     }
-  }, [isNewUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount, isNewUser is stable from server
+
+  // Load and persist showAllQuarters preference
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem("kanban-show-all-quarters");
+      if (saved !== null) {
+        setShowAllQuarters(saved === "true");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("kanban-show-all-quarters", String(showAllQuarters));
+    }
+  }, [showAllQuarters]);
 
   // Get display columns based on active view
   const displayColumns = useMemo(() => {
+    // For quarterly view, regenerate columns based on showAllQuarters setting
+    if (activeView.viewType === "quarterly") {
+      const { generateQuarterlyColumns } = require("@/lib/utils/quarterly-view");
+      return generateQuarterlyColumns(localOpportunities, fiscalYearStartMonth, showAllQuarters);
+    }
     return activeView.columns;
-  }, [activeView]);
+  }, [activeView, showAllQuarters, localOpportunities, fiscalYearStartMonth]);
 
   // Get unique quarters from opportunities (for filter dropdown)
   const quarters = useMemo(() => {
@@ -146,6 +193,15 @@ export function KanbanBoardWrapper({
   // Check if current view is read-only (built-in view)
   const isReadOnlyView = isBuiltInView(activeView.id);
 
+  // Check if current view is quarterly
+  const isQuarterlyView = activeView.viewType === "quarterly";
+
+  // Count hidden opportunities (only for quarterly view when rolling window is active)
+  const hiddenOpportunitiesCount = useMemo(() => {
+    if (!isQuarterlyView || showAllQuarters) return 0;
+    return countHiddenOpportunities(localOpportunities, displayColumns, fiscalYearStartMonth);
+  }, [isQuarterlyView, showAllQuarters, localOpportunities, displayColumns, fiscalYearStartMonth]);
+
   // Handle view selection (optimistic update)
   const handleSelectView = async (viewId: string) => {
     // Find the view
@@ -156,8 +212,23 @@ export function KanbanBoardWrapper({
     setActiveView(newView);
 
     try {
-      // Update on server (only for custom views)
-      if (!isBuiltInView(viewId)) {
+      if (isBuiltInView(viewId)) {
+        // For built-in views, deactivate all custom views
+        // This ensures that on refresh, no custom view will be active,
+        // and the server-side logic will fall through to selecting the built-in view
+        await deactivateAllViews();
+
+        // Store the selected built-in view ID in localStorage
+        // so it persists across page refreshes
+        if (typeof window !== 'undefined') {
+          localStorage.setItem("selected-built-in-view", viewId);
+        }
+      } else {
+        // For custom views, activate this specific view (which deactivates others)
+        // and clear the built-in view preference
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem("selected-built-in-view");
+        }
         await activateView(viewId);
       }
 
@@ -222,6 +293,8 @@ export function KanbanBoardWrapper({
       await duplicateView(activeView.id, {
         newName: `${activeView.name} (Custom)`,
         includeColumns: true,
+        userId,
+        organizationId,
       });
 
       toast.success("View duplicated as custom view!");
@@ -257,28 +330,71 @@ export function KanbanBoardWrapper({
     }
   };
 
-  const handleColumnChange = async (opportunityId: string, newColumnId: string) => {
+  const handleColumnChange = async (opportunityId: string, newColumnId: string, newCloseDate?: string | null) => {
     // Optimistic update: update local state immediately
     const previousOpportunities = [...localOpportunities];
 
-    setLocalOpportunities(prev =>
-      prev.map(opp =>
-        opp.id === opportunityId
-          ? { ...opp, columnId: newColumnId }
-          : opp
-      )
-    );
+    // Determine if this is a quarterly view update (has closeDate) or custom view update (has columnId)
+    const isQuarterlyUpdate = newCloseDate !== undefined;
 
-    try {
-      // Update on server in background
-      await updateOpportunity(opportunityId, { columnId: newColumnId });
-      // Refresh in background to sync with server (non-blocking)
-      router.refresh();
-    } catch (error) {
-      // Rollback on error
-      setLocalOpportunities(previousOpportunities);
-      toast.error(error instanceof Error ? error.message : "Failed to move opportunity");
-      throw error;
+    if (isQuarterlyUpdate) {
+      // Quarterly mode: Update closeDate and recalculate quarter
+      setLocalOpportunities(prev =>
+        prev.map(opp => {
+          if (opp.id === opportunityId) {
+            const newQuarter = newCloseDate
+              ? getQuarterFromDate(new Date(newCloseDate), fiscalYearStartMonth)
+              : undefined;
+            return {
+              ...opp,
+              closeDate: newCloseDate || undefined,
+              quarter: newQuarter,
+            };
+          }
+          return opp;
+        })
+      );
+
+      try {
+        // Update on server in background
+        await updateOpportunity(opportunityId, { closeDate: newCloseDate || undefined });
+
+        // Show toast notification
+        if (newCloseDate) {
+          toast.success(`Close date updated to ${formatDateShort(newCloseDate)}`);
+        } else {
+          toast.success("Close date cleared");
+        }
+
+        // Refresh in background to sync with server (non-blocking)
+        router.refresh();
+      } catch (error) {
+        // Rollback on error
+        setLocalOpportunities(previousOpportunities);
+        toast.error(error instanceof Error ? error.message : "Failed to update close date");
+        throw error;
+      }
+    } else {
+      // Custom mode: Update columnId
+      setLocalOpportunities(prev =>
+        prev.map(opp =>
+          opp.id === opportunityId
+            ? { ...opp, columnId: newColumnId }
+            : opp
+        )
+      );
+
+      try {
+        // Update on server in background
+        await updateOpportunity(opportunityId, { columnId: newColumnId });
+        // Refresh in background to sync with server (non-blocking)
+        router.refresh();
+      } catch (error) {
+        // Rollback on error
+        setLocalOpportunities(previousOpportunities);
+        toast.error(error instanceof Error ? error.message : "Failed to move opportunity");
+        throw error;
+      }
     }
   };
 
@@ -342,6 +458,23 @@ export function KanbanBoardWrapper({
             onCreateView={handleCreateView}
             onManageViews={() => setIsManageViewsDialogOpen(true)}
           />
+
+          {/* Quarterly View: Show All Quarters Toggle */}
+          {isQuarterlyView && (
+            <Button
+              size="sm"
+              variant={showAllQuarters ? "default" : "outline"}
+              onClick={() => setShowAllQuarters(!showAllQuarters)}
+            >
+              {showAllQuarters ? <Eye className="h-4 w-4 mr-2" /> : <EyeOff className="h-4 w-4 mr-2" />}
+              {showAllQuarters ? "Showing All" : "Rolling Window"}
+              {!showAllQuarters && hiddenOpportunitiesCount > 0 && (
+                <span className="ml-1 text-xs opacity-70">
+                  ({hiddenOpportunitiesCount} hidden)
+                </span>
+              )}
+            </Button>
+          )}
 
           {/* Duplicate built-in view button */}
           {isReadOnlyView && (

@@ -5,40 +5,23 @@
 
 import { ViewType } from "@prisma/client";
 import { SerializedKanbanView, SerializedKanbanColumn, BUILT_IN_VIEW_IDS } from "@/types/view";
-import { getNextQuarters } from "@/lib/utils/quarter";
+import { generateQuarterlyColumns as generateQuarterlyColumnsFromOpportunities } from "@/lib/utils/quarterly-view";
+import { Opportunity } from "@/types/opportunity";
 
 /**
  * Generate virtual quarterly columns
- * Creates columns for current quarter + next 3 quarters
+ * Delegates to the main quarterly-view generator with rolling window support
+ *
+ * @param fiscalYearStartMonth - Fiscal year start month (1=Jan, 2=Feb, etc.)
+ * @param showAllQuarters - If true, show all quarters with opportunities. If false, use rolling window
+ * @param opportunities - All opportunities (needed for generating columns based on actual data)
  */
 export function generateQuarterlyColumns(
-  fiscalYearStartMonth: number = 1
+  fiscalYearStartMonth: number = 1,
+  showAllQuarters: boolean = false,
+  opportunities: Opportunity[] = []
 ): SerializedKanbanColumn[] {
-  const quarters = getNextQuarters(4, fiscalYearStartMonth);
-  const colors = ["#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe"]; // Progressive blue shades
-
-  const columns: SerializedKanbanColumn[] = quarters.map((quarter, index) => ({
-    id: `virtual-${quarter.replace(/\s+/g, "-")}`, // e.g., "virtual-Q1-2025"
-    title: quarter,
-    order: index,
-    color: colors[index] || "#94a3b8",
-    viewId: BUILT_IN_VIEW_IDS.QUARTERLY,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }));
-
-  // Add "Unassigned" column for opportunities without close dates
-  columns.push({
-    id: "unassigned",
-    title: "Unassigned",
-    order: columns.length,
-    color: "#6b7280", // gray-500
-    viewId: BUILT_IN_VIEW_IDS.QUARTERLY,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  });
-
-  return columns;
+  return generateQuarterlyColumnsFromOpportunities(opportunities, fiscalYearStartMonth, showAllQuarters);
 }
 
 /**
@@ -96,11 +79,13 @@ export function generateForecastColumns(): SerializedKanbanColumn[] {
  */
 export function getBuiltInColumns(
   viewType: ViewType,
-  fiscalYearStartMonth?: number
+  fiscalYearStartMonth?: number,
+  showAllQuarters?: boolean,
+  opportunities?: Opportunity[]
 ): SerializedKanbanColumn[] {
   switch (viewType) {
     case "quarterly":
-      return generateQuarterlyColumns(fiscalYearStartMonth);
+      return generateQuarterlyColumns(fiscalYearStartMonth, showAllQuarters, opportunities);
     case "stages":
       return generateStagesColumns();
     case "forecast":

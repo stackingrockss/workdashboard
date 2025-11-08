@@ -4,6 +4,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { OpportunityDetailClient } from "@/components/features/opportunities/opportunity-detail-client";
+import { getCurrentUser } from "@/lib/auth";
 
 interface OpportunityPageProps {
   params: Promise<{ id: string }>;
@@ -14,8 +15,15 @@ export const dynamic = "force-dynamic";
 export default async function OpportunityDetailPage({ params }: OpportunityPageProps) {
   const { id } = await params;
 
-  const opportunityFromDB = await prisma.opportunity.findUnique({
-    where: { id },
+  // Get current user to scope by organization
+  const user = await getCurrentUser();
+  if (!user) return notFound();
+
+  const opportunityFromDB = await prisma.opportunity.findFirst({
+    where: {
+      id,
+      organizationId: user.organization.id, // Security: scope to user's organization
+    },
     include: {
       owner: true,
       account: true,
@@ -51,6 +59,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     forecastCategory: opportunityFromDB.forecastCategory || undefined,
     riskNotes: opportunityFromDB.riskNotes || undefined,
     notes: opportunityFromDB.notes || undefined,
+    accountResearch: opportunityFromDB.accountResearch || undefined,
     owner: {
       id: opportunityFromDB.owner.id,
       name: opportunityFromDB.owner.name,

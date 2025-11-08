@@ -22,7 +22,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Pencil, Check, X, MoreVertical, Trash2 } from "lucide-react";
+import { Pencil, Check, X, MoreVertical, Trash2, AlertTriangle, Sparkles } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Opportunity } from "@/types/opportunity";
 import { SerializedKanbanColumn } from "@/types/view";
 import { DraggableOpportunityCard } from "./DraggableOpportunityCard";
@@ -48,6 +49,9 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
 
   // Disable editing in virtual mode
   const canEdit = !isVirtualMode;
+
+  // Get quarter status from metadata (if available)
+  const quarterStatus = column.metadata?.quarterStatus;
 
   const handleSave = async () => {
     if (!editedTitle.trim()) {
@@ -109,10 +113,29 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
             </div>
           ) : (
             <>
-              <h3 className="text-sm font-medium">
-                {column.title}
-                <span className="text-muted-foreground font-normal"> ({count})</span>
-              </h3>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium">
+                    {column.title}
+                    <span className="text-muted-foreground font-normal"> ({count})</span>
+                  </h3>
+                  {quarterStatus === "past" && (
+                    <Badge variant="destructive" className="text-xs">
+                      <AlertTriangle className="h-3 w-3 mr-1" />
+                      Past Due
+                    </Badge>
+                  )}
+                  {quarterStatus === "current" && (
+                    <Badge variant="default" className="text-xs bg-blue-500">
+                      <Sparkles className="h-3 w-3 mr-1" />
+                      Current
+                    </Badge>
+                  )}
+                </div>
+                {column.subtitle && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{column.subtitle}</p>
+                )}
+              </div>
               {canEdit && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

@@ -58,6 +58,8 @@ export const viewActivateSchema = z.object({
 export const viewDuplicateSchema = z.object({
   newName: viewNameSchema,
   includeColumns: z.boolean().optional().default(true),
+  userId: z.string().optional(),
+  organizationId: z.string().optional(),
 });
 
 /**

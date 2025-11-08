@@ -7,13 +7,13 @@ import { Opportunity, OpportunityStage } from "@/types/opportunity";
 import { SerializedKanbanColumn } from "@/types/view";
 import { KanbanColumn } from "./KanbanColumn";
 import { OpportunityCard } from "./OpportunityCard";
-import { groupOpportunitiesByQuarter } from "@/lib/utils/quarterly-view";
+import { groupOpportunitiesByQuarter, calculateCloseDateFromVirtualColumn } from "@/lib/utils/quarterly-view";
 
 export interface KanbanBoardProps {
   opportunities: Opportunity[];
   columns: SerializedKanbanColumn[];
   onStageChange?: (opportunityId: string, newStage: OpportunityStage) => Promise<void>;
-  onColumnChange?: (opportunityId: string, newColumnId: string) => Promise<void>;
+  onColumnChange?: (opportunityId: string, newColumnId: string, newCloseDate?: string | null) => Promise<void>;
   isVirtualMode?: boolean;
   fiscalYearStartMonth?: number;
 }
@@ -89,17 +89,27 @@ export function KanbanBoard({
     const targetColumn = columns.find(col => col.id === newColumnId);
     if (!targetColumn) return; // Invalid drop target
 
-    // In virtual mode, drag-and-drop is disabled (read-only)
     if (isVirtualMode) {
-      return;
-    }
+      // Quarterly mode: Calculate new close date from virtual column
+      const newCloseDate = calculateCloseDateFromVirtualColumn(newColumnId, fiscalYearStartMonth);
 
-    // No change if already in this column
-    if (opportunity.columnId === newColumnId) return;
+      // Check if the opportunity is already in this quarter
+      const currentCloseDate = opportunity.closeDate ? new Date(opportunity.closeDate).toISOString() : null;
+      if (currentCloseDate === newCloseDate) return; // No change needed
 
-    // Update columnId
-    if (onColumnChange) {
-      await onColumnChange(opportunityId, newColumnId);
+      // Update close date (which will automatically update the quarter)
+      if (onColumnChange) {
+        await onColumnChange(opportunityId, newColumnId, newCloseDate);
+      }
+    } else {
+      // Custom mode: Update columnId directly
+      // No change if already in this column
+      if (opportunity.columnId === newColumnId) return;
+
+      // Update columnId
+      if (onColumnChange) {
+        await onColumnChange(opportunityId, newColumnId);
+      }
     }
   };
 
