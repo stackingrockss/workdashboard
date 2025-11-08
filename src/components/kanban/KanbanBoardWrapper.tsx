@@ -147,6 +147,8 @@ export function KanbanBoardWrapper({
   const displayColumns = useMemo(() => {
     // For quarterly view, regenerate columns based on showAllQuarters setting
     if (activeView.viewType === "quarterly") {
+      // Use dynamic import in useMemo is not ideal, but we need this for quarterly regeneration
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { generateQuarterlyColumns } = require("@/lib/utils/quarterly-view");
       return generateQuarterlyColumns(localOpportunities, fiscalYearStartMonth, showAllQuarters);
     }

@@ -262,7 +262,6 @@ export function getQuarterStatus(
   quarterString: string,
   fiscalYearStartMonth: number = 1
 ): "past" | "current" | "future" {
-  const current = getCurrentQuarter(fiscalYearStartMonth);
   const { start, end } = getQuarterDateRange(quarterString, fiscalYearStartMonth);
   const now = new Date();
 

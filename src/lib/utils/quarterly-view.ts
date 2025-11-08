@@ -8,7 +8,6 @@ import { SerializedKanbanColumn } from "@/types/view";
 import {
   getQuarterFromDate,
   getQuarterDateRange,
-  getCurrentQuarter,
   getPreviousQuarters,
   getNextQuarters,
   getQuarterStatus,
@@ -302,7 +301,7 @@ export function countHiddenOpportunities(
         if (!visibleQuarterIds.has(quarterId)) {
           hiddenCount++;
         }
-      } catch (error) {
+      } catch {
         // Ignore errors for invalid dates
       }
     }
