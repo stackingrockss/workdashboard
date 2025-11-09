@@ -70,6 +70,16 @@ export function GongCallInsightsDialog({
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [showContactImport, setShowContactImport] = useState(false);
 
+  // Debug: Log insights data when dialog opens
+  console.log('GongCallInsightsDialog insights:', {
+    painPointsLength: insights.painPoints?.length,
+    goalsLength: insights.goals?.length,
+    peopleLength: insights.people?.length,
+    nextStepsLength: insights.nextSteps?.length,
+    painPoints: insights.painPoints,
+    goals: insights.goals,
+  });
+
   // Copy section to clipboard
   const copyToClipboard = (text: string, sectionName: string) => {
     navigator.clipboard.writeText(text);
