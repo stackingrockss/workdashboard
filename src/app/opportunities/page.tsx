@@ -102,6 +102,7 @@ export default async function OpportunitiesPage() {
       ? {
           id: opp.account.id,
           name: opp.account.name,
+          website: opp.account.website || undefined,
         }
       : undefined,
     amountArr: opp.amountArr,
@@ -125,7 +126,7 @@ export default async function OpportunitiesPage() {
     owner: opp.owner
       ? {
           id: opp.owner.id,
-          name: opp.owner.name,
+          name: opp.owner.name || "Unknown",
           email: opp.owner.email || undefined,
           avatarUrl: opp.owner.avatarUrl || undefined,
         }

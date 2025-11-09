@@ -43,6 +43,7 @@ export function mapPrismaOpportunityToOpportunity(
       ? {
           id: opp.account.id,
           name: opp.account.name,
+          website: opp.account.website || undefined,
         }
       : undefined,
     amountArr: opp.amountArr,

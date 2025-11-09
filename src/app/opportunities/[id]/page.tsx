@@ -17,7 +17,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
 
   // Get current user to scope by organization
   const user = await getCurrentUser();
-  if (!user) return notFound();
+  if (!user || !user.organization) return notFound();
 
   const opportunityFromDB = await prisma.opportunity.findFirst({
     where: {

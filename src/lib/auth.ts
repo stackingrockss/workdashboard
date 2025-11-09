@@ -21,7 +21,7 @@ export async function getCurrentSupabaseUser(): Promise<SupabaseUser | null> {
  * Includes organization, manager, and direct reports relations
  */
 export async function getCurrentUser(): Promise<(PrismaUser & {
-  organization: { id: string; name: string; fiscalYearStartMonth: number };
+  organization: { id: string; name: string; fiscalYearStartMonth: number } | null;
   directReports: PrismaUser[];
 }) | null> {
   const supabaseUser = await getCurrentSupabaseUser();
@@ -148,9 +148,12 @@ export async function requireAuth(): Promise<PrismaUser & {
 }> {
   const user = await getCurrentUser();
 
-  if (!user) {
+  if (!user || !user.organization) {
     throw new Error("Unauthorized");
   }
 
-  return user;
+  return user as PrismaUser & {
+    organization: { id: string; name: string; fiscalYearStartMonth: number };
+    directReports: PrismaUser[];
+  };
 }

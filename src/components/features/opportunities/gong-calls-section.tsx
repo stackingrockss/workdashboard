@@ -226,7 +226,6 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
                 <SelectContent>
                   <SelectItem value="customer">Customer</SelectItem>
                   <SelectItem value="internal">Internal</SelectItem>
-                  <SelectItem value="prospect">Prospect</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">

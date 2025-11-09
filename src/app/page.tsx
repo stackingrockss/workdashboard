@@ -27,6 +27,7 @@ export default async function DashboardPage() {
     account: opp.account ? {
       id: opp.account.id,
       name: opp.account.name,
+      website: opp.account.website || undefined,
     } : undefined,
     amountArr: opp.amountArr,
     confidenceLevel: opp.confidenceLevel,
@@ -36,7 +37,7 @@ export default async function DashboardPage() {
     stage: opp.stage,
     owner: {
       id: opp.owner.id,
-      name: opp.owner.name,
+      name: opp.owner.name || "Unknown",
       avatarUrl: opp.owner.avatarUrl || undefined,
     },
     createdAt: opp.createdAt.toISOString(),

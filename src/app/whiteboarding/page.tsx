@@ -31,6 +31,7 @@ export default async function WhiteboardingPage() {
     account: opp.account ? {
       id: opp.account.id,
       name: opp.account.name,
+      website: opp.account.website || undefined,
     } : undefined,
     amountArr: opp.amountArr,
     confidenceLevel: opp.confidenceLevel,
@@ -52,8 +53,8 @@ export default async function WhiteboardingPage() {
     pinnedToWhiteboard: opp.pinnedToWhiteboard,
     owner: {
       id: opp.owner.id,
-      name: opp.owner.name,
-      email: opp.owner.email,
+      name: opp.owner.name || "Unknown",
+      email: opp.owner.email || undefined,
     },
     createdAt: opp.createdAt.toISOString(),
     updatedAt: opp.updatedAt.toISOString(),
