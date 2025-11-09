@@ -51,11 +51,11 @@ const baseOpportunitySchema = z.object({
     "closedLost",
   ]).optional(),
   columnId: z.string().optional().nullable(), // Support flexible column assignment
-  forecastCategory: z.enum(["pipeline", "bestCase", "forecast"]).optional().nullable().default("pipeline"),
+  forecastCategory: z.enum(["pipeline", "bestCase", "forecast"]).optional().nullable().transform(val => val || "pipeline").default("pipeline"),
   riskNotes: z.string().max(2000).optional().nullable().transform(val => val === "" ? null : val),
   notes: z.string().max(5000).optional().nullable().transform(val => val === "" ? null : val),
   accountResearch: z.string().max(50000).optional().nullable().transform(val => val === "" ? null : val),
-  ownerId: z.string().optional(),
+  ownerId: z.string().optional().transform(val => val === "" ? undefined : val),
   // New fields from CSV
   decisionMakers: z.string().max(1000).optional().nullable().transform(val => val === "" ? null : val),
   competition: z.string().max(200).optional().nullable().transform(val => val === "" ? null : val),
