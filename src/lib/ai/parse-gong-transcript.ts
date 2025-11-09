@@ -93,6 +93,7 @@ IMPORTANT RULES:
 - Be specific and concise in your extractions
 - If a category has no clear information, return empty array
 - For people, include everyone mentioned who is relevant to the deal
+- For people fields: If organization or role is unclear from context, use "Unknown" instead of leaving empty
 - For next steps, preserve dates/times mentioned
 - Focus on business-relevant information only (skip small talk unless it reveals relationship insights)
 - Do NOT add commentary or explanations outside the JSON structure`;
@@ -174,13 +175,22 @@ Return your analysis as JSON only.`;
       };
     }
 
-    // Validate people objects
+    // Validate and normalize people objects
     for (const person of parsedData.people) {
-      if (!person.name || !person.organization || !person.role) {
+      // Name is required - fail if missing
+      if (!person.name || person.name.trim() === "") {
         return {
           success: false,
-          error: "Invalid person object structure in AI response",
+          error: "Invalid person object structure in AI response: name is required",
         };
+      }
+
+      // Normalize missing or empty organization/role to "Unknown"
+      if (!person.organization || person.organization.trim() === "") {
+        person.organization = "Unknown";
+      }
+      if (!person.role || person.role.trim() === "") {
+        person.role = "Unknown";
       }
     }
 
