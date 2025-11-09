@@ -142,7 +142,7 @@ export function KanbanBoardWrapper({
     // Only filter columns if a specific quarter is selected (not "all" or "unassigned")
     if (selectedQuarter !== "all" && selectedQuarter !== "unassigned") {
       // Filter columns to only show the selected quarter
-      return displayColumns.filter(col => col.title === selectedQuarter);
+      return displayColumns.filter((col: { title: string }) => col.title === selectedQuarter);
     }
     return displayColumns;
   }, [displayColumns, selectedQuarter]);
