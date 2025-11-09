@@ -47,17 +47,16 @@ export async function triggerAccountResearchGeneration(
         opportunityValue,
       });
 
-      if (result.success && result.notes) {
-        // Truncate to 50,000 chars if needed (Prisma schema limit)
-        const truncatedNotes = result.notes.length > 50000
-          ? result.notes.substring(0, 50000)
-          : result.notes;
-
-        // Update opportunity with generated research
+      if (result.success && result.fullBrief) {
+        // Update opportunity with all structured research fields
+        // This matches the manual generation endpoint pattern in /api/v1/ai/meeting-notes
         await prisma.opportunity.update({
           where: { id: opportunityId },
           data: {
-            accountResearch: truncatedNotes,
+            accountResearch: result.fullBrief,
+            accountResearchMobile: result.mobileCheatSheet,
+            accountResearchMeta: JSON.parse(JSON.stringify(result.metadata)),
+            accountResearchGeneratedAt: new Date(),
             accountResearchStatus: AccountResearchStatus.completed,
           },
         });
