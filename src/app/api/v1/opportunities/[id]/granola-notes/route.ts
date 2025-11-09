@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { granolaCreateSchema } from "@/lib/validations/granola-note";
 
@@ -48,6 +49,10 @@ export async function POST(
         meetingDate: new Date(parsed.data.meetingDate),
       },
     });
+
+    // Revalidate the opportunity detail page to show new note immediately
+    revalidatePath(`/opportunities/${id}`);
+
     return NextResponse.json({ note }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to create Granola note" }, { status: 500 });

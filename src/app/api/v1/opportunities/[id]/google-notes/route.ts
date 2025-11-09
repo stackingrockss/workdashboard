@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { googleNoteCreateSchema } from "@/lib/validations/google-note";
 
@@ -47,6 +48,10 @@ export async function POST(
         url: parsed.data.url,
       },
     });
+
+    // Revalidate the opportunity detail page to show new note immediately
+    revalidatePath(`/opportunities/${id}`);
+
     return NextResponse.json({ note }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to create Google note" }, { status: 500 });

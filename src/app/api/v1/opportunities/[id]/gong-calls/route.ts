@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { gongCallCreateSchema } from "@/lib/validations/gong-call";
 
@@ -48,6 +49,10 @@ export async function POST(
         meetingDate: new Date(parsed.data.meetingDate),
       },
     });
+
+    // Revalidate the opportunity detail page to show new call immediately
+    revalidatePath(`/opportunities/${id}`);
+
     return NextResponse.json({ call }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Failed to create Gong call" }, { status: 500 });

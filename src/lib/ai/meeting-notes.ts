@@ -47,9 +47,20 @@ Focus on actionable insights that help sales reps have informed, consultative co
 Research should be current, specific, and directly relevant to credentialing/provider network challenges.
 
 OUTPUT FORMAT:
-Use clear markdown formatting with headers (##, ###) and bullet points.
-Be concise but thorough - aim for a 2-3 minute read.
-Focus on facts over speculation, but do highlight likely pain points based on industry knowledge.`;
+Use clean, readable formatting:
+- Use simple headers (## only, no ###) to separate major sections
+- Use bullet points (-) for lists instead of bold text for every item
+- Avoid excessive bold (**) formatting - use it ONLY for critical numbers, company names on first mention, or key takeaways
+- Use natural paragraph formatting for narrative sections
+- Keep it concise but thorough - aim for a 2-3 minute read
+- Focus on facts over speculation, but do highlight likely pain points based on industry knowledge.
+
+FORMATTING RULES:
+✅ DO: Use clean bullets with natural text flow
+✅ DO: Use bold sparingly for key numbers and critical insights
+❌ DON'T: Use ### subheaders (they create visual clutter)
+❌ DON'T: Bold every field name or label
+❌ DON'T: Use excessive asterisks - let content stand on its own`;
 
 /**
  * Generate pre-meeting notes prompt
@@ -57,9 +68,9 @@ Focus on facts over speculation, but do highlight likely pain points based on in
 function buildMeetingNotesPrompt(context: MeetingNotesContext): string {
   const { accountName, companyWebsite, stage, industry, opportunityValue } = context;
 
-  return `Generate comprehensive pre-meeting sales intelligence for an enterprise sales call with: **${accountName}**
+  return `Generate comprehensive pre-meeting sales intelligence for an enterprise sales call with: ${accountName}
 
-${companyWebsite ? `Company Website: ${companyWebsite}\n**Use the company website to gather accurate, current information about their products, services, and positioning.**\n` : ""}
+${companyWebsite ? `Company Website: ${companyWebsite}\nUse the company website to gather accurate, current information about their products, services, and positioning.\n` : ""}
 ${industry ? `Industry: ${industry}` : ""}
 ${stage ? `Opportunity Stage: ${stage}` : ""}
 ${opportunityValue ? `Estimated Deal Value: $${opportunityValue.toLocaleString()}` : ""}
@@ -73,7 +84,7 @@ Please research and provide the following sections:
 - Company size (employees, market cap if public)
 
 ## 2. Healthcare & Provider Network Context
-- **CRITICAL**: Estimate their provider network size (number of credentialed providers)
+- CRITICAL: Estimate their provider network size (number of credentialed providers)
 - Number of facilities/locations
 - Geographic footprint
 - Health plan membership numbers (if applicable)

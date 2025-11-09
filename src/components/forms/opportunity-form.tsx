@@ -121,7 +121,16 @@ export function OpportunityForm({
     e.preventDefault();
     setLoading(true);
     try {
-      await onSubmit(formData);
+      // Clean up form data - remove empty strings and convert to null/undefined
+      const cleanedData: OpportunityCreateInput = {
+        ...formData,
+        accountWebsite: formData.accountWebsite?.trim() || undefined,
+        nextStep: formData.nextStep?.trim() || undefined,
+        riskNotes: formData.riskNotes?.trim() || undefined,
+        ownerId: formData.ownerId?.trim() || undefined,
+      };
+
+      await onSubmit(cleanedData);
     } finally {
       setLoading(false);
     }
@@ -229,9 +238,12 @@ export function OpportunityForm({
           id="closeDate"
           value={formData.closeDate}
           onChange={(value) => setFormData({ ...formData, closeDate: value })}
-          placeholder="MM/DD/YYYY"
+          placeholder="MM/DD/YYYY or click calendar"
           required
         />
+        <p className="text-xs text-muted-foreground">
+          Type date as MM/DD/YYYY or use the calendar picker
+        </p>
       </div>
 
       <div className="space-y-2">

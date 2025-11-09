@@ -79,11 +79,14 @@ export function DatePicker({
   const [inputValue, setInputValue] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
 
-  // Parse the ISO value to a Date object
+  // Parse the ISO value to a Date object (timezone-safe)
   const selectedDate = React.useMemo(() => {
     if (!value) return undefined;
     try {
-      const date = new Date(value);
+      // Parse ISO date string (YYYY-MM-DD) in local timezone to avoid timezone shifts
+      const [year, month, day] = value.split('-').map(Number);
+      if (!year || !month || !day) return undefined;
+      const date = new Date(year, month - 1, day);
       return isValid(date) ? date : undefined;
     } catch {
       return undefined;

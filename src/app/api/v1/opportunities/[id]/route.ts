@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { opportunityUpdateSchema } from "@/lib/validations/opportunity";
 import { requireAuth } from "@/lib/auth";
-import { getQuarterFromDate } from "@/lib/utils/quarter";
+import { getQuarterFromDate, parseISODateSafe } from "@/lib/utils/quarter";
 import { getDefaultConfidenceLevel, getDefaultForecastCategory, OpportunityStage } from "@/types/opportunity";
 import { mapPrismaOpportunityToOpportunity } from "@/lib/mappers/opportunity";
 
@@ -136,7 +136,7 @@ export async function PATCH(
     if (data.confidenceLevel !== undefined) updateData.confidenceLevel = data.confidenceLevel;
     if (data.nextStep !== undefined) updateData.nextStep = data.nextStep;
     if (data.closeDate !== undefined) {
-      updateData.closeDate = data.closeDate ? new Date(data.closeDate) : null;
+      updateData.closeDate = data.closeDate || null;
 
       // Recalculate quarter when close date changes
       if (data.closeDate) {
@@ -144,7 +144,7 @@ export async function PATCH(
           where: { userId: user.id },
         });
         const fiscalYearStartMonth = settings?.fiscalYearStartMonth ?? 1;
-        const closeDate = new Date(data.closeDate);
+        const closeDate = parseISODateSafe(data.closeDate);
         const newQuarter = getQuarterFromDate(closeDate, fiscalYearStartMonth);
         updateData.quarter = newQuarter;
 

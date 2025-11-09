@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { opportunityCreateSchema } from "@/lib/validations/opportunity";
 import { requireAuth } from "@/lib/auth";
-import { getQuarterFromDate } from "@/lib/utils/quarter";
+import { getQuarterFromDate, parseISODateSafe } from "@/lib/utils/quarter";
 import { mapPrismaOpportunitiesToOpportunities, mapPrismaOpportunityToOpportunity } from "@/lib/mappers/opportunity";
 import { getVisibleUserIds, isAdmin } from "@/lib/permissions";
 import { triggerAccountResearchGenerationAsync } from "@/lib/ai/background-generation";
@@ -43,11 +43,15 @@ export async function POST(req: NextRequest) {
     const user = await requireAuth();
 
     const json = await req.json();
+    console.log("Received opportunity creation request:", json);
+
     const parsed = opportunityCreateSchema.safeParse(json);
     if (!parsed.success) {
+      console.error("Validation failed:", parsed.error.flatten());
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
     const data = parsed.data;
+    console.log("Validation passed, data:", data);
 
     // If account name is provided instead of accountId, find or create the account
     let accountId = data.accountId;
@@ -81,7 +85,7 @@ export async function POST(req: NextRequest) {
     // Calculate quarter from close date if provided
     let quarter = data.quarter;
     if (data.closeDate && !quarter) {
-      const closeDate = new Date(data.closeDate);
+      const closeDate = parseISODateSafe(data.closeDate);
       quarter = getQuarterFromDate(closeDate, fiscalYearStartMonth);
     }
 
@@ -105,13 +109,38 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Validate ownerId if provided
+    let finalOwnerId = user.id; // Default to authenticated user
+    if (data.ownerId) {
+      // Verify the provided ownerId exists and belongs to the same organization
+      const targetOwner = await prisma.user.findUnique({
+        where: { id: data.ownerId },
+      });
+
+      if (!targetOwner) {
+        return NextResponse.json(
+          { error: "Invalid ownerId: user does not exist" },
+          { status: 400 }
+        );
+      }
+
+      if (targetOwner.organizationId !== user.organization.id) {
+        return NextResponse.json(
+          { error: "Invalid ownerId: user is not in your organization" },
+          { status: 403 }
+        );
+      }
+
+      finalOwnerId = data.ownerId;
+    }
+
     const createData = {
       name: data.name,
       accountName: data.account ?? undefined,
       amountArr: data.amountArr ?? 0, // Default to 0 if not provided
       confidenceLevel: data.confidenceLevel ?? 3, // Default to 3 (medium) if not provided
       nextStep: data.nextStep ?? undefined,
-      closeDate: data.closeDate ? new Date(data.closeDate) : undefined,
+      closeDate: data.closeDate ?? undefined,
       quarter: quarter ?? undefined,
       columnId: columnId ?? undefined,
       stage: data.stage ?? "discovery", // Default to discovery if not provided
@@ -126,7 +155,7 @@ export async function POST(req: NextRequest) {
       securityReviewStatus: data.securityReviewStatus ?? "not_started",
       platformType: data.platformType ?? undefined,
       businessCaseStatus: data.businessCaseStatus ?? "not_started",
-      ownerId: data.ownerId ?? user.id, // Use provided ownerId or default to authenticated user's ID
+      ownerId: finalOwnerId,
       organizationId: user.organization.id, // Always set to user's organization
       ...(accountId ? { accountId } : {}),
     };

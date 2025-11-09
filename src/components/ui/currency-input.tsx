@@ -57,7 +57,7 @@ const CurrencyInput = React.forwardRef<HTMLInputElement, CurrencyInputProps>(
         ref={ref}
         type="text"
         inputMode="numeric"
-        className={cn("text-right", className)}
+        className={className}
         value={displayValue}
         onChange={handleChange}
         {...props}

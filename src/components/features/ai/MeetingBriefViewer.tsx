@@ -199,7 +199,7 @@ export const MeetingBriefViewer = ({
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <CardContent>
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <div className="markdown-content text-sm">
                     <ReactMarkdown>{backgroundContent}</ReactMarkdown>
                   </div>
                 </CardContent>

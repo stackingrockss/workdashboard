@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Plus, Trash2, FileText, Eye } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ExternalLink, Plus, Trash2, FileText, Eye, Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { GongCall, NoteType } from "@/types/gong-call";
 import { createGongCall, deleteGongCall } from "@/lib/api/gong-calls";
 import { useRouter } from "next/navigation";
@@ -43,6 +44,44 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
   const [selectedCallForParsing, setSelectedCallForParsing] = useState<GongCall | null>(null);
   const [selectedCallForViewing, setSelectedCallForViewing] = useState<GongCall | null>(null);
   const router = useRouter();
+
+  // Auto-refresh when any call is in "parsing" state
+  useEffect(() => {
+    const parsingCalls = calls.filter((call) => call.parsingStatus === "parsing");
+
+    if (parsingCalls.length === 0) return;
+
+    // Poll every 3 seconds
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [calls, router]);
+
+  // Show completion toast when a call finishes parsing
+  useEffect(() => {
+    const completedCalls = calls.filter(
+      (call) => call.parsingStatus === "completed" && call.parsedAt
+    );
+
+    // Check localStorage to avoid showing toast on initial page load
+    completedCalls.forEach((call) => {
+      const toastKey = `gong-parsed-${call.id}`;
+      const hasShownToast = sessionStorage.getItem(toastKey);
+
+      if (!hasShownToast) {
+        toast.success(`"${call.title}" parsed successfully! Click to view insights.`, {
+          duration: 5000,
+          action: {
+            label: "View",
+            onClick: () => setSelectedCallForViewing(call),
+          },
+        });
+        sessionStorage.setItem(toastKey, "true");
+      }
+    });
+  }, [calls]);
 
   const handleAddCall = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,7 +145,9 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
       ) : (
         <div className="space-y-2">
           {calls.map((call) => {
-            const hasParsedInsights = !!call.parsedAt;
+            const isParsing = call.parsingStatus === "parsing";
+            const hasFailed = call.parsingStatus === "failed";
+            const hasCompleted = call.parsingStatus === "completed" && !!call.parsedAt;
 
             return (
               <div
@@ -126,14 +167,38 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {formatDateShort(call.meetingDate)}
                   </span>
-                  {hasParsedInsights && (
+
+                  {/* Status Badges */}
+                  {isParsing && (
+                    <Badge variant="outline" className="text-xs flex items-center gap-1">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Parsing...
+                    </Badge>
+                  )}
+                  {hasCompleted && (
                     <Badge variant="secondary" className="text-xs">
                       Parsed
                     </Badge>
                   )}
+                  {hasFailed && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="destructive" className="text-xs flex items-center gap-1 cursor-help">
+                            <AlertCircle className="h-3 w-3" />
+                            Failed
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs max-w-xs">{call.parsingError || "Unknown error"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                  {hasParsedInsights ? (
+                  {/* Action Buttons */}
+                  {hasCompleted ? (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -142,7 +207,16 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                  ) : (
+                  ) : hasFailed ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedCallForParsing(call)}
+                      title="Retry Parsing"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  ) : !isParsing ? (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -151,12 +225,13 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
                     >
                       <FileText className="h-4 w-4" />
                     </Button>
-                  )}
+                  ) : null}
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDeleteCall(call.id, call.title)}
                     title="Delete"
+                    disabled={isParsing}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -260,6 +335,9 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
           opportunityId={opportunityId}
           gongCallId={selectedCallForParsing.id}
           onContactsImported={() => {
+            router.refresh();
+          }}
+          onParsingStarted={() => {
             router.refresh();
           }}
         />

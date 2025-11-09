@@ -49,7 +49,9 @@ export function mapPrismaOpportunityToOpportunity(
     amountArr: opp.amountArr,
     confidenceLevel: opp.confidenceLevel,
     nextStep: opp.nextStep || undefined,
-    closeDate: opp.closeDate?.toISOString() || undefined,
+    closeDate: opp.closeDate
+      ? opp.closeDate.toISOString().split('T')[0] // Extract date-only part (YYYY-MM-DD)
+      : undefined,
     quarter: opp.quarter || undefined,
     stage: opp.stage as Opportunity["stage"],
     columnId: opp.columnId || undefined,

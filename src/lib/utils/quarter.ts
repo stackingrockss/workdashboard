@@ -12,6 +12,18 @@
  */
 
 /**
+ * Parse an ISO date string (YYYY-MM-DD) to a Date object in local timezone.
+ * This prevents timezone shifts that occur when using `new Date("YYYY-MM-DD")`.
+ *
+ * @param isoString - ISO date string in format YYYY-MM-DD
+ * @returns Date object in local timezone representing the date
+ */
+export function parseISODateSafe(isoString: string): Date {
+  const [year, month, day] = isoString.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+/**
  * Calculate the quarter string from a date based on fiscal year start month.
  *
  * @param date - The date to calculate quarter for

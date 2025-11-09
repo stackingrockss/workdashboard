@@ -72,20 +72,22 @@ model Contact {
 }
 
 model GongCall {
-  id              String    @id @default(cuid())
+  id              String         @id @default(cuid())
   opportunityId   String
   title           String
   url             String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   meetingDate     DateTime
-  noteType        NoteType? @default(customer)
-  transcriptText  String?   @db.Text
+  noteType        NoteType?      @default(customer)
+  transcriptText  String?        @db.Text
   painPoints      Json?
   goals           Json?
   parsedPeople    Json?
   nextSteps       Json?
   parsedAt        DateTime?
+  parsingStatus   ParsingStatus?
+  parsingError    String?
   opportunity     Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
@@ -204,6 +206,9 @@ model Opportunity {
   platformType            PlatformType?
   businessCaseStatus      ReviewStatus?             @default(not_started)
   pinnedToWhiteboard      Boolean                   @default(false)
+  painPointsHistory       String?                   @db.Text
+  goalsHistory            String?                   @db.Text
+  nextStepsHistory        String?                   @db.Text
   organizationId          String
   contacts                Contact[]
   gongCalls               GongCall[]
@@ -362,6 +367,15 @@ enum ViewType {
 
 enum AccountResearchStatus {
   generating
+  completed
+  failed
+
+  @@schema("opportunity_tracker")
+}
+
+enum ParsingStatus {
+  pending
+  parsing
   completed
   failed
 

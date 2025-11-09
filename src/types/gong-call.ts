@@ -1,5 +1,7 @@
 export type NoteType = "customer" | "internal" | "prospect";
 
+export type ParsingStatus = "pending" | "parsing" | "completed" | "failed";
+
 export interface GongCall {
   id: string;
   opportunityId: string;
@@ -16,4 +18,7 @@ export interface GongCall {
   parsedPeople?: unknown; // JSON field - array of PersonExtracted objects
   nextSteps?: unknown; // JSON field - array of strings
   parsedAt?: string | null; // ISO date string when transcript was parsed
+  // Background processing status
+  parsingStatus?: ParsingStatus | null;
+  parsingError?: string | null;
 }

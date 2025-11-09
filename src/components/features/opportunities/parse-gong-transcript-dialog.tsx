@@ -56,6 +56,7 @@ interface ParseGongTranscriptDialogProps {
   opportunityId?: string; // Optional: If provided, enables contact import and DB saving
   gongCallId?: string; // Optional: If provided, saves parsed data to this GongCall record
   onContactsImported?: () => void; // Callback after contacts are imported
+  onParsingStarted?: () => void; // Callback after parsing is triggered
 }
 
 // ============================================================================
@@ -68,6 +69,7 @@ export function ParseGongTranscriptDialog({
   opportunityId,
   gongCallId,
   onContactsImported,
+  onParsingStarted,
 }: ParseGongTranscriptDialogProps) {
   const [step, setStep] = useState<"input" | "results" | "import_contacts">("input");
   const [transcriptText, setTranscriptText] = useState("");
@@ -84,10 +86,15 @@ export function ParseGongTranscriptDialog({
     onOpenChange(newOpen);
   };
 
-  // Parse transcript via API
+  // Parse transcript via API (background processing)
   const handleParse = async () => {
     if (!transcriptText || transcriptText.trim().length < 100) {
       toast.error("Please paste a valid Gong transcript (minimum 100 characters)");
+      return;
+    }
+
+    if (!gongCallId) {
+      toast.error("GongCall ID is required for parsing");
       return;
     }
 
@@ -99,28 +106,30 @@ export function ParseGongTranscriptDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           transcriptText,
-          gongCallId, // If provided, will save to database
+          gongCallId,
         }),
       });
 
       const result = await response.json();
 
       if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to parse transcript");
+        throw new Error(result.error || "Failed to start parsing");
       }
 
-      setParsedData(result.data);
-      setStep("results");
+      // Close dialog immediately
+      handleOpenChange(false);
 
-      if (result.saved) {
-        toast.success("Transcript parsed and saved successfully!");
-      } else {
-        toast.success("Transcript parsed successfully!");
-      }
+      // Trigger refresh callback
+      onParsingStarted?.();
+
+      // Show success toast
+      toast.success("Transcript parsing started! You'll be notified when it's complete.", {
+        duration: 4000,
+      });
     } catch (error) {
       console.error("Parse error:", error);
       toast.error(
-        error instanceof Error ? error.message : "Failed to parse transcript"
+        error instanceof Error ? error.message : "Failed to start parsing"
       );
     } finally {
       setIsLoading(false);

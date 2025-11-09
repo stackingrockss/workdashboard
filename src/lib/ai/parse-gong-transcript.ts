@@ -184,10 +184,17 @@ Return your analysis as JSON only.`;
       }
     }
 
-    // Classify roles for each person using AI
+    // Classify roles for each person using AI (parallelized for performance)
     // This converts free-form role text (e.g., "VP of Engineering") to Contact enum (e.g., "decision_maker")
-    for (const person of parsedData.people) {
-      const roleClassification = await classifyContactRole(person.role);
+    const roleClassifications = await Promise.all(
+      parsedData.people.map(async (person) => {
+        const roleClassification = await classifyContactRole(person.role);
+        return { person, roleClassification };
+      })
+    );
+
+    // Apply classification results to each person
+    for (const { person, roleClassification } of roleClassifications) {
       if (roleClassification.success && roleClassification.role) {
         person.classifiedRole = roleClassification.role;
       }

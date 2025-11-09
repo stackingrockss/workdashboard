@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -113,14 +114,19 @@ export function KanbanBoardWrapper({
   }, []);
 
   // Show welcome dialog for new users (client-side only to avoid hydration mismatch)
-  // This should only run once on mount
+  // Use useState initializer to check localStorage on mount (client-side only)
+  const [hasCheckedWelcome, setHasCheckedWelcome] = useState(false);
+
   useEffect(() => {
     // Only access localStorage in useEffect to avoid SSR hydration issues
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && !hasCheckedWelcome) {
       const hasSeenWelcome = localStorage.getItem("kanban-welcome-seen");
       if (isNewUser && !hasSeenWelcome) {
-        setIsWelcomeDialogOpen(true);
+        // Delay setting dialog open to avoid hydration mismatch
+        // This ensures the first render matches SSR
+        setTimeout(() => setIsWelcomeDialogOpen(true), 0);
       }
+      setHasCheckedWelcome(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once on mount, isNewUser is stable from server
@@ -469,6 +475,9 @@ export function KanbanBoardWrapper({
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Opportunity</DialogTitle>
+            <DialogDescription>
+              Add a new sales opportunity to your pipeline. Fill in the required fields below.
+            </DialogDescription>
           </DialogHeader>
           <OpportunityForm
             onSubmit={handleCreateOpportunity}
@@ -483,6 +492,9 @@ export function KanbanBoardWrapper({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add Column</DialogTitle>
+            <DialogDescription>
+              Create a new column to organize your opportunities in the Kanban board.
+            </DialogDescription>
           </DialogHeader>
           <ColumnForm
             onSubmit={handleCreateColumn}

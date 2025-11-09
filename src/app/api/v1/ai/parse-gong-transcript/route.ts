@@ -1,19 +1,21 @@
 /**
  * POST /api/v1/ai/parse-gong-transcript
  *
- * Parses a Gong call transcript to extract:
+ * Triggers background parsing of a Gong call transcript to extract:
  * - Pain points / challenges
  * - Goals / future state
  * - People (participants + mentioned)
  * - Next steps / action items
  *
- * If gongCallId is provided, saves parsed data to the GongCall record in the database.
+ * This endpoint immediately returns after saving the transcript and triggering background processing.
+ * Clients should poll the GongCall status to know when parsing is complete.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { parseGongTranscript } from "@/lib/ai/parse-gong-transcript";
+import { triggerTranscriptParsingAsync } from "@/lib/ai/background-transcript-parsing";
 import { prisma } from "@/lib/db";
+import { ParsingStatus } from "@prisma/client";
 
 // ============================================================================
 // Validation Schema
@@ -24,7 +26,7 @@ const parseRequestSchema = z.object({
     .string()
     .min(100, "Transcript must be at least 100 characters")
     .max(100000, "Transcript exceeds maximum length of 100,000 characters"),
-  gongCallId: z.string().cuid().optional(), // Optional: If provided, save parsed data to this GongCall
+  gongCallId: z.string().cuid(), // Required: GongCall ID to save parsed data and track status
 });
 
 // ============================================================================
@@ -51,59 +53,43 @@ export async function POST(request: NextRequest) {
 
     const { transcriptText, gongCallId } = validation.data;
 
-    // If gongCallId provided, verify it exists
-    if (gongCallId) {
-      const gongCall = await prisma.gongCall.findUnique({
-        where: { id: gongCallId },
-      });
+    // Verify GongCall exists
+    const gongCall = await prisma.gongCall.findUnique({
+      where: { id: gongCallId },
+    });
 
-      if (!gongCall) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Gong call not found",
-          },
-          { status: 404 }
-        );
-      }
-    }
-
-    // Parse transcript using Gemini
-    const result = await parseGongTranscript(transcriptText);
-
-    if (!result.success) {
+    if (!gongCall) {
       return NextResponse.json(
         {
           success: false,
-          error: result.error || "Failed to parse transcript",
+          error: "Gong call not found",
         },
-        { status: 500 }
+        { status: 404 }
       );
     }
 
-    // If gongCallId provided, save parsed data to database
-    if (gongCallId && result.data) {
-      await prisma.gongCall.update({
-        where: { id: gongCallId },
-        data: {
-          transcriptText,
-          painPoints: JSON.parse(JSON.stringify(result.data.painPoints)),
-          goals: JSON.parse(JSON.stringify(result.data.goals)),
-          parsedPeople: JSON.parse(JSON.stringify(result.data.people)),
-          nextSteps: JSON.parse(JSON.stringify(result.data.nextSteps)),
-          parsedAt: new Date(),
-        },
-      });
-    }
+    // Save transcript text and set status to 'parsing' immediately
+    await prisma.gongCall.update({
+      where: { id: gongCallId },
+      data: {
+        transcriptText,
+        parsingStatus: ParsingStatus.parsing,
+        parsingError: null,
+      },
+    });
 
-    // Return parsed data
+    // Trigger background parsing (fire-and-forget)
+    triggerTranscriptParsingAsync({ gongCallId, transcriptText });
+
+    // Return immediately with status
     return NextResponse.json(
       {
         success: true,
-        data: result.data,
-        saved: !!gongCallId, // Indicate whether data was saved to database
+        message: "Transcript parsing started in background",
+        status: ParsingStatus.parsing,
+        gongCallId,
       },
-      { status: 200 }
+      { status: 202 } // 202 Accepted - processing in background
     );
   } catch (error) {
     console.error("Error in parse-gong-transcript endpoint:", error);

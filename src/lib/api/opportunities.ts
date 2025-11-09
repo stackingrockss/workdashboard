@@ -61,6 +61,7 @@ export async function getOpportunity(id: string): Promise<Opportunity> {
 export async function createOpportunity(
   input: OpportunityCreateInput
 ): Promise<Opportunity> {
+  console.log("Creating opportunity with data:", input);
   const response = await fetch(`${API_BASE}/opportunities`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -68,8 +69,9 @@ export async function createOpportunity(
   });
 
   if (!response.ok) {
-    const error: ErrorResponse = await response.json();
-    throw new Error(error.error || "Failed to create opportunity");
+    const errorData = await response.json();
+    console.error("Create opportunity error:", errorData);
+    throw new Error(errorData.error || "Failed to create opportunity");
   }
 
   const data: CreateOpportunityResponse = await response.json();
