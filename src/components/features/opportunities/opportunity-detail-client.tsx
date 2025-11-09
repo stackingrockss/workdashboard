@@ -29,6 +29,7 @@ import {
   InlineTextareaWithAI,
   InlineSelect,
   InlineDatePicker,
+  InlineCurrencyInput,
 } from "@/components/ui/inline-editable";
 import { MeetingBriefViewer } from "@/components/features/ai/MeetingBriefViewer";
 
@@ -291,13 +292,10 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
                 options={stageOptions}
                 displayFormatter={(val) => getStageLabel(val as OpportunityStage)}
               />
-              <InlineTextInput
+              <InlineCurrencyInput
                 label="Amount (ARR)"
                 value={opportunity.amountArr}
                 onSave={async (value) => handleFieldUpdate("amountArr", value)}
-                type="number"
-                min={0}
-                step={1000}
                 displayFormatter={(val) => `${formatCurrencyCompact(val as number)} ARR`}
               />
               <InlineSelect

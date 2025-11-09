@@ -29,4 +29,29 @@ export function formatDateShort(isoDate?: string, locale = "en-US") {
   }).format(date);
 }
 
+/**
+ * Format a number as currency input with commas (no currency symbol)
+ * Used for displaying currency in input fields
+ * @example formatCurrencyInput(1234567) // "1,234,567"
+ */
+export function formatCurrencyInput(value: number | string): string {
+  const numValue = typeof value === "string" ? parseFloat(value) || 0 : value;
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(numValue);
+}
+
+/**
+ * Parse a currency input string (with commas) back to a number
+ * @example parseCurrencyInput("1,234,567") // 1234567
+ * @example parseCurrencyInput("$1,234") // 1234
+ */
+export function parseCurrencyInput(value: string): number {
+  // Remove all non-digit characters except decimal point
+  const cleaned = value.replace(/[^\d.]/g, "");
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? 0 : Math.floor(parsed);
+}
+
 

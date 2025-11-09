@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -40,7 +41,7 @@ export function ConvertToOpportunityDialog({
   const [isClient, setIsClient] = useState(false);
   const [formData, setFormData] = useState<{
     name: string;
-    amountArr: string;
+    amountArr: number;
     stage: OpportunityStage;
     confidenceLevel: string;
     closeDate: string;
@@ -49,7 +50,7 @@ export function ConvertToOpportunityDialog({
     nextStep: string;
   }>({
     name: `${accountName} - Opportunity`,
-    amountArr: "",
+    amountArr: 0,
     stage: "discovery",
     confidenceLevel: getDefaultConfidenceLevel("discovery").toString(),
     closeDate: "",
@@ -81,7 +82,7 @@ export function ConvertToOpportunityDialog({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: formData.name,
-          amountArr: parseInt(formData.amountArr),
+          amountArr: formData.amountArr,
           stage: formData.stage,
           confidenceLevel: parseInt(formData.confidenceLevel),
           closeDate: formData.closeDate || null,
@@ -138,14 +139,12 @@ export function ConvertToOpportunityDialog({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="amountArr">Amount (ARR) *</Label>
-              <Input
+              <CurrencyInput
                 id="amountArr"
-                type="number"
-                required
-                min="0"
                 value={formData.amountArr}
-                onChange={(e) => setFormData({ ...formData, amountArr: e.target.value })}
+                onChange={(value) => setFormData({ ...formData, amountArr: value })}
                 placeholder="0"
+                required
               />
             </div>
 

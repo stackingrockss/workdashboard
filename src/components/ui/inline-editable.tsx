@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -704,6 +705,114 @@ export function InlineTextareaWithAI({
             <Check className="h-4 w-4" />
           )}
         </Button>
+      </div>
+    </div>
+  );
+}
+
+interface InlineCurrencyInputProps extends Omit<BaseEditableFieldProps, 'value' | 'onSave'> {
+  value: number | null | undefined;
+  onSave: (value: number) => Promise<void>;
+}
+
+/**
+ * InlineCurrencyInput component
+ *
+ * Inline editable currency field with comma formatting as the user types.
+ * Displays formatted currency when not editing, and provides CurrencyInput when editing.
+ *
+ * @example
+ * <InlineCurrencyInput
+ *   value={opportunity.amountArr}
+ *   onSave={async (value) => handleFieldUpdate("amountArr", value)}
+ *   label="Amount (ARR)"
+ *   displayFormatter={(val) => formatCurrencyCompact(val as number)}
+ * />
+ */
+export function InlineCurrencyInput({
+  value,
+  onSave,
+  label,
+  placeholder = "Click to edit",
+  className,
+  displayFormatter,
+}: InlineCurrencyInputProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value || 0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Sync editValue with value prop when not editing
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(value || 0);
+    }
+  }, [value, isEditing]);
+
+  const handleSave = async () => {
+    if (editValue === (value || 0)) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await onSave(editValue);
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to save:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const displayValue = displayFormatter
+    ? displayFormatter(value)
+    : value?.toLocaleString() || placeholder;
+
+  if (!isEditing) {
+    return (
+      <div
+        className={cn(
+          "rounded-lg border p-4 cursor-pointer transition-colors group",
+          isHovered && "border-primary/50 bg-accent/50",
+          className
+        )}
+        onClick={() => setIsEditing(true)}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {label && (
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">{label}</div>
+            <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          </div>
+        )}
+        <div
+          className={cn(
+            "font-medium",
+            !value && "text-muted-foreground italic"
+          )}
+        >
+          {displayValue}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn("rounded-lg border p-4 border-primary", className)}>
+      {label && <div className="text-sm text-muted-foreground mb-2">{label}</div>}
+      <div className="flex items-center gap-2">
+        <CurrencyInput
+          value={editValue}
+          onChange={setEditValue}
+          onBlur={handleSave}
+          disabled={isSaving}
+          placeholder={placeholder}
+          className="h-8"
+        />
+        {isSaving && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       </div>
     </div>
   );
