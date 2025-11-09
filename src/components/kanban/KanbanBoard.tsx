@@ -115,7 +115,7 @@ export function KanbanBoard({
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.min(columns.length, 6)}, minmax(280px, 1fr))` }}>
+      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.min(columns.length, 6)}, minmax(320px, 1fr))` }}>
         {columns.map((col) => (
           <KanbanColumn
             key={col.id}

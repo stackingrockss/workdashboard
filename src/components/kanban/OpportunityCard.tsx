@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Opportunity } from "@/types/opportunity";
 import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle, Pin } from "lucide-react";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
@@ -65,8 +66,26 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <div className="truncate font-medium">{opportunity.name}</div>
-            <div className="truncate text-muted-foreground text-sm">{accountName}</div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="truncate font-medium">{opportunity.name}</div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{opportunity.name}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="truncate text-muted-foreground text-sm">{accountName}</div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{accountName}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <div className="flex items-start gap-1 shrink-0">
             <Button
@@ -117,7 +136,7 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
         {opportunity.nextStep && (
           <div className="flex items-start gap-2 text-sm">
             <ArrowRight size={16} className="mt-[2px] text-muted-foreground" />
-            <span className="line-clamp-2">{opportunity.nextStep}</span>
+            <span className="line-clamp-3">{opportunity.nextStep}</span>
           </div>
         )}
 
@@ -125,9 +144,18 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
           <Avatar className="h-6 w-6">
             <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
           </Avatar>
-          <span className="text-xs text-muted-foreground truncate">
-            {opportunity.owner.name}
-          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-xs text-muted-foreground truncate">
+                  {opportunity.owner.name}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{opportunity.owner.name}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </CardContent>
     </Card>

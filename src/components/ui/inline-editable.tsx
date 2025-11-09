@@ -48,6 +48,13 @@ export function InlineTextInput({
   const [isHovered, setIsHovered] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Sync editValue with value prop when not editing
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(value?.toString() || "");
+    }
+  }, [value, isEditing]);
+
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus();
@@ -166,6 +173,13 @@ export function InlineTextarea({
   const [isSaving, setIsSaving] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Sync editValue with value prop when not editing
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(value?.toString() || "");
+    }
+  }, [value, isEditing]);
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -295,6 +309,13 @@ export function InlineSelect({
   const [editValue, setEditValue] = useState(value?.toString() || "");
   const [isSaving, setIsSaving] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+
+  // Sync editValue with value prop when not editing
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(value?.toString() || "");
+    }
+  }, [value, isEditing]);
 
   const handleSave = async (newValue: string) => {
     if (newValue === (value?.toString() || "")) {
@@ -539,6 +560,13 @@ export function InlineTextareaWithAI({
   const [isSaving, setIsSaving] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Sync editValue with value prop when not editing
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(value?.toString() || "");
+    }
+  }, [value, isEditing]);
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {

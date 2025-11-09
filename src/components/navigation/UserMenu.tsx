@@ -14,11 +14,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { LogOut, User as UserIcon, Settings } from "lucide-react";
+import { LogOut, User as UserIcon, Settings, Building2 } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 export function UserMenu() {
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -31,6 +32,20 @@ export function UserMenu() {
         data: { user },
       } = await supabase.auth.getUser();
       setUser(user);
+
+      // Fetch user role from API
+      if (user) {
+        try {
+          const res = await fetch("/api/v1/me");
+          if (res.ok) {
+            const data = await res.json();
+            setUserRole(data.user?.role || null);
+          }
+        } catch (error) {
+          console.error("Error fetching user role:", error);
+        }
+      }
+
       setLoading(false);
     };
 
@@ -40,6 +55,9 @@ export function UserMenu() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (!session?.user) {
+        setUserRole(null);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -101,6 +119,12 @@ export function UserMenu() {
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>
         </DropdownMenuItem>
+        {userRole === "ADMIN" && (
+          <DropdownMenuItem onClick={() => router.push("/settings/organization")}>
+            <Building2 className="mr-2 h-4 w-4" />
+            <span>Organization</span>
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
           <LogOut className="mr-2 h-4 w-4" />

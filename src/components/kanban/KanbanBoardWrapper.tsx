@@ -140,13 +140,13 @@ export function KanbanBoardWrapper({
   // Get unique quarters from opportunities (for filter dropdown)
   const quarters = useMemo(() => {
     const uniqueQuarters = new Set<string>();
-    opportunities.forEach(opp => {
+    localOpportunities.forEach(opp => {
       if (opp.quarter) {
         uniqueQuarters.add(opp.quarter);
       }
     });
     return Array.from(uniqueQuarters).sort();
-  }, [opportunities]);
+  }, [localOpportunities]);
 
   // Filter opportunities based on quarter and search
   const filteredOpportunities = useMemo(() => {

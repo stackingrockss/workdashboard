@@ -51,11 +51,6 @@ export function ViewSelector({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" className="min-w-[200px] justify-between">
           <span className="truncate">{activeView.name}</span>
-          {isBuiltInView(activeView.id) && (
-            <Badge variant="secondary" className="ml-2 text-xs">
-              Read-only
-            </Badge>
-          )}
           <ChevronDown className="ml-2 h-4 w-4 opacity-50 flex-shrink-0" />
         </Button>
       </DropdownMenuTrigger>
@@ -71,12 +66,7 @@ export function ViewSelector({
             onClick={() => handleSelectView(view.id)}
             className="flex items-center justify-between cursor-pointer"
           >
-            <div className="flex items-center gap-2">
-              <span>{view.name}</span>
-              <Badge variant="outline" className="text-xs">
-                Read-only
-              </Badge>
-            </div>
+            <span>{view.name}</span>
             {activeView.id === view.id && <Check className="h-4 w-4 text-primary" />}
           </DropdownMenuItem>
         ))}
