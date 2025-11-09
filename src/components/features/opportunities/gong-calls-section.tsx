@@ -202,7 +202,19 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setSelectedCallForViewing(call)}
+                      onClick={() => {
+                        console.log('View Insights clicked. Call data:', {
+                          id: call.id,
+                          title: call.title,
+                          hasPainPoints: !!call.painPoints,
+                          hasGoals: !!call.goals,
+                          hasParsedPeople: !!call.parsedPeople,
+                          hasNextSteps: !!call.nextSteps,
+                          painPointsType: typeof call.painPoints,
+                          painPointsValue: call.painPoints,
+                        });
+                        setSelectedCallForViewing(call);
+                      }}
                       title="View Insights"
                     >
                       <Eye className="h-4 w-4" />
