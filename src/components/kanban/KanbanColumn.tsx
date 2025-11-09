@@ -30,6 +30,7 @@ import { DraggableOpportunityCard } from "./DraggableOpportunityCard";
 import { updateColumn, deleteColumn } from "@/lib/api/columns";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { formatCurrencyCompact } from "@/lib/format";
 
 export interface KanbanColumnProps {
   column: SerializedKanbanColumn;
@@ -44,6 +45,7 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const count = opportunities.length;
+  const totalArr = opportunities.reduce((sum, opp) => sum + opp.amountArr, 0);
   const { setNodeRef } = useDroppable({ id: column.id });
   const router = useRouter();
 
@@ -118,6 +120,9 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
                   <h3 className="text-sm font-medium">
                     {column.title}
                     <span className="text-muted-foreground font-normal"> ({count})</span>
+                    {count > 0 && (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-normal"> • {formatCurrencyCompact(totalArr)} ARR</span>
+                    )}
                   </h3>
                   {quarterStatus === "past" && (
                     <Badge variant="destructive" className="text-xs">

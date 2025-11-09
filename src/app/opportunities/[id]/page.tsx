@@ -62,7 +62,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     accountResearch: opportunityFromDB.accountResearch || undefined,
     owner: {
       id: opportunityFromDB.owner.id,
-      name: opportunityFromDB.owner.name,
+      name: opportunityFromDB.owner.name || opportunityFromDB.owner.email || "Unknown",
       avatarUrl: opportunityFromDB.owner.avatarUrl || undefined,
     },
     granolaNotes: opportunityFromDB.granolaNotes.map(note => ({

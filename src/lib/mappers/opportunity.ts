@@ -66,14 +66,14 @@ export function mapPrismaOpportunityToOpportunity(
     owner: opp.owner
       ? {
           id: opp.owner.id,
-          name: opp.owner.name,
-          email: opp.owner.email,
+          name: opp.owner.name || opp.owner.email || "Unknown",
+          email: opp.owner.email || undefined,
         }
       : {
           // Fallback for cases where owner is not included but ownerId exists
           id: opp.ownerId,
           name: "Unknown",
-          email: "",
+          email: undefined,
         },
     gongCalls: opp.gongCalls?.map((call) => ({
       id: call.id,
