@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Filter, Columns, FileText, Eye, EyeOff } from "lucide-react";
+import { Plus, Filter, Columns, FileText } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { ViewSelector } from "./ViewSelector";
 import { WelcomeViewDialog } from "./WelcomeViewDialog";
@@ -42,7 +42,6 @@ import { createView, activateView, deactivateAllViews } from "@/lib/api/views";
 import { ViewType } from "@prisma/client";
 import { formatDateShort } from "@/lib/format";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
-import { countHiddenOpportunities } from "@/lib/utils/quarterly-view";
 
 interface KanbanBoardWrapperProps {
   opportunities: Opportunity[];
@@ -70,7 +69,6 @@ export function KanbanBoardWrapper({
   const [isParseTranscriptDialogOpen, setIsParseTranscriptDialogOpen] = useState(false);
   const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [showAllQuarters, setShowAllQuarters] = useState(false);
 
   // Local state for views and active view (for optimistic updates)
   const [views, setViews] = useState<SerializedKanbanView[]>(initialViews);
@@ -127,33 +125,17 @@ export function KanbanBoardWrapper({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once on mount, isNewUser is stable from server
 
-  // Load and persist showAllQuarters preference
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem("kanban-show-all-quarters");
-      if (saved !== null) {
-        setShowAllQuarters(saved === "true");
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem("kanban-show-all-quarters", String(showAllQuarters));
-    }
-  }, [showAllQuarters]);
-
   // Get display columns based on active view
   const displayColumns = useMemo(() => {
-    // For quarterly view, regenerate columns based on showAllQuarters setting
+    // For quarterly view, regenerate columns dynamically from opportunities
     if (activeView.viewType === "quarterly") {
       // Use dynamic import in useMemo is not ideal, but we need this for quarterly regeneration
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { generateQuarterlyColumns } = require("@/lib/utils/quarterly-view");
-      return generateQuarterlyColumns(localOpportunities, fiscalYearStartMonth, showAllQuarters);
+      return generateQuarterlyColumns(localOpportunities, fiscalYearStartMonth);
     }
     return activeView.columns;
-  }, [activeView, showAllQuarters, localOpportunities, fiscalYearStartMonth]);
+  }, [activeView, localOpportunities, fiscalYearStartMonth]);
 
   // Get unique quarters from opportunities (for filter dropdown)
   const quarters = useMemo(() => {
@@ -194,15 +176,6 @@ export function KanbanBoardWrapper({
 
   // Check if current view is read-only (built-in view)
   const isReadOnlyView = isBuiltInView(activeView.id);
-
-  // Check if current view is quarterly
-  const isQuarterlyView = activeView.viewType === "quarterly";
-
-  // Count hidden opportunities (only for quarterly view when rolling window is active)
-  const hiddenOpportunitiesCount = useMemo(() => {
-    if (!isQuarterlyView || showAllQuarters) return 0;
-    return countHiddenOpportunities(localOpportunities, displayColumns, fiscalYearStartMonth);
-  }, [isQuarterlyView, showAllQuarters, localOpportunities, displayColumns, fiscalYearStartMonth]);
 
   // Handle view selection (optimistic update)
   const handleSelectView = async (viewId: string) => {
@@ -444,23 +417,6 @@ export function KanbanBoardWrapper({
             onCreateView={handleCreateView}
             onManageViews={() => setIsManageViewsDialogOpen(true)}
           />
-
-          {/* Quarterly View: Show All Quarters Toggle */}
-          {isQuarterlyView && (
-            <Button
-              size="sm"
-              variant={showAllQuarters ? "default" : "outline"}
-              onClick={() => setShowAllQuarters(!showAllQuarters)}
-            >
-              {showAllQuarters ? <Eye className="h-4 w-4 mr-2" /> : <EyeOff className="h-4 w-4 mr-2" />}
-              {showAllQuarters ? "Showing All" : "Rolling Window"}
-              {!showAllQuarters && hiddenOpportunitiesCount > 0 && (
-                <span className="ml-1 text-xs opacity-70">
-                  ({hiddenOpportunitiesCount} hidden)
-                </span>
-              )}
-            </Button>
-          )}
 
           {/* Add Column Button (only for custom views) */}
           {!isReadOnlyView && (

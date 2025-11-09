@@ -10,18 +10,16 @@ import { Opportunity } from "@/types/opportunity";
 
 /**
  * Generate virtual quarterly columns
- * Delegates to the main quarterly-view generator with rolling window support
+ * Delegates to the main quarterly-view generator
  *
  * @param fiscalYearStartMonth - Fiscal year start month (1=Jan, 2=Feb, etc.)
- * @param showAllQuarters - If true, show all quarters with opportunities. If false, use rolling window
  * @param opportunities - All opportunities (needed for generating columns based on actual data)
  */
 export function generateQuarterlyColumns(
   fiscalYearStartMonth: number = 1,
-  showAllQuarters: boolean = false,
   opportunities: Opportunity[] = []
 ): SerializedKanbanColumn[] {
-  return generateQuarterlyColumnsFromOpportunities(opportunities, fiscalYearStartMonth, showAllQuarters);
+  return generateQuarterlyColumnsFromOpportunities(opportunities, fiscalYearStartMonth);
 }
 
 /**
@@ -80,12 +78,11 @@ export function generateForecastColumns(): SerializedKanbanColumn[] {
 export function getBuiltInColumns(
   viewType: ViewType,
   fiscalYearStartMonth?: number,
-  showAllQuarters?: boolean,
   opportunities?: Opportunity[]
 ): SerializedKanbanColumn[] {
   switch (viewType) {
     case "quarterly":
-      return generateQuarterlyColumns(fiscalYearStartMonth, showAllQuarters, opportunities);
+      return generateQuarterlyColumns(fiscalYearStartMonth, opportunities);
     case "stages":
       return generateStagesColumns();
     case "forecast":

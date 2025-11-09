@@ -108,6 +108,22 @@ export async function PATCH(
     });
 
     if (!existingOpportunity) {
+      // Check if opportunity exists at all (for debugging)
+      const anyOpportunity = await prisma.opportunity.findUnique({
+        where: { id },
+        select: { id: true, organizationId: true },
+      });
+
+      if (anyOpportunity) {
+        console.error(`[PATCH /api/v1/opportunities/${id}] Organization mismatch:`, {
+          opportunityOrgId: anyOpportunity.organizationId,
+          userOrgId: user.organization.id,
+          userId: user.id,
+        });
+      } else {
+        console.error(`[PATCH /api/v1/opportunities/${id}] Opportunity does not exist in database`);
+      }
+
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 

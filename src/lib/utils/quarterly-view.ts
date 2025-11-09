@@ -8,7 +8,6 @@ import { SerializedKanbanColumn } from "@/types/view";
 import {
   getQuarterFromDate,
   getQuarterDateRange,
-  getPreviousQuarters,
   getNextQuarters,
   getQuarterStatus,
   getQuarterMonthRange,
@@ -17,67 +16,66 @@ import {
 export const UNASSIGNED_QUARTER_ID = "unassigned";
 export const UNASSIGNED_QUARTER_TITLE = "Unassigned";
 
-// Default rolling window settings
-export const DEFAULT_PAST_QUARTERS = 1; // Show last 1 quarter
-export const DEFAULT_FUTURE_QUARTERS = 3; // Show next 3 quarters (+ current = 4 total)
+// Default future quarter settings
+export const DEFAULT_FUTURE_QUARTERS = 3; // Show current + next 3 quarters (4 total)
 
 /**
  * Generate virtual quarter-based columns from opportunities.
  * These columns are not stored in the database - they're dynamically generated.
  *
+ * Strategy:
+ * - Always show current quarter + next 3 future quarters
+ * - Also show any past quarters that have opportunities (with orange color to indicate overdue)
+ * - No need for "rolling window" toggle - past quarters appear only if they contain data
+ *
  * @param opportunities - All opportunities to analyze
  * @param fiscalYearStartMonth - Fiscal year start month (1=Jan, 2=Feb, etc.)
- * @param showAllQuarters - If true, shows all quarters with opportunities. If false, uses rolling window.
  * @returns Array of virtual column configs sorted chronologically
  */
 export function generateQuarterlyColumns(
   opportunities: Opportunity[],
-  fiscalYearStartMonth: number = 1,
-  showAllQuarters: boolean = false
+  fiscalYearStartMonth: number = 1
 ): SerializedKanbanColumn[] {
-  let quarters: string[];
+  // Step 1: Always include current + next 3 quarters
+  const currentAndFutureQuarters = getNextQuarters(DEFAULT_FUTURE_QUARTERS + 1, fiscalYearStartMonth); // +1 includes current
+  const quarterSet = new Set<string>(currentAndFutureQuarters);
 
-  if (showAllQuarters) {
-    // Extract unique quarters from opportunities with close dates
-    const quarterSet = new Set<string>();
+  // Step 2: Find any past quarters that have opportunities
+  opportunities.forEach((opp) => {
+    if (opp.closeDate) {
+      try {
+        const quarter = getQuarterFromDate(new Date(opp.closeDate), fiscalYearStartMonth);
+        const status = getQuarterStatus(quarter, fiscalYearStartMonth);
 
-    opportunities.forEach((opp) => {
-      if (opp.closeDate) {
-        try {
-          const quarter = getQuarterFromDate(new Date(opp.closeDate), fiscalYearStartMonth);
+        // Only add if it's a past quarter (future/current already included)
+        if (status === "past") {
           quarterSet.add(quarter);
-        } catch (error) {
-          console.error("Error calculating quarter for opportunity:", opp.id, error);
         }
+      } catch (error) {
+        console.error("Error calculating quarter for opportunity:", opp.id, error);
       }
-    });
+    }
+  });
 
-    // Convert to sorted array and sort chronologically (not alphabetically)
-    quarters = Array.from(quarterSet).sort((a, b) => {
-      // Parse "Q1 2025" format
-      const matchA = a.match(/Q(\d)\s+(\d{4})/);
-      const matchB = b.match(/Q(\d)\s+(\d{4})/);
+  // Step 3: Convert to sorted array (chronologically)
+  const quarters = Array.from(quarterSet).sort((a, b) => {
+    // Parse "Q1 2025" format
+    const matchA = a.match(/Q(\d)\s+(\d{4})/);
+    const matchB = b.match(/Q(\d)\s+(\d{4})/);
 
-      if (!matchA || !matchB) return 0;
+    if (!matchA || !matchB) return 0;
 
-      const [, qA, yearA] = matchA;
-      const [, qB, yearB] = matchB;
+    const [, qA, yearA] = matchA;
+    const [, qB, yearB] = matchB;
 
-      // Sort by year first, then by quarter
-      if (yearA !== yearB) {
-        return parseInt(yearA) - parseInt(yearB);
-      }
-      return parseInt(qA) - parseInt(qB);
-    });
-  } else {
-    // Use rolling window: last N quarters + current + next M quarters
-    const pastQuarters = getPreviousQuarters(DEFAULT_PAST_QUARTERS, fiscalYearStartMonth);
-    const currentAndFutureQuarters = getNextQuarters(DEFAULT_FUTURE_QUARTERS + 1, fiscalYearStartMonth); // +1 includes current
+    // Sort by year first, then by quarter
+    if (yearA !== yearB) {
+      return parseInt(yearA) - parseInt(yearB);
+    }
+    return parseInt(qA) - parseInt(qB);
+  });
 
-    quarters = [...pastQuarters, ...currentAndFutureQuarters];
-  }
-
-  // Create virtual column configs
+  // Step 4: Create virtual column configs
   const now = new Date().toISOString();
   const columns: SerializedKanbanColumn[] = quarters.map((quarter, index) => {
     const status = getQuarterStatus(quarter, fiscalYearStartMonth);
@@ -268,44 +266,3 @@ export function calculateCloseDateFromVirtualColumn(
   }
 }
 
-/**
- * Count opportunities that are hidden when using the rolling window view.
- * This includes opportunities outside the visible quarter range.
- *
- * @param opportunities - All opportunities
- * @param visibleColumns - Columns currently visible in the rolling window
- * @param fiscalYearStartMonth - Fiscal year start month (1=Jan, 2=Feb, etc.)
- * @returns Number of opportunities with close dates outside the visible range
- */
-export function countHiddenOpportunities(
-  opportunities: Opportunity[],
-  visibleColumns: SerializedKanbanColumn[],
-  fiscalYearStartMonth: number = 1
-): number {
-  // Get set of visible quarter IDs (excluding "Unassigned")
-  const visibleQuarterIds = new Set(
-    visibleColumns
-      .filter((col) => col.id !== UNASSIGNED_QUARTER_ID)
-      .map((col) => col.id)
-  );
-
-  // Count opportunities with close dates that don't match any visible quarter
-  let hiddenCount = 0;
-
-  opportunities.forEach((opp) => {
-    if (opp.closeDate) {
-      try {
-        const quarter = getQuarterFromDate(new Date(opp.closeDate), fiscalYearStartMonth);
-        const quarterId = `virtual-${quarter.replace(/\s+/g, "-")}`;
-
-        if (!visibleQuarterIds.has(quarterId)) {
-          hiddenCount++;
-        }
-      } catch {
-        // Ignore errors for invalid dates
-      }
-    }
-  });
-
-  return hiddenCount;
-}
