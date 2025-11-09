@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generatePreMeetingNotes } from "@/lib/ai/meeting-notes";
 import { z } from "zod";
-import prisma from "@/lib/db";
+import { prisma } from "@/lib/db";
 
 /**
  * Request schema for meeting notes generation
