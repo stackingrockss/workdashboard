@@ -68,8 +68,8 @@ const baseOpportunitySchema = z.object({
 
 export const opportunityCreateSchema = baseOpportunitySchema
   .extend({
-    // Close date is required for creation
-    closeDate: z.string().datetime().min(1, "Close date is required"),
+    // Close date is required for creation - accepts ISO date format (YYYY-MM-DD)
+    closeDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Close date must be in YYYY-MM-DD format").min(1, "Close date is required"),
   })
   .refine(
     (data) => data.account || data.accountId,
@@ -81,8 +81,8 @@ export const opportunityCreateSchema = baseOpportunitySchema
 
 export const opportunityUpdateSchema = baseOpportunitySchema
   .extend({
-    // Close date is optional for updates
-    closeDate: z.string().datetime().optional().nullable().transform(val => val === "" ? null : val),
+    // Close date is optional for updates - accepts ISO date format (YYYY-MM-DD)
+    closeDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Close date must be in YYYY-MM-DD format").optional().nullable().transform(val => val === "" ? null : val),
   })
   .partial();
 
