@@ -62,7 +62,7 @@ async function main() {
     console.log(`Owner Name:       ${opportunity.owner.name}`);
     console.log(`Owner Email:      ${opportunity.owner.email}`);
     console.log(`Owner Org ID:     ${opportunity.owner.organizationId}`);
-    console.log(`Owner Org:        ${opportunity.owner.organization.name} (${opportunity.owner.organization.id})`);
+    console.log(`Owner Org:        ${opportunity.owner.organization?.name || 'N/A'} (${opportunity.owner.organization?.id || 'N/A'})`);
     console.log('\n✅ Match Check:');
     console.log('='.repeat(60));
 

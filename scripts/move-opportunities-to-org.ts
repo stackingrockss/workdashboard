@@ -76,7 +76,7 @@ async function main() {
 
     if (newOwner.organizationId !== targetOrgId) {
       console.error(`❌ New owner "${newOwner.email}" is not in target organization "${targetOrg.name}"`);
-      console.error(`   Owner org: ${newOwner.organization.name} (${newOwner.organizationId})`);
+      console.error(`   Owner org: ${newOwner.organization?.name || 'N/A'} (${newOwner.organizationId})`);
       process.exit(1);
     }
 
@@ -134,7 +134,7 @@ async function main() {
     });
 
     Object.entries(byOrg).forEach(([orgId, opps]) => {
-      const orgName = opps[0].organization.name;
+      const orgName = opps[0].organization?.name || 'Unknown';
       console.log(`From "${orgName}" (${orgId}):`);
       opps.forEach(opp => {
         console.log(`   ✓ ${opp.id}: ${opp.name} (owner: ${opp.owner.email})`);

@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
   SelectContent,
@@ -50,10 +52,6 @@ export function OpportunityForm({
   const [users, setUsers] = useState<OpportunityOwner[]>([]);
   const [fiscalYearStartMonth, setFiscalYearStartMonth] = useState(1);
   const isEditMode = !!initialData?.ownerId; // Edit mode if ownerId is provided
-  // Store numeric fields as strings to allow empty state during editing
-  const [amountArrInput, setAmountArrInput] = useState<string>(
-    initialData?.amountArr?.toString() || ""
-  );
   const [formData, setFormData] = useState<OpportunityCreateInput>({
     name: initialData?.name || "",
     account: initialData?.account || "",
@@ -162,18 +160,10 @@ export function OpportunityForm({
 
       <div className="space-y-2">
         <Label htmlFor="amountArr">Amount (ARR)</Label>
-        <Input
+        <CurrencyInput
           id="amountArr"
-          type="number"
-          min="0"
-          step="1000"
-          value={amountArrInput}
-          onChange={(e) => {
-            const value = e.target.value;
-            setAmountArrInput(value);
-            // Update formData with parsed number (or 0 if empty)
-            setFormData({ ...formData, amountArr: value ? parseInt(value) : 0 });
-          }}
+          value={formData.amountArr}
+          onChange={(value) => setFormData({ ...formData, amountArr: value })}
           placeholder="0"
         />
       </div>
@@ -220,45 +210,12 @@ export function OpportunityForm({
 
       <div className="space-y-2">
         <Label htmlFor="closeDate">Close Date *</Label>
-        <Input
+        <DatePicker
           id="closeDate"
-          type="text"
-          required
-          value={formData.closeDate ? formData.closeDate.split("T")[0] : ""}
-          onChange={(e) => {
-            const value = e.target.value;
-            // Try to parse the date as user types
-            try {
-              if (value) {
-                const parsedDate = new Date(value);
-                // Check if it's a valid date
-                if (!isNaN(parsedDate.getTime())) {
-                  setFormData({
-                    ...formData,
-                    closeDate: parsedDate.toISOString(),
-                  });
-                } else {
-                  // Keep the raw value if it's not yet parseable (user still typing)
-                  setFormData({
-                    ...formData,
-                    closeDate: value,
-                  });
-                }
-              } else {
-                setFormData({
-                  ...formData,
-                  closeDate: "",
-                });
-              }
-            } catch {
-              // Keep the raw value if parsing fails
-              setFormData({
-                ...formData,
-                closeDate: value,
-              });
-            }
-          }}
+          value={formData.closeDate}
+          onChange={(value) => setFormData({ ...formData, closeDate: value })}
           placeholder="YYYY-MM-DD (e.g. 2024-12-31)"
+          required
         />
       </div>
 

@@ -34,7 +34,7 @@ async function main() {
       console.log(`${index + 1}. ${user.name} (${user.email})`);
       console.log(`   User ID:         ${user.id}`);
       console.log(`   Supabase ID:     ${user.supabaseId || 'N/A'}`);
-      console.log(`   Organization:    ${user.organization.name} (${user.organization.id})`);
+      console.log(`   Organization:    ${user.organization?.name || 'N/A'} (${user.organization?.id || 'N/A'})`);
       console.log(`   Role:            ${user.role}`);
       console.log(`   Opportunities:   ${user.opportunities.length}`);
       if (user.opportunities.length > 0) {

@@ -80,7 +80,7 @@ async function main() {
     console.log(`   Email:        ${userToMove.email}`);
     console.log(`   User ID:      ${userToMove.id}`);
     console.log(`   Supabase ID:  ${userToMove.supabaseId || 'N/A'}`);
-    console.log(`   Current Org:  ${userToMove.organization.name} (${userToMove.organization.id})`);
+    console.log(`   Current Org:  ${userToMove.organization?.name || 'N/A'} (${userToMove.organization?.id || 'N/A'})`);
     console.log(`   Opportunities: ${userToMove.opportunities.length}`);
 
     console.log(`\n🏢 Target organization:`);
@@ -99,7 +99,7 @@ async function main() {
       });
     }
 
-    const oldOrgId = userToMove.organization.id;
+    const oldOrgId = userToMove.organization?.id;
     if (oldOrgId !== targetOrgId) {
       // Check if old org will be empty
       const oldOrg = await prisma.organization.findUnique({
