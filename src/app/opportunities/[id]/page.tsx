@@ -60,6 +60,9 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     riskNotes: opportunityFromDB.riskNotes || undefined,
     notes: opportunityFromDB.notes || undefined,
     accountResearch: opportunityFromDB.accountResearch || undefined,
+    painPointsHistory: opportunityFromDB.painPointsHistory || undefined,
+    goalsHistory: opportunityFromDB.goalsHistory || undefined,
+    nextStepsHistory: opportunityFromDB.nextStepsHistory || undefined,
     owner: {
       id: opportunityFromDB.owner.id,
       name: opportunityFromDB.owner.name || opportunityFromDB.owner.email || "Unknown",
