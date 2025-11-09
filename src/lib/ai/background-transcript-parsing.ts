@@ -4,6 +4,7 @@
 import { parseGongTranscript } from "./parse-gong-transcript";
 import { prisma } from "@/lib/db";
 import { ParsingStatus } from "@prisma/client";
+import { appendToOpportunityHistory } from "@/lib/utils/gong-history";
 
 /**
  * Context for background transcript parsing
@@ -44,7 +45,7 @@ export async function triggerTranscriptParsing(
 
       if (result.success && result.data) {
         // Update GongCall with parsed results
-        await prisma.gongCall.update({
+        const updatedGongCall = await prisma.gongCall.update({
           where: { id: gongCallId },
           data: {
             painPoints: JSON.parse(JSON.stringify(result.data.painPoints)),
@@ -55,9 +56,27 @@ export async function triggerTranscriptParsing(
             parsingStatus: ParsingStatus.completed,
             parsingError: null,
           },
+          include: {
+            opportunity: true,
+          },
         });
 
         console.log(`[Background Parsing] Successfully parsed transcript for GongCall ${gongCallId}`);
+
+        // Update opportunity history with parsed insights
+        try {
+          await appendToOpportunityHistory({
+            opportunityId: updatedGongCall.opportunityId,
+            meetingDate: updatedGongCall.meetingDate,
+            painPoints: result.data.painPoints,
+            goals: result.data.goals,
+            nextSteps: result.data.nextSteps,
+          });
+          console.log(`[Background Parsing] Updated opportunity history for Opportunity ${updatedGongCall.opportunityId}`);
+        } catch (historyError) {
+          // Log error but don't fail the parsing - history update is non-critical
+          console.error(`[Background Parsing] Failed to update opportunity history:`, historyError);
+        }
       } else {
         // Mark as failed if parsing didn't succeed
         await prisma.gongCall.update({

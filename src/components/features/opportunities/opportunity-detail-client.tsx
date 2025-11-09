@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users, ExternalLink } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users, ExternalLink, AlertCircle, Target, ListChecks } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -468,6 +468,63 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
               placeholder="Your personal notes about this opportunity..."
               rows={6}
             />
+
+            <Separator className="my-6" />
+
+            {/* Call Insights - Auto-generated from Gong transcripts */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-semibold">Call Insights</h3>
+                <span className="text-xs text-muted-foreground">
+                  Auto-generated from call transcripts (sorted by meeting date, newest first)
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                  <span>Pain Points & Challenges</span>
+                </div>
+                <InlineTextarea
+                  label=""
+                  value={opportunity.painPointsHistory || ""}
+                  onSave={async (value) => handleFieldUpdate("painPointsHistory", value)}
+                  placeholder="No pain points recorded yet. Add notes manually or parse Gong call transcripts."
+                  rows={8}
+                  className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950 font-mono text-sm whitespace-pre-wrap"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <Target className="h-4 w-4 text-green-500" />
+                  <span>Goals & Future State</span>
+                </div>
+                <InlineTextarea
+                  label=""
+                  value={opportunity.goalsHistory || ""}
+                  onSave={async (value) => handleFieldUpdate("goalsHistory", value)}
+                  placeholder="No goals recorded yet. Add notes manually or parse Gong call transcripts."
+                  rows={8}
+                  className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 font-mono text-sm whitespace-pre-wrap"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <ListChecks className="h-4 w-4 text-blue-500" />
+                  <span>Next Steps</span>
+                </div>
+                <InlineTextarea
+                  label=""
+                  value={opportunity.nextStepsHistory || ""}
+                  onSave={async (value) => handleFieldUpdate("nextStepsHistory", value)}
+                  placeholder="No next steps recorded yet. Add notes manually or parse Gong call transcripts."
+                  rows={8}
+                  className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 font-mono text-sm whitespace-pre-wrap"
+                />
+              </div>
+            </div>
           </div>
         </TabsContent>
 

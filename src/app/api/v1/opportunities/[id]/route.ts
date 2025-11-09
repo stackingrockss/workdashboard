@@ -213,6 +213,10 @@ export async function PATCH(
     if (data.businessCaseStatus !== undefined) updateData.businessCaseStatus = data.businessCaseStatus;
     if (data.ownerId !== undefined) updateData.ownerId = data.ownerId;
     if (data.pinnedToWhiteboard !== undefined) updateData.pinnedToWhiteboard = data.pinnedToWhiteboard;
+    // Call history fields (manually editable)
+    if (data.painPointsHistory !== undefined) updateData.painPointsHistory = data.painPointsHistory;
+    if (data.goalsHistory !== undefined) updateData.goalsHistory = data.goalsHistory;
+    if (data.nextStepsHistory !== undefined) updateData.nextStepsHistory = data.nextStepsHistory;
     if (accountId) {
       updateData.accountId = accountId;
     }

@@ -64,6 +64,9 @@ const baseOpportunitySchema = z.object({
   platformType: z.enum(["oem", "api", "isv"]).optional().nullable(),
   businessCaseStatus: z.enum(["not_started", "in_progress", "complete", "not_applicable"]).optional().nullable().default("not_started"),
   pinnedToWhiteboard: z.boolean().optional(),
+  painPointsHistory: z.string().optional(),
+  goalsHistory: z.string().optional(),
+  nextStepsHistory: z.string().optional(),
 });
 
 export const opportunityCreateSchema = baseOpportunitySchema

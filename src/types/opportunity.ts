@@ -127,6 +127,9 @@ export interface Opportunity {
   platformType?: PlatformType | null;
   businessCaseStatus?: ReviewStatus | null;
   pinnedToWhiteboard?: boolean;
+  painPointsHistory?: string | null;
+  goalsHistory?: string | null;
+  nextStepsHistory?: string | null;
   owner: OpportunityOwner;
   granolaNotes?: Array<{
     id: string;
