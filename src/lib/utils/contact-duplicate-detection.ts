@@ -60,15 +60,18 @@ export function splitFullName(fullName: string): {
   // Handle "Last, First" format
   if (normalized.includes(",")) {
     const [last, first] = normalized.split(",").map((s) => s.trim());
-    return { firstName: first || "", lastName: last || "" };
+    return {
+      firstName: first || "Unknown",
+      lastName: last || "Unknown"
+    };
   }
 
   // Handle "First Last" or "First Middle Last" format
   const parts = normalized.split(" ").filter((s) => s.length > 0);
   if (parts.length === 0) {
-    return { firstName: "", lastName: "" };
+    return { firstName: "Unknown", lastName: "Unknown" };
   } else if (parts.length === 1) {
-    return { firstName: parts[0], lastName: "" };
+    return { firstName: parts[0], lastName: "Unknown" };
   } else {
     // Take first part as first name, rest as last name
     const firstName = parts[0];
