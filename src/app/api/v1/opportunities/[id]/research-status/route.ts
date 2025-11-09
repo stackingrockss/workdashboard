@@ -17,11 +17,11 @@ import { requireAuth } from "@/lib/auth";
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth();
-    const opportunityId = params.id;
+    const { id: opportunityId } = await params;
 
     // Fetch only the fields we need for polling (lightweight query)
     const opportunity = await prisma.opportunity.findUnique({
