@@ -512,7 +512,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
               nextStep: opportunity.nextStep,
               closeDate: opportunity.closeDate,
               stage: opportunity.stage,
-              forecastCategory: opportunity.forecastCategory,
+              forecastCategory: opportunity.forecastCategory ?? undefined,
               riskNotes: opportunity.riskNotes,
               notes: opportunity.notes,
               accountResearch: opportunity.accountResearch,
