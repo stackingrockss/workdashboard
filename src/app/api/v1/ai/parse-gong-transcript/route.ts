@@ -87,10 +87,10 @@ export async function POST(request: NextRequest) {
         where: { id: gongCallId },
         data: {
           transcriptText,
-          painPoints: result.data.painPoints,
-          goals: result.data.goals,
-          parsedPeople: result.data.people,
-          nextSteps: result.data.nextSteps,
+          painPoints: JSON.parse(JSON.stringify(result.data.painPoints)),
+          goals: JSON.parse(JSON.stringify(result.data.goals)),
+          parsedPeople: JSON.parse(JSON.stringify(result.data.people)),
+          nextSteps: JSON.parse(JSON.stringify(result.data.nextSteps)),
           parsedAt: new Date(),
         },
       });
