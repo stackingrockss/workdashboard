@@ -18,11 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ExternalLink, Plus, Trash2, FileText, Eye } from "lucide-react";
 import { GongCall, NoteType } from "@/types/gong-call";
 import { createGongCall, deleteGongCall } from "@/lib/api/gong-calls";
 import { useRouter } from "next/navigation";
 import { formatDateShort } from "@/lib/format";
+import { ParseGongTranscriptDialog } from "./parse-gong-transcript-dialog";
+import { GongCallInsightsDialog } from "./gong-call-insights-dialog";
+import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 
 interface GongCallsSectionProps {
   opportunityId: string;
@@ -36,6 +40,8 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
   const [url, setUrl] = useState("");
   const [meetingDate, setMeetingDate] = useState("");
   const [noteType, setNoteType] = useState<NoteType>("customer");
+  const [selectedCallForParsing, setSelectedCallForParsing] = useState<GongCall | null>(null);
+  const [selectedCallForViewing, setSelectedCallForViewing] = useState<GongCall | null>(null);
   const router = useRouter();
 
   const handleAddCall = async (e: React.FormEvent) => {
@@ -99,35 +105,65 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
         </p>
       ) : (
         <div className="space-y-2">
-          {calls.map((call) => (
-            <div
-              key={call.id}
-              className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 group"
-            >
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <a
-                  href={call.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm font-medium hover:text-primary flex-1 min-w-0"
-                >
-                  <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">{call.title}</span>
-                </a>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">
-                  {formatDateShort(call.meetingDate)}
-                </span>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
-                onClick={() => handleDeleteCall(call.id, call.title)}
+          {calls.map((call) => {
+            const hasParsedInsights = !!call.parsedAt;
+
+            return (
+              <div
+                key={call.id}
+                className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 group"
               >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <a
+                    href={call.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 text-sm font-medium hover:text-primary flex-1 min-w-0"
+                  >
+                    <ExternalLink className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{call.title}</span>
+                  </a>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatDateShort(call.meetingDate)}
+                  </span>
+                  {hasParsedInsights && (
+                    <Badge variant="secondary" className="text-xs">
+                      Parsed
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                  {hasParsedInsights ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedCallForViewing(call)}
+                      title="View Insights"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedCallForParsing(call)}
+                      title="Parse Transcript"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteCall(call.id, call.title)}
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -214,6 +250,42 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Parse Transcript Dialog */}
+      {selectedCallForParsing && (
+        <ParseGongTranscriptDialog
+          open={!!selectedCallForParsing}
+          onOpenChange={(open) => {
+            if (!open) setSelectedCallForParsing(null);
+          }}
+          opportunityId={opportunityId}
+          gongCallId={selectedCallForParsing.id}
+          onContactsImported={() => {
+            router.refresh();
+          }}
+        />
+      )}
+
+      {/* View Insights Dialog */}
+      {selectedCallForViewing && selectedCallForViewing.parsedAt && (
+        <GongCallInsightsDialog
+          open={!!selectedCallForViewing}
+          onOpenChange={(open) => {
+            if (!open) setSelectedCallForViewing(null);
+          }}
+          gongCallTitle={selectedCallForViewing.title}
+          opportunityId={opportunityId}
+          insights={{
+            painPoints: (selectedCallForViewing.painPoints as string[]) || [],
+            goals: (selectedCallForViewing.goals as string[]) || [],
+            people: (selectedCallForViewing.parsedPeople as PersonExtracted[]) || [],
+            nextSteps: (selectedCallForViewing.nextSteps as string[]) || [],
+          }}
+          onContactsImported={() => {
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }

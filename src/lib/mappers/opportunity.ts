@@ -56,6 +56,7 @@ export function mapPrismaOpportunityToOpportunity(
     riskNotes: opp.riskNotes || undefined,
     notes: opp.notes || undefined,
     accountResearch: opp.accountResearch || undefined,
+    accountResearchStatus: (opp.accountResearchStatus as Opportunity["accountResearchStatus"]) || undefined,
     decisionMakers: opp.decisionMakers || undefined,
     competition: opp.competition || undefined,
     legalReviewStatus: (opp.legalReviewStatus as Opportunity["legalReviewStatus"]) || undefined,

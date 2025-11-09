@@ -71,15 +71,21 @@ model Contact {
 }
 
 model GongCall {
-  id            String      @id @default(cuid())
-  opportunityId String
-  title         String
-  url           String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  meetingDate   DateTime
-  noteType      NoteType?   @default(customer)
-  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  id              String    @id @default(cuid())
+  opportunityId   String
+  title           String
+  url             String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  meetingDate     DateTime
+  noteType        NoteType? @default(customer)
+  transcriptText  String?   @db.Text
+  painPoints      Json?
+  goals           Json?
+  parsedPeople    Json?
+  nextSteps       Json?
+  parsedAt        DateTime?
+  opportunity     Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
   @@schema("opportunity_tracker")
@@ -168,39 +174,43 @@ model KanbanView {
 }
 
 model Opportunity {
-  id                   String            @id @default(cuid())
-  name                 String
-  amountArr            Int
-  nextStep             String?
-  closeDate            DateTime?
-  stage                OpportunityStage
-  ownerId              String
-  createdAt            DateTime          @default(now())
-  updatedAt            DateTime          @updatedAt
-  accountId            String?
-  accountName          String?
-  quarter              String?
-  forecastCategory     ForecastCategory?
-  notes                String?
-  riskNotes            String?
-  columnId             String?
-  accountResearch      String?
-  confidenceLevel      Int               @default(3)
-  decisionMakers       String?
-  competition          String?
-  legalReviewStatus    ReviewStatus?     @default(not_started)
-  securityReviewStatus ReviewStatus?     @default(not_started)
-  platformType         PlatformType?
-  businessCaseStatus   ReviewStatus?     @default(not_started)
-  pinnedToWhiteboard   Boolean           @default(false)
-  organizationId       String
-  contacts             Contact[]
-  gongCalls            GongCall[]
-  googleNotes          GoogleNote[]
-  granolaNotes         GranolaNote[]
-  account              Account?          @relation(fields: [accountId], references: [id])
-  organization         Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner                User              @relation(fields: [ownerId], references: [id])
+  id                      String                    @id @default(cuid())
+  name                    String
+  amountArr               Int
+  nextStep                String?
+  closeDate               DateTime?
+  stage                   OpportunityStage
+  ownerId                 String
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  accountId               String?
+  accountName             String?
+  quarter                 String?
+  forecastCategory        ForecastCategory?
+  notes                   String?
+  riskNotes               String?
+  columnId                String?
+  accountResearch         String?                   @db.Text
+  accountResearchStatus   AccountResearchStatus?
+  accountResearchMobile   String?                   @db.Text
+  accountResearchMeta     Json?
+  accountResearchGeneratedAt DateTime?
+  confidenceLevel         Int                       @default(3)
+  decisionMakers          String?
+  competition             String?
+  legalReviewStatus       ReviewStatus?             @default(not_started)
+  securityReviewStatus    ReviewStatus?             @default(not_started)
+  platformType            PlatformType?
+  businessCaseStatus      ReviewStatus?             @default(not_started)
+  pinnedToWhiteboard      Boolean                   @default(false)
+  organizationId          String
+  contacts                Contact[]
+  gongCalls               GongCall[]
+  googleNotes             GoogleNote[]
+  granolaNotes            GranolaNote[]
+  account                 Account?                  @relation(fields: [accountId], references: [id])
+  organization            Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner                   User                      @relation(fields: [ownerId], references: [id])
 
   @@index([organizationId])
   @@index([ownerId])
@@ -345,6 +355,14 @@ enum ViewType {
   quarterly
   stages
   forecast
+
+  @@schema("opportunity_tracker")
+}
+
+enum AccountResearchStatus {
+  generating
+  completed
+  failed
 
   @@schema("opportunity_tracker")
 }

@@ -137,6 +137,16 @@ export function KanbanBoardWrapper({
     return activeView.columns;
   }, [activeView, localOpportunities, fiscalYearStartMonth]);
 
+  // Filter columns based on selected quarter
+  const filteredColumns = useMemo(() => {
+    // Only filter columns if a specific quarter is selected (not "all" or "unassigned")
+    if (selectedQuarter !== "all" && selectedQuarter !== "unassigned") {
+      // Filter columns to only show the selected quarter
+      return displayColumns.filter(col => col.title === selectedQuarter);
+    }
+    return displayColumns;
+  }, [displayColumns, selectedQuarter]);
+
   // Get unique quarters from opportunities (for filter dropdown)
   const quarters = useMemo(() => {
     const uniqueQuarters = new Set<string>();
@@ -151,16 +161,18 @@ export function KanbanBoardWrapper({
   // Filter opportunities based on quarter and search
   const filteredOpportunities = useMemo(() => {
     return localOpportunities.filter(opp => {
-      // Quarter filter
+      // Quarter filter - return false early if doesn't match
       if (selectedQuarter !== "all") {
         if (selectedQuarter === "unassigned") {
+          // Show only opportunities without a quarter
           if (opp.quarter) return false;
-        } else if (opp.quarter !== selectedQuarter) {
-          return false;
+        } else {
+          // Show only opportunities matching the selected quarter
+          if (opp.quarter !== selectedQuarter) return false;
         }
       }
 
-      // Search filter
+      // Search filter - if quarter filter passed, now check search
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const accountName = opp.account?.name || opp.accountName || "";
@@ -170,6 +182,7 @@ export function KanbanBoardWrapper({
         );
       }
 
+      // Both filters passed (or no filters applied)
       return true;
     });
   }, [localOpportunities, selectedQuarter, searchQuery]);
@@ -359,7 +372,7 @@ export function KanbanBoardWrapper({
 
   const handleCreateColumn = async (data: ColumnCreateInput) => {
     try {
-      const maxOrder = displayColumns.length > 0 ? Math.max(...displayColumns.map((c: { order: number }) => c.order)) : -1;
+      const maxOrder = filteredColumns.length > 0 ? Math.max(...filteredColumns.map((c: { order: number }) => c.order)) : -1;
       await createColumn({
         ...data,
         order: maxOrder + 1,
@@ -444,7 +457,7 @@ export function KanbanBoardWrapper({
 
       <KanbanBoard
         opportunities={filteredOpportunities}
-        columns={displayColumns}
+        columns={filteredColumns}
         onStageChange={handleStageChange}
         onColumnChange={handleColumnChange}
         isVirtualMode={isReadOnlyView}
@@ -475,7 +488,7 @@ export function KanbanBoardWrapper({
             onSubmit={handleCreateColumn}
             onCancel={() => setIsColumnDialogOpen(false)}
             submitLabel="Add Column"
-            defaultOrder={displayColumns.length}
+            defaultOrder={filteredColumns.length}
           />
         </DialogContent>
       </Dialog>

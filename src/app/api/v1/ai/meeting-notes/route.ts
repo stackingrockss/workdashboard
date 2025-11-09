@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generatePreMeetingNotes } from "@/lib/ai/meeting-notes";
 import { z } from "zod";
+import prisma from "@/lib/db";
 
 /**
  * Request schema for meeting notes generation
@@ -10,6 +11,7 @@ const meetingNotesRequestSchema = z.object({
   stage: z.string().optional(),
   industry: z.string().optional(),
   opportunityValue: z.number().optional(),
+  opportunityId: z.string().optional(), // If provided, save to database
 });
 
 /**
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { accountName, stage, industry, opportunityValue } = validation.data;
+    const { accountName, stage, industry, opportunityValue, opportunityId } = validation.data;
 
     // Generate meeting notes
     const result = await generatePreMeetingNotes({
@@ -54,9 +56,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // If opportunityId provided, save to database
+    if (opportunityId) {
+      try {
+        await prisma.opportunity.update({
+          where: { id: opportunityId },
+          data: {
+            accountResearch: result.fullBrief,
+            accountResearchMobile: result.mobileCheatSheet,
+            accountResearchMeta: JSON.parse(JSON.stringify(result.metadata)), // Convert to Prisma Json type
+            accountResearchGeneratedAt: new Date(),
+            accountResearchStatus: "completed",
+          },
+        });
+      } catch (dbError) {
+        console.error("Failed to save meeting notes to database:", dbError);
+        // Don't fail the request if DB save fails - return the generated content anyway
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      notes: result.notes,
+      notes: result.fullBrief, // Legacy field
+      fullBrief: result.fullBrief,
+      mobileCheatSheet: result.mobileCheatSheet,
+      metadata: result.metadata,
       accountName,
     });
   } catch (error) {
@@ -84,6 +108,7 @@ export async function GET() {
       stage: "string (optional) - Opportunity stage",
       industry: "string (optional) - Account industry",
       opportunityValue: "number (optional) - Expected deal value",
+      opportunityId: "string (optional) - If provided, saves result to database",
     },
     example: {
       accountName: "Kaiser Permanente",

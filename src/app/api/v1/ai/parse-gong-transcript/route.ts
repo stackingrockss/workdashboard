@@ -6,11 +6,14 @@
  * - Goals / future state
  * - People (participants + mentioned)
  * - Next steps / action items
+ *
+ * If gongCallId is provided, saves parsed data to the GongCall record in the database.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { parseGongTranscript } from "@/lib/ai/parse-gong-transcript";
+import { prisma } from "@/lib/db";
 
 // ============================================================================
 // Validation Schema
@@ -21,6 +24,7 @@ const parseRequestSchema = z.object({
     .string()
     .min(100, "Transcript must be at least 100 characters")
     .max(100000, "Transcript exceeds maximum length of 100,000 characters"),
+  gongCallId: z.string().cuid().optional(), // Optional: If provided, save parsed data to this GongCall
 });
 
 // ============================================================================
@@ -45,7 +49,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { transcriptText } = validation.data;
+    const { transcriptText, gongCallId } = validation.data;
+
+    // If gongCallId provided, verify it exists
+    if (gongCallId) {
+      const gongCall = await prisma.gongCall.findUnique({
+        where: { id: gongCallId },
+      });
+
+      if (!gongCall) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Gong call not found",
+          },
+          { status: 404 }
+        );
+      }
+    }
 
     // Parse transcript using Gemini
     const result = await parseGongTranscript(transcriptText);
@@ -60,11 +81,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // If gongCallId provided, save parsed data to database
+    if (gongCallId && result.data) {
+      await prisma.gongCall.update({
+        where: { id: gongCallId },
+        data: {
+          transcriptText,
+          painPoints: result.data.painPoints,
+          goals: result.data.goals,
+          parsedPeople: result.data.people,
+          nextSteps: result.data.nextSteps,
+          parsedAt: new Date(),
+        },
+      });
+    }
+
     // Return parsed data
     return NextResponse.json(
       {
         success: true,
         data: result.data,
+        saved: !!gongCallId, // Indicate whether data was saved to database
       },
       { status: 200 }
     );

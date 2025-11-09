@@ -9,6 +9,10 @@
  */
 
 import { generateWithSystemInstruction } from "./gemini";
+import {
+  classifyContactRole,
+  type ContactRole,
+} from "./classify-contact-role";
 
 // ============================================================================
 // Types
@@ -18,6 +22,7 @@ export interface PersonExtracted {
   name: string;
   organization: string;
   role: string;
+  classifiedRole?: ContactRole; // AI-classified Contact role enum
 }
 
 export interface GongTranscriptParsed {
@@ -177,6 +182,17 @@ Return your analysis as JSON only.`;
           error: "Invalid person object structure in AI response",
         };
       }
+    }
+
+    // Classify roles for each person using AI
+    // This converts free-form role text (e.g., "VP of Engineering") to Contact enum (e.g., "decision_maker")
+    for (const person of parsedData.people) {
+      const roleClassification = await classifyContactRole(person.role);
+      if (roleClassification.success && roleClassification.role) {
+        person.classifiedRole = roleClassification.role;
+      }
+      // If classification fails, we'll still return the person without classifiedRole
+      // The UI can handle defaulting to "end_user" or letting the user choose
     }
 
     return {

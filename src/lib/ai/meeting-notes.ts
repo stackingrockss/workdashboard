@@ -1,4 +1,5 @@
 import { generateWithSystemInstruction } from "./gemini";
+import { formatMeetingBrief, type FormattedMeetingBrief } from "./format-meeting-brief";
 
 /**
  * Context for generating pre-meeting notes
@@ -14,7 +15,10 @@ export interface MeetingNotesContext {
  * Response from meeting notes generation
  */
 export interface MeetingNotesResponse {
-  notes: string;
+  notes: string; // Legacy field for backward compatibility
+  fullBrief: string;
+  mobileCheatSheet: string;
+  metadata: FormattedMeetingBrief["metadata"];
   success: boolean;
   error?: string;
 }
@@ -148,6 +152,22 @@ export async function generatePreMeetingNotes(
       return {
         success: false,
         notes: "",
+        fullBrief: "",
+        mobileCheatSheet: "",
+        metadata: {
+          executiveSummary: {
+            criticalInsight: "",
+            topQuestions: [],
+            keyMetrics: [],
+            risks: [],
+            openingLine: "",
+          },
+          quickReference: {
+            conversationStarters: [],
+            discoveryQuestions: [],
+            financials: [],
+          },
+        },
         error: "Account name is required",
       };
     }
@@ -188,20 +208,58 @@ export async function generatePreMeetingNotes(
         return {
           success: false,
           notes: "",
+          fullBrief: "",
+          mobileCheatSheet: "",
+          metadata: {
+            executiveSummary: {
+              criticalInsight: "",
+              topQuestions: [],
+              keyMetrics: [],
+              risks: [],
+              openingLine: "",
+            },
+            quickReference: {
+              conversationStarters: [],
+              discoveryQuestions: [],
+              financials: [],
+            },
+          },
           error: result.error,
         };
       }
     }
 
+    // Format the brief into structured formats
+    const formatted = formatMeetingBrief(result.text, context.accountName);
+
     return {
       success: true,
-      notes: result.text,
+      notes: formatted.fullBrief, // Legacy field
+      fullBrief: formatted.fullBrief,
+      mobileCheatSheet: formatted.mobileCheatSheet,
+      metadata: formatted.metadata,
     };
   } catch (error) {
     console.error("Error generating meeting notes:", error);
     return {
       success: false,
       notes: "",
+      fullBrief: "",
+      mobileCheatSheet: "",
+      metadata: {
+        executiveSummary: {
+          criticalInsight: "",
+          topQuestions: [],
+          keyMetrics: [],
+          risks: [],
+          openingLine: "",
+        },
+        quickReference: {
+          conversationStarters: [],
+          discoveryQuestions: [],
+          financials: [],
+        },
+      },
       error: error instanceof Error ? error.message : "Unknown error occurred",
     };
   }

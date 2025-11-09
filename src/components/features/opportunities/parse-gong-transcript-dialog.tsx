@@ -20,6 +20,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ContactImportReview } from "@/components/contacts/ContactImportReview";
+import { BulkImportResult } from "@/lib/api/contacts";
 import {
   ClipboardCopy,
   Loader2,
@@ -27,7 +29,8 @@ import {
   Users,
   Target,
   AlertTriangle,
-  ListChecks
+  ListChecks,
+  UserPlus,
 } from "lucide-react";
 
 // ============================================================================
@@ -50,6 +53,9 @@ interface ParsedData {
 interface ParseGongTranscriptDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  opportunityId?: string; // Optional: If provided, enables contact import and DB saving
+  gongCallId?: string; // Optional: If provided, saves parsed data to this GongCall record
+  onContactsImported?: () => void; // Callback after contacts are imported
 }
 
 // ============================================================================
@@ -59,8 +65,11 @@ interface ParseGongTranscriptDialogProps {
 export function ParseGongTranscriptDialog({
   open,
   onOpenChange,
+  opportunityId,
+  gongCallId,
+  onContactsImported,
 }: ParseGongTranscriptDialogProps) {
-  const [step, setStep] = useState<"input" | "results">("input");
+  const [step, setStep] = useState<"input" | "results" | "import_contacts">("input");
   const [transcriptText, setTranscriptText] = useState("");
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -88,7 +97,10 @@ export function ParseGongTranscriptDialog({
       const response = await fetch("/api/v1/ai/parse-gong-transcript", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ transcriptText }),
+        body: JSON.stringify({
+          transcriptText,
+          gongCallId, // If provided, will save to database
+        }),
       });
 
       const result = await response.json();
@@ -99,7 +111,12 @@ export function ParseGongTranscriptDialog({
 
       setParsedData(result.data);
       setStep("results");
-      toast.success("Transcript parsed successfully!");
+
+      if (result.saved) {
+        toast.success("Transcript parsed and saved successfully!");
+      } else {
+        toast.success("Transcript parsed successfully!");
+      }
     } catch (error) {
       console.error("Parse error:", error);
       toast.error(
@@ -108,6 +125,12 @@ export function ParseGongTranscriptDialog({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Handle contact import completion
+  const handleImportComplete = (result: BulkImportResult) => {
+    onContactsImported?.();
+    setStep("results"); // Go back to results view
   };
 
   // Copy section to clipboard
@@ -280,20 +303,32 @@ Dialogue...
                     <Users className="h-5 w-5 text-purple-500" />
                     <CardTitle className="text-lg">People</CardTitle>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() =>
-                      handleCopySection(
-                        parsedData.people
-                          .map((p) => `${p.name} - ${p.role} (${p.organization})`)
-                          .join("\n"),
-                        "People"
-                      )
-                    }
-                  >
-                    <ClipboardCopy className="h-4 w-4" />
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        handleCopySection(
+                          parsedData.people
+                            .map((p) => `${p.name} - ${p.role} (${p.organization})`)
+                            .join("\n"),
+                          "People"
+                        )
+                      }
+                    >
+                      <ClipboardCopy className="h-4 w-4" />
+                    </Button>
+                    {opportunityId && parsedData.people.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setStep("import_contacts")}
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Import as Contacts
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -375,6 +410,18 @@ Dialogue...
               </Button>
               <Button onClick={() => handleOpenChange(false)}>Close</Button>
             </div>
+          </div>
+        )}
+
+        {/* STEP 3: Import Contacts */}
+        {step === "import_contacts" && parsedData && opportunityId && (
+          <div className="py-4">
+            <ContactImportReview
+              people={parsedData.people}
+              opportunityId={opportunityId}
+              onImportComplete={handleImportComplete}
+              onCancel={() => setStep("results")}
+            />
           </div>
         )}
       </DialogContent>

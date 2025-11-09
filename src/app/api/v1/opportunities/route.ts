@@ -5,6 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
 import { mapPrismaOpportunitiesToOpportunities, mapPrismaOpportunityToOpportunity } from "@/lib/mappers/opportunity";
 import { getVisibleUserIds, isAdmin } from "@/lib/permissions";
+import { triggerAccountResearchGenerationAsync } from "@/lib/ai/background-generation";
 
 export async function GET() {
   try {
@@ -133,6 +134,18 @@ export async function POST(req: NextRequest) {
         account: true,
       },
     });
+
+    // Trigger async AI research generation in background (fire-and-forget)
+    // Only trigger if accountName is provided
+    if (data.account) {
+      triggerAccountResearchGenerationAsync({
+        opportunityId: created.id,
+        accountName: data.account,
+        stage: data.stage,
+        opportunityValue: data.amountArr,
+      });
+    }
+
     const opportunity = mapPrismaOpportunityToOpportunity(created);
     return NextResponse.json({ opportunity }, { status: 201 });
   } catch (error) {

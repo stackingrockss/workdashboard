@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -30,6 +30,7 @@ import {
   InlineSelect,
   InlineDatePicker,
 } from "@/components/ui/inline-editable";
+import { MeetingBriefViewer } from "@/components/features/ai/MeetingBriefViewer";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -77,7 +78,53 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isGeneratingResearch, setIsGeneratingResearch] = useState(false);
+  const [researchStatus, setResearchStatus] = useState(opportunity.accountResearchStatus);
   const router = useRouter();
+
+  // Poll for research status when generating
+  useEffect(() => {
+    // Only poll if status is 'generating'
+    if (researchStatus !== "generating") {
+      return;
+    }
+
+    const pollResearchStatus = async () => {
+      try {
+        const response = await fetch(`/api/v1/opportunities/${opportunity.id}/research-status`);
+
+        if (!response.ok) {
+          console.error("Failed to poll research status");
+          return;
+        }
+
+        const data = await response.json();
+
+        // Update local status
+        setResearchStatus(data.status);
+
+        // If completed or failed, refresh the page to show updated content
+        if (data.status === "completed") {
+          toast.success("Account research generated!");
+          router.refresh();
+        } else if (data.status === "failed") {
+          toast.error("Failed to generate research. You can retry manually.");
+          router.refresh();
+        }
+      } catch (error) {
+        console.error("Error polling research status:", error);
+      }
+    };
+
+    // Start polling every 3 seconds
+    const pollInterval = setInterval(pollResearchStatus, 3000);
+
+    // Cleanup on unmount or when status changes
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [researchStatus, opportunity.id, router]);
 
   const handleUpdateOpportunity = async (data: OpportunityUpdateInput) => {
     try {
@@ -145,6 +192,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           accountName,
           stage: opportunity.stage,
           opportunityValue: opportunity.amountArr > 0 ? opportunity.amountArr : undefined,
+          opportunityId: opportunity.id, // Save to database
         }),
       });
 
@@ -154,17 +202,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         throw new Error(data.error || "Failed to generate account research");
       }
 
-      // Safety check: truncate if content exceeds max length (50,000 chars)
-      const MAX_LENGTH = 50000;
-      let generatedNotes = data.notes;
-
-      if (generatedNotes && generatedNotes.length > MAX_LENGTH) {
-        generatedNotes = generatedNotes.substring(0, MAX_LENGTH);
-        toast.warning(`Research truncated to ${MAX_LENGTH.toLocaleString()} characters`);
-      }
-
-      // Update the opportunity with the generated research
-      await updateOpportunityField(opportunity.id, "accountResearch", generatedNotes);
+      // API now handles saving to database automatically
       toast.success("Account research generated successfully!");
       router.refresh();
     } catch (error) {
@@ -359,17 +397,51 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         {/* Research & Notes Tab */}
         <TabsContent value="research" className="space-y-4 mt-4">
           <div className="grid gap-4">
-            <InlineTextareaWithAI
-              label="Account Research"
-              value={opportunity.accountResearch || ""}
-              onSave={async (value) => handleFieldUpdate("accountResearch", value)}
-              placeholder="AI-powered account research and pre-meeting intelligence..."
-              rows={8}
-              className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
-              onGenerate={handleGenerateAccountResearch}
-              isGenerating={isGeneratingResearch}
-              generateButtonLabel="Generate with Gemini"
-            />
+            {/* Show new MeetingBriefViewer if metadata exists, otherwise show legacy InlineTextareaWithAI */}
+            {opportunity.accountResearchMeta && opportunity.accountResearchMobile ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Pre-Meeting Intelligence</h3>
+                  <Button
+                    onClick={handleGenerateAccountResearch}
+                    disabled={isGeneratingResearch || researchStatus === "generating"}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {isGeneratingResearch || researchStatus === "generating" ? (
+                      <>Regenerating...</>
+                    ) : (
+                      <>Regenerate with Gemini</>
+                    )}
+                  </Button>
+                </div>
+                <MeetingBriefViewer
+                  accountName={opportunity.account?.name || opportunity.accountName || ""}
+                  fullBrief={opportunity.accountResearch || ""}
+                  mobileCheatSheet={opportunity.accountResearchMobile}
+                  metadata={opportunity.accountResearchMeta}
+                />
+              </div>
+            ) : (
+              /* Legacy inline editor for old data or when no metadata exists */
+              <InlineTextareaWithAI
+                label="Account Research"
+                value={opportunity.accountResearch || ""}
+                onSave={async (value) => handleFieldUpdate("accountResearch", value)}
+                placeholder={
+                  researchStatus === "generating"
+                    ? "Generating account research with AI... This may take 10-30 seconds."
+                    : researchStatus === "failed"
+                    ? "AI generation failed. Click 'Generate with Gemini' to retry."
+                    : "AI-powered account research and pre-meeting intelligence..."
+                }
+                rows={8}
+                className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
+                onGenerate={handleGenerateAccountResearch}
+                isGenerating={isGeneratingResearch || researchStatus === "generating"}
+                generateButtonLabel="Generate with Gemini"
+              />
+            )}
             <InlineTextarea
               label="Risk Notes"
               value={opportunity.riskNotes || ""}
