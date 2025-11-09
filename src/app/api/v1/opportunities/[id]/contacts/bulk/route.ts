@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
   contactBulkImportSchema,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   type ContactBulkImportItem,
 } from "@/lib/validations/contact";
 import { checkForDuplicateContact } from "@/lib/utils/contact-duplicate-detection";

@@ -17,6 +17,7 @@ import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 import { splitFullName } from "@/lib/utils/contact-duplicate-detection";
 import { bulkCreateContacts, type BulkImportResult } from "@/lib/api/contacts";
 import { ContactBulkImportItem } from "@/lib/validations/contact";
+import { ContactRole, ContactSentiment } from "@/types/contact";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -164,8 +165,8 @@ export function ContactImportReview({
           lastName,
           title: c.person.role, // Original role text becomes title
           email: null, // Email not extracted from transcript
-          role: (c.overrideRole || "end_user") as any,
-          sentiment: "unknown" as any,
+          role: (c.overrideRole || "end_user") as ContactRole,
+          sentiment: "unknown" as ContactSentiment,
           notes: `Imported from Gong transcript. Organization: ${c.person.organization}`,
           skipDuplicateCheck: false,
         };
