@@ -16,10 +16,10 @@ const convertToOpportunitySchema = z.object({
     "closedWon",
     "closedLost",
   ]),
-  closeDate: z.string().optional().nullable(),
-  quarter: z.string().optional().nullable(),
+  closeDate: z.string().min(1).optional().nullable().transform(val => val === "" ? null : val),
+  quarter: z.string().optional().nullable().transform(val => val === "" ? null : val),
   forecastCategory: z.enum(["pipeline", "bestCase", "forecast"]).optional().nullable(),
-  nextStep: z.string().optional().nullable(),
+  nextStep: z.string().optional().nullable().transform(val => val === "" ? null : val),
 });
 
 // POST /api/v1/accounts/[id]/convert - Convert account to opportunity
@@ -52,6 +52,16 @@ export async function POST(
 
     // Create opportunity from account using a transaction
     const opportunity = await prisma.$transaction(async (tx) => {
+      // Parse closeDate properly if provided
+      let closeDate: Date | null = null;
+      if (data.closeDate) {
+        // If date is in format YYYY-MM-DD, append time to make it a valid datetime
+        const dateStr = data.closeDate.includes('T')
+          ? data.closeDate
+          : `${data.closeDate}T12:00:00.000Z`;
+        closeDate = new Date(dateStr);
+      }
+
       // Create the opportunity
       const newOpportunity = await tx.opportunity.create({
         data: {
@@ -59,7 +69,7 @@ export async function POST(
           amountArr: data.amountArr,
           confidenceLevel: data.confidenceLevel,
           stage: data.stage,
-          closeDate: data.closeDate ? new Date(data.closeDate) : null,
+          closeDate,
           quarter: data.quarter,
           forecastCategory: data.forecastCategory,
           nextStep: data.nextStep,
@@ -139,8 +149,14 @@ export async function POST(
     }
 
     console.error("Error converting account to opportunity:", error);
+
+    // Return more detailed error in development
+    const isDevelopment = process.env.NODE_ENV === 'development';
     return NextResponse.json(
-      { error: "Failed to convert account to opportunity" },
+      {
+        error: "Failed to convert account to opportunity",
+        ...(isDevelopment && { details: error instanceof Error ? error.message : String(error) })
+      },
       { status: 500 }
     );
   }

@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users, ExternalLink } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -239,9 +239,22 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
             </Button>
           </div>
           <h1 className="text-2xl font-semibold tracking-tight">{opportunity.name}</h1>
-          <p className="text-sm text-muted-foreground">
-            {opportunity.account?.name || opportunity.accountName || "No Account"}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">
+              {opportunity.account?.name || opportunity.accountName || "No Account"}
+            </p>
+            {opportunity.account?.website && (
+              <a
+                href={opportunity.account.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-muted-foreground hover:text-primary transition-colors"
+                title={`Visit ${opportunity.account.name} website`}
+              >
+                <ExternalLink size={14} />
+              </a>
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setIsEditDialogOpen(true)}>

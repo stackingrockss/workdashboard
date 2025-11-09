@@ -59,9 +59,13 @@ export async function POST(req: NextRequest) {
             name: data.account,
           },
         },
-        update: {},
+        update: {
+          // Bidirectional sync: if website is provided, update the account
+          ...(data.accountWebsite ? { website: data.accountWebsite } : {}),
+        },
         create: {
           name: data.account,
+          website: data.accountWebsite ?? undefined,
           organizationId: user.organization.id,
           ownerId: user.id,
           priority: "medium",
@@ -141,6 +145,7 @@ export async function POST(req: NextRequest) {
       triggerAccountResearchGenerationAsync({
         opportunityId: created.id,
         accountName: data.account,
+        companyWebsite: data.accountWebsite,
         stage: data.stage,
         opportunityValue: data.amountArr,
       });

@@ -51,6 +51,7 @@ export async function POST(request: NextRequest) {
     const account = await prisma.account.create({
       data: {
         name: data.name,
+        website: data.website,
         industry: data.industry,
         priority: data.priority,
         health: data.health,

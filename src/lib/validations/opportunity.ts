@@ -1,10 +1,42 @@
 import { z } from "zod";
 
+// Helper function to normalize and validate URLs
+const normalizeUrl = (url: string): string => {
+  const trimmed = url.trim();
+  if (!trimmed) return trimmed;
+
+  // If URL doesn't start with http:// or https://, prepend https://
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return `https://${trimmed}`;
+  }
+
+  return trimmed;
+};
+
 const baseOpportunitySchema = z.object({
   name: z.string().min(2).max(120),
   // Support both old account field and new accountId for backward compatibility
   account: z.string().min(1).max(120).optional(),
   accountId: z.string().optional(),
+  accountWebsite: z
+    .string()
+    .optional()
+    .transform((val) => {
+      if (!val || val.trim() === "") return undefined;
+      return normalizeUrl(val);
+    })
+    .refine(
+      (val) => {
+        if (!val) return true; // Optional field
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Please enter a valid URL" }
+    ),
   amountArr: z.number().int().nonnegative().optional().default(0),
   confidenceLevel: z.number().int().min(1).max(5).optional().default(3), // 1-5 scale (replaces probability)
   nextStep: z.string().max(500).optional().nullable().transform(val => val === "" ? null : val),

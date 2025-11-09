@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
  */
 const meetingNotesRequestSchema = z.object({
   accountName: z.string().min(1, "Account name is required"),
+  companyWebsite: z.string().optional(),
   stage: z.string().optional(),
   industry: z.string().optional(),
   opportunityValue: z.number().optional(),
@@ -36,11 +37,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { accountName, stage, industry, opportunityValue, opportunityId } = validation.data;
+    const { accountName, companyWebsite, stage, industry, opportunityValue, opportunityId } = validation.data;
 
     // Generate meeting notes
     const result = await generatePreMeetingNotes({
       accountName,
+      companyWebsite,
       stage,
       industry,
       opportunityValue,
@@ -105,6 +107,7 @@ export async function GET() {
     description: "Generate comprehensive pre-meeting notes for enterprise sales calls",
     body: {
       accountName: "string (required) - Name of the account/company",
+      companyWebsite: "string (optional) - Company website URL for better research",
       stage: "string (optional) - Opportunity stage",
       industry: "string (optional) - Account industry",
       opportunityValue: "number (optional) - Expected deal value",
@@ -112,6 +115,7 @@ export async function GET() {
     },
     example: {
       accountName: "Kaiser Permanente",
+      companyWebsite: "https://about.kaiserpermanente.org",
       stage: "qualification",
       industry: "Healthcare",
       opportunityValue: 500000,

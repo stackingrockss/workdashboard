@@ -6,6 +6,7 @@ import { formatMeetingBrief, type FormattedMeetingBrief } from "./format-meeting
  */
 export interface MeetingNotesContext {
   accountName: string;
+  companyWebsite?: string;
   stage?: string;
   industry?: string;
   opportunityValue?: number;
@@ -54,10 +55,11 @@ Focus on facts over speculation, but do highlight likely pain points based on in
  * Generate pre-meeting notes prompt
  */
 function buildMeetingNotesPrompt(context: MeetingNotesContext): string {
-  const { accountName, stage, industry, opportunityValue } = context;
+  const { accountName, companyWebsite, stage, industry, opportunityValue } = context;
 
   return `Generate comprehensive pre-meeting sales intelligence for an enterprise sales call with: **${accountName}**
 
+${companyWebsite ? `Company Website: ${companyWebsite}\n**Use the company website to gather accurate, current information about their products, services, and positioning.**\n` : ""}
 ${industry ? `Industry: ${industry}` : ""}
 ${stage ? `Opportunity Stage: ${stage}` : ""}
 ${opportunityValue ? `Estimated Deal Value: $${opportunityValue.toLocaleString()}` : ""}

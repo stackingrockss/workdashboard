@@ -55,6 +55,7 @@ export function OpportunityForm({
   const [formData, setFormData] = useState<OpportunityCreateInput>({
     name: initialData?.name || "",
     account: initialData?.account || "",
+    accountWebsite: initialData?.accountWebsite || "",
     amountArr: initialData?.amountArr || 0,
     confidenceLevel: initialData?.confidenceLevel || getDefaultConfidenceLevel("discovery"),
     nextStep: initialData?.nextStep || "",
@@ -159,6 +160,20 @@ export function OpportunityForm({
       </div>
 
       <div className="space-y-2">
+        <Label htmlFor="accountWebsite">Company Website</Label>
+        <Input
+          id="accountWebsite"
+          type="url"
+          value={formData.accountWebsite}
+          onChange={(e) => setFormData({ ...formData, accountWebsite: e.target.value })}
+          placeholder="e.g. acme.com or https://acme.com"
+        />
+        <p className="text-xs text-muted-foreground">
+          Optional - Valuable for AI account research
+        </p>
+      </div>
+
+      <div className="space-y-2">
         <Label htmlFor="amountArr">Amount (ARR)</Label>
         <CurrencyInput
           id="amountArr"
@@ -214,7 +229,7 @@ export function OpportunityForm({
           id="closeDate"
           value={formData.closeDate}
           onChange={(value) => setFormData({ ...formData, closeDate: value })}
-          placeholder="YYYY-MM-DD (e.g. 2024-12-31)"
+          placeholder="MM/DD/YYYY"
           required
         />
       </div>

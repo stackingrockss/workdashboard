@@ -11,6 +11,7 @@ import { AccountResearchStatus } from "@prisma/client";
 export interface BackgroundGenerationContext {
   opportunityId: string;
   accountName: string;
+  companyWebsite?: string;
   stage?: string;
   opportunityValue?: number;
 }
@@ -24,7 +25,7 @@ export interface BackgroundGenerationContext {
 export async function triggerAccountResearchGeneration(
   context: BackgroundGenerationContext
 ): Promise<void> {
-  const { opportunityId, accountName, stage, opportunityValue } = context;
+  const { opportunityId, accountName, companyWebsite, stage, opportunityValue } = context;
 
   // Fire-and-forget: Don't await, let it run in background
   // Wrap in setImmediate/Promise to ensure it runs asynchronously
@@ -41,6 +42,7 @@ export async function triggerAccountResearchGeneration(
       // Generate AI research using existing function
       const result = await generatePreMeetingNotes({
         accountName,
+        companyWebsite,
         stage,
         opportunityValue,
       });

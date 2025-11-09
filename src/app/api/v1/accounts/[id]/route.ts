@@ -52,6 +52,7 @@ export async function PATCH(
       where: { id },
       data: {
         name: data.name,
+        website: data.website,
         industry: data.industry,
         priority: data.priority,
         health: data.health,

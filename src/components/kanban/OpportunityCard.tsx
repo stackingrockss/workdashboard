@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Opportunity } from "@/types/opportunity";
-import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle, Pin } from "lucide-react";
+import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle, Pin, ExternalLink } from "lucide-react";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -29,6 +29,7 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
 
   const closeDate = formatDateShort(opportunity.closeDate);
   const accountName = opportunity.account?.name || opportunity.accountName || "No Account";
+  const accountWebsite = opportunity.account?.website;
 
   const forecastLabels: Record<string, string> = {
     pipeline: "Pipeline",
@@ -76,16 +77,38 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="truncate text-muted-foreground text-sm">{accountName}</div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{accountName}</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <div className="flex items-center gap-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="truncate text-muted-foreground text-sm">{accountName}</div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{accountName}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              {accountWebsite && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <a
+                        href={accountWebsite}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-muted-foreground hover:text-primary transition-colors"
+                      >
+                        <ExternalLink size={12} />
+                      </a>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Visit {accountName} website</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </div>
           </div>
           <div className="flex items-start gap-1 shrink-0">
             <Button
