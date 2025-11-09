@@ -137,7 +137,8 @@ Generate comprehensive, actionable intelligence that prepares the sales rep for 
 }
 
 /**
- * Generate pre-meeting notes using Gemini
+ * Generate pre-meeting notes using Gemini with automatic fallback
+ * Tries gemini-2.5-pro first, falls back to gemini-2.5-flash if overloaded
  */
 export async function generatePreMeetingNotes(
   context: MeetingNotesContext
@@ -153,19 +154,43 @@ export async function generatePreMeetingNotes(
 
     const prompt = buildMeetingNotesPrompt(context);
 
-    // Use gemini-2.5-pro for superior enterprise sales intelligence and research quality
-    const result = await generateWithSystemInstruction(
+    // Try gemini-2.5-pro first for superior research quality
+    let result = await generateWithSystemInstruction(
       prompt,
       VERIFIABLE_CONTEXT,
-      "gemini-2.5-pro"
+      "gemini-2.5-pro",
+      2 // Only 2 retries for the premium model to fail faster
     );
 
+    // If gemini-2.5-pro fails with overload error, fallback to gemini-2.5-flash
     if (result.error) {
-      return {
-        success: false,
-        notes: "",
-        error: result.error,
-      };
+      const errorMessage = result.error.toLowerCase();
+      const isOverloadError = errorMessage.includes("503") || errorMessage.includes("overloaded");
+
+      if (isOverloadError) {
+        console.log("gemini-2.5-pro overloaded, falling back to gemini-2.5-flash");
+
+        result = await generateWithSystemInstruction(
+          prompt,
+          VERIFIABLE_CONTEXT,
+          "gemini-2.5-flash",
+          3 // Standard 3 retries for fallback model
+        );
+
+        // If fallback succeeded, log it
+        if (!result.error) {
+          console.log("Successfully generated with gemini-2.5-flash fallback");
+        }
+      }
+
+      // If still errored after fallback attempt
+      if (result.error) {
+        return {
+          success: false,
+          notes: "",
+          error: result.error,
+        };
+      }
     }
 
     return {

@@ -61,35 +61,67 @@ export async function generateText(
 }
 
 /**
+ * Sleep utility for retry logic
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
  * Generate structured content with system instructions
+ * Includes retry logic for handling API overload (503 errors)
  * @param prompt - The user prompt
  * @param systemInstruction - System-level instructions for the model
  * @param modelName - Optional model name (default: gemini-1.5-flash)
+ * @param maxRetries - Maximum number of retry attempts (default: 3)
  * @returns Promise with the generated text or error
  */
 export async function generateWithSystemInstruction(
   prompt: string,
   systemInstruction: string,
-  modelName: string = "gemini-1.5-flash"
+  modelName: string = "gemini-1.5-flash",
+  maxRetries: number = 3
 ): Promise<GeminiResponse> {
-  try {
-    const model = getGenAI().getGenerativeModel({
-      model: modelName,
-      systemInstruction,
-    });
+  let lastError: Error | null = null;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const model = getGenAI().getGenerativeModel({
+        model: modelName,
+        systemInstruction,
+      });
 
-    return { text };
-  } catch (error) {
-    console.error("Gemini API error:", error);
-    return {
-      text: "",
-      error: error instanceof Error ? error.message : "Unknown error occurred",
-    };
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const text = response.text();
+
+      return { text };
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error("Unknown error occurred");
+      console.error(`Gemini API error (attempt ${attempt + 1}/${maxRetries}):`, error);
+
+      // Check if it's a 503 Service Unavailable error
+      const errorMessage = lastError.message.toLowerCase();
+      const is503Error = errorMessage.includes("503") || errorMessage.includes("overloaded");
+
+      // Only retry on 503 errors
+      if (is503Error && attempt < maxRetries - 1) {
+        // Exponential backoff: 2s, 4s, 8s
+        const delayMs = Math.pow(2, attempt + 1) * 1000;
+        console.log(`Retrying after ${delayMs}ms...`);
+        await sleep(delayMs);
+        continue;
+      }
+
+      // For non-503 errors or final attempt, return the error
+      break;
+    }
   }
+
+  return {
+    text: "",
+    error: lastError?.message || "Unknown error occurred",
+  };
 }
 
 /**
