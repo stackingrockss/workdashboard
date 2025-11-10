@@ -66,7 +66,7 @@ export const consolidateInsightsJob = inngest.createFunction(
           : [],
         goals: Array.isArray(call.goals) ? (call.goals as string[]) : [],
         riskAssessment: call.riskAssessment
-          ? (call.riskAssessment as RiskAssessment)
+          ? (call.riskAssessment as unknown as RiskAssessment)
           : null,
       };
     });
