@@ -79,7 +79,7 @@ Please research and provide the following sections:
 
 ## 1. Business Overview
 - How does ${accountName} make money? (revenue model, key products/services)
-- Latest financials: revenue, growth rate, profitability trends
+- **Latest Financials:** Provide specific revenue/growth numbers in format: **Metric Name:** $XXX million/billion (YoY change)
 - Strategic goals and initiatives (from recent earnings calls, press releases, or public statements)
 - Company size (employees, market cap if public)
 
@@ -97,6 +97,7 @@ Please research and provide the following sections:
 - Major strategic announcements
 
 ## 4. Pain Points & Challenges
+Format each pain point as: **Pain Point Name:** Description
 - Industry-specific challenges they're likely facing
 - Public mentions of operational issues or inefficiencies
 - Technology modernization needs
@@ -121,14 +122,21 @@ Please research and provide the following sections:
 - Complexity of decision-making process
 
 ## 8. Verifiable-Specific Fit
-- Why is Verifiable relevant NOW for ${accountName}?
+Begin this section with: **Key Insight:** [One sentence explaining why NOW is the right time for Verifiable]
+
+Then provide:
 - Specific pain points Verifiable solves for companies like them
 - Estimated ROI based on their provider network size (use Verifiable's 76% manual work reduction claim)
 - Most relevant Verifiable solutions (CVO services, software, network monitoring)
 - Integration considerations with their likely tech stack
 
 ## 9. Discovery Questions
-Provide 5-7 intelligent questions based on:
+Provide 5-7 questions in this exact format:
+1. "Question text here?"
+2. "Question text here?"
+3. "Question text here?"
+
+Base questions on:
 - Their recent activity and news
 - Credentialing volume and current processes
 - Pain points in provider network management
@@ -136,10 +144,12 @@ Provide 5-7 intelligent questions based on:
 - Strategic initiatives that Verifiable could support
 
 ## 10. Conversation Starters & Social Proof
+Start with: **Opening Line:** "Exact quote to open the conversation"
+
+Then provide:
 - Relevant industry trends affecting them
 - Similar companies (peer organizations) that use Verifiable
 - Relevant case studies or ROI examples for their industry/size
-- Opening lines that reference their recent news/initiatives
 
 ---
 
@@ -149,6 +159,12 @@ Provide 5-7 intelligent questions based on:
 - Focus on healthcare/provider network specific intelligence
 - Highlight timing factors that make this a good time to engage
 - Be specific about how Verifiable's solutions map to their challenges
+
+**FORMATTING REQUIREMENTS:**
+- Section 4: Use **Pain Point Name:** format for each bullet
+- Section 8: Start with **Key Insight:** on first line
+- Section 9: Put all questions in quotes
+- Section 10: Start with **Opening Line:** in quotes
 
 Generate comprehensive, actionable intelligence that prepares the sales rep for a consultative, value-driven conversation.`;
 }
