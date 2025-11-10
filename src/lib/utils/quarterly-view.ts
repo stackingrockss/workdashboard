@@ -258,8 +258,8 @@ export function calculateCloseDateFromVirtualColumn(
     // Get the date range for this quarter
     const { end } = getQuarterDateRange(quarterString, fiscalYearStartMonth);
 
-    // Return the last day of the quarter as an ISO string
-    return end.toISOString();
+    // Return the last day of the quarter as a date-only string (YYYY-MM-DD)
+    return end.toISOString().split('T')[0];
   } catch (error) {
     console.error(`Error calculating close date for quarter ${quarterString}:`, error);
     return null;
