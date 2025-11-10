@@ -52,7 +52,7 @@ export const parseGongTranscriptJob = inngest.createFunction(
 
     // Step 3: Parse the transcript using AI
     const parseResult = await step.run("parse-transcript", async () => {
-      const result = await parseGongTranscript(transcriptText, organizationName);
+      const result = await parseGongTranscript(transcriptText, organizationName ?? undefined);
       return result;
     });
 
