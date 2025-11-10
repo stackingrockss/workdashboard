@@ -84,6 +84,7 @@ export function ContactImportReview({
 
     // Check for duplicates
     checkForDuplicates(initialContacts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [people]);
 
   // Check for duplicates (client-side API call)
@@ -207,31 +208,6 @@ export function ContactImportReview({
   // Render helpers
   const selectedCount = contacts.filter((c) => c.selected).length;
   const allSelected = contacts.length > 0 && contacts.every((c) => c.selected);
-
-  // Role badge color mapping
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case "decision_maker":
-        return "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200";
-      case "influencer":
-        return "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200";
-      case "champion":
-        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
-      case "blocker":
-        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
-      case "end_user":
-        return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200";
-      default:
-        return "bg-slate-100 text-slate-800";
-    }
-  };
-
-  const getRoleLabel = (role: string) => {
-    return role
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
 
   // Empty state
   if (people.length === 0) {

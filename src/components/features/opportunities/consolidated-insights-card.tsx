@@ -223,7 +223,7 @@ export function ConsolidatedInsightsCard({
                     {factor.description}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 italic">
-                    "{factor.evidence}"
+                    &quot;{factor.evidence}&quot;
                   </p>
                 </div>
               ))}

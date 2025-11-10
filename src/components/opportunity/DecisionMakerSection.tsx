@@ -25,7 +25,7 @@ interface DecisionMakerSectionProps {
 
 export function DecisionMakerSection({
   contacts,
-  opportunityId,
+  opportunityId: _opportunityId,
   apiEndpoint,
   onContactsUpdate,
 }: DecisionMakerSectionProps) {
