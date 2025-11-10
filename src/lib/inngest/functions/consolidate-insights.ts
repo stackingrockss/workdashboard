@@ -56,7 +56,9 @@ export const consolidateInsightsJob = inngest.createFunction(
     // Step 2: Transform data for consolidation AI
     const callInsights = calls.map((call) => ({
       callId: call.id,
-      meetingDate: call.meetingDate.toISOString(),
+      meetingDate: typeof call.meetingDate === 'string'
+        ? call.meetingDate
+        : call.meetingDate.toISOString(),
       painPoints: Array.isArray(call.painPoints)
         ? (call.painPoints as string[])
         : [],
