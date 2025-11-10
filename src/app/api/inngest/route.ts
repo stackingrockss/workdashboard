@@ -5,6 +5,7 @@ import { serve } from "inngest/next";
 import { inngest } from "@/lib/inngest/client";
 import { parseGongTranscriptJob } from "@/lib/inngest/functions/parse-gong-transcript";
 import { analyzeCallRiskJob } from "@/lib/inngest/functions/analyze-call-risk";
+import { consolidateInsightsJob } from "@/lib/inngest/functions/consolidate-insights";
 
 /**
  * Inngest endpoint handler
@@ -15,6 +16,7 @@ export const { GET, POST, PUT } = serve({
   functions: [
     parseGongTranscriptJob,
     analyzeCallRiskJob,
+    consolidateInsightsJob,
     // Add more job functions here as needed
   ],
   signingKey: process.env.INNGEST_SIGNING_KEY,

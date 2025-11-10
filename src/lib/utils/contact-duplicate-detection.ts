@@ -32,6 +32,15 @@ export interface DuplicateCheckResult {
 // ============================================================================
 
 /**
+ * Capitalizes the first letter of a word.
+ * Used for proper name capitalization.
+ */
+function capitalizeWord(word: string): string {
+  if (!word || word.length === 0) return word;
+  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+}
+
+/**
  * Normalizes a name for comparison by:
  * - Converting to lowercase
  * - Removing extra whitespace
@@ -48,8 +57,9 @@ function normalizeName(name: string): string {
 }
 
 /**
- * Splits a full name into first and last name.
+ * Splits a full name into first and last name with proper capitalization.
  * Handles common patterns like "John Smith", "Smith, John", etc.
+ * Returns capitalized names (e.g., "john smith" → { firstName: "John", lastName: "Smith" })
  */
 export function splitFullName(fullName: string): {
   firstName: string;
@@ -61,8 +71,8 @@ export function splitFullName(fullName: string): {
   if (normalized.includes(",")) {
     const [last, first] = normalized.split(",").map((s) => s.trim());
     return {
-      firstName: first || "Unknown",
-      lastName: last || "Unknown"
+      firstName: first ? capitalizeWord(first) : "Unknown",
+      lastName: last ? capitalizeWord(last) : "Unknown"
     };
   }
 
@@ -71,11 +81,11 @@ export function splitFullName(fullName: string): {
   if (parts.length === 0) {
     return { firstName: "Unknown", lastName: "Unknown" };
   } else if (parts.length === 1) {
-    return { firstName: parts[0], lastName: "Unknown" };
+    return { firstName: capitalizeWord(parts[0]), lastName: "Unknown" };
   } else {
-    // Take first part as first name, rest as last name
-    const firstName = parts[0];
-    const lastName = parts.slice(1).join(" ");
+    // Take first part as first name, rest as last name (capitalize each word)
+    const firstName = capitalizeWord(parts[0]);
+    const lastName = parts.slice(1).map(capitalizeWord).join(" ");
     return { firstName, lastName };
   }
 }

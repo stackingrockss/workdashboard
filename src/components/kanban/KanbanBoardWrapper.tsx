@@ -25,14 +25,13 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Filter, Columns, FileText } from "lucide-react";
+import { Plus, Filter, Columns } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { ViewSelector } from "./ViewSelector";
 import { WelcomeViewDialog } from "./WelcomeViewDialog";
 import { ManageViewsDialog } from "./ManageViewsDialog";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { ColumnForm } from "@/components/forms/column-form";
-import { ParseGongTranscriptDialog } from "@/components/features/opportunities/parse-gong-transcript-dialog";
 import { Opportunity, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory } from "@/types/opportunity";
 import { SerializedKanbanView, isBuiltInView } from "@/types/view";
 import { createOpportunity, updateOpportunity } from "@/lib/api/opportunities";
@@ -67,7 +66,6 @@ export function KanbanBoardWrapper({
   const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
   const [isWelcomeDialogOpen, setIsWelcomeDialogOpen] = useState(false);
   const [isManageViewsDialogOpen, setIsManageViewsDialogOpen] = useState(false);
-  const [isParseTranscriptDialogOpen, setIsParseTranscriptDialogOpen] = useState(false);
   const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -445,14 +443,6 @@ export function KanbanBoardWrapper({
             </Button>
           )}
 
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setIsParseTranscriptDialogOpen(true)}
-          >
-            <FileText className="h-4 w-4 mr-2" /> Parse Gong Transcript
-          </Button>
-
           <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> New Opportunity
           </Button>
@@ -518,12 +508,6 @@ export function KanbanBoardWrapper({
         onOpenChange={setIsManageViewsDialogOpen}
         views={views}
         onViewsChanged={handleViewsChanged}
-      />
-
-      {/* Parse Gong Transcript Dialog */}
-      <ParseGongTranscriptDialog
-        open={isParseTranscriptDialogOpen}
-        onOpenChange={setIsParseTranscriptDialogOpen}
       />
     </div>
   );

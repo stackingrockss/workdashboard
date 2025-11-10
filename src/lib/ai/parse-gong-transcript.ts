@@ -103,7 +103,8 @@ IMPORTANT RULES:
 // ============================================================================
 
 export async function parseGongTranscript(
-  transcriptText: string
+  transcriptText: string,
+  userOrganizationName?: string
 ): Promise<GongParseResult> {
   try {
     // Validate input
@@ -192,6 +193,15 @@ Return your analysis as JSON only.`;
       if (!person.role || person.role.trim() === "") {
         person.role = "Unknown";
       }
+    }
+
+    // Filter out people from the user's organization (internal contacts)
+    if (userOrganizationName) {
+      const normalizedUserOrg = userOrganizationName.toLowerCase().trim();
+      parsedData.people = parsedData.people.filter((person) => {
+        const normalizedPersonOrg = person.organization.toLowerCase().trim();
+        return normalizedPersonOrg !== normalizedUserOrg;
+      });
     }
 
     // Classify roles for each person using AI (parallelized for performance)

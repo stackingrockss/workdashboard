@@ -13,7 +13,15 @@ async function retryParsing() {
   // Get the call
   const call = await prisma.gongCall.findUnique({
     where: { id: callId },
-    include: { opportunity: true },
+    include: {
+      opportunity: {
+        include: {
+          organization: {
+            select: { name: true },
+          },
+        },
+      },
+    },
   });
 
   if (!call) {
@@ -41,7 +49,8 @@ async function retryParsing() {
     });
 
     // Parse the transcript
-    const result = await parseGongTranscript(call.transcriptText);
+    const organizationName = call.opportunity?.organization?.name;
+    const result = await parseGongTranscript(call.transcriptText, organizationName);
 
     if (result.success && result.data) {
       console.log('✅ Parsing successful!');

@@ -27,15 +27,30 @@ import { useRouter } from "next/navigation";
 import { formatDateShort } from "@/lib/format";
 import { ParseGongTranscriptDialog } from "./parse-gong-transcript-dialog";
 import { GongCallInsightsDialog } from "./gong-call-insights-dialog";
+import { ConsolidatedInsightsCard } from "./consolidated-insights-card";
 import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 import type { RiskAssessment } from "@/types/gong-call";
 
 interface GongCallsSectionProps {
   opportunityId: string;
   calls: GongCall[];
+  // Consolidated insights (optional - shown when 2+ calls parsed)
+  consolidatedPainPoints?: string[] | null;
+  consolidatedGoals?: string[] | null;
+  consolidatedRiskAssessment?: RiskAssessment | null;
+  lastConsolidatedAt?: string | null;
+  consolidationCallCount?: number | null;
 }
 
-export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps) {
+export function GongCallsSection({
+  opportunityId,
+  calls,
+  consolidatedPainPoints,
+  consolidatedGoals,
+  consolidatedRiskAssessment,
+  lastConsolidatedAt,
+  consolidationCallCount,
+}: GongCallsSectionProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
@@ -125,6 +140,15 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
     }
   };
 
+  // Check if we should show consolidated insights
+  const showConsolidated =
+    consolidatedPainPoints &&
+    consolidatedGoals &&
+    consolidatedRiskAssessment &&
+    lastConsolidatedAt &&
+    consolidationCallCount &&
+    consolidationCallCount >= 2;
+
   return (
     <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3">
       <div className="flex items-center justify-between mb-3">
@@ -138,6 +162,30 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
           Add Call
         </Button>
       </div>
+
+      {/* Consolidated Insights Card (shown when 2+ calls parsed) */}
+      {showConsolidated && (
+        <div className="mb-6">
+          <ConsolidatedInsightsCard
+            opportunityId={opportunityId}
+            consolidatedPainPoints={consolidatedPainPoints}
+            consolidatedGoals={consolidatedGoals}
+            consolidatedRiskAssessment={consolidatedRiskAssessment}
+            lastConsolidatedAt={lastConsolidatedAt}
+            consolidationCallCount={consolidationCallCount}
+            onReconsolidate={() => router.refresh()}
+          />
+        </div>
+      )}
+
+      {/* Individual Calls Section */}
+      {showConsolidated && (
+        <div className="mb-3">
+          <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            Individual Calls
+          </h4>
+        </div>
+      )}
 
       {calls.length === 0 ? (
         <p className="text-sm text-muted-foreground">

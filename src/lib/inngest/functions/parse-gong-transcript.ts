@@ -33,13 +33,30 @@ export const parseGongTranscriptJob = inngest.createFunction(
       return { status: "parsing" };
     });
 
-    // Step 2: Parse the transcript using AI
+    // Step 2: Fetch user's organization name for filtering
+    const organizationName = await step.run("fetch-organization-name", async () => {
+      const gongCall = await prisma.gongCall.findUnique({
+        where: { id: gongCallId },
+        include: {
+          opportunity: {
+            include: {
+              organization: {
+                select: { name: true },
+              },
+            },
+          },
+        },
+      });
+      return gongCall?.opportunity.organization?.name;
+    });
+
+    // Step 3: Parse the transcript using AI
     const parseResult = await step.run("parse-transcript", async () => {
-      const result = await parseGongTranscript(transcriptText);
+      const result = await parseGongTranscript(transcriptText, organizationName);
       return result;
     });
 
-    // Step 3: Handle parsing result
+    // Step 4: Handle parsing result
     if (!parseResult.success || !parseResult.data) {
       // Mark as failed
       await step.run("update-status-failed", async () => {
@@ -55,7 +72,7 @@ export const parseGongTranscriptJob = inngest.createFunction(
       throw new Error(`Parsing failed: ${parseResult.error}`);
     }
 
-    // Step 4: Save parsed results to database
+    // Step 5: Save parsed results to database
     const updatedCall = await step.run("save-parsed-results", async () => {
       return await prisma.gongCall.update({
         where: { id: gongCallId },
@@ -74,7 +91,7 @@ export const parseGongTranscriptJob = inngest.createFunction(
       });
     });
 
-    // Step 5: Update opportunity history (with duplicate prevention)
+    // Step 6: Update opportunity history (with duplicate prevention)
     await step.run("update-opportunity-history", async () => {
       try {
         await appendToOpportunityHistory({
@@ -93,7 +110,7 @@ export const parseGongTranscriptJob = inngest.createFunction(
       }
     });
 
-    // Step 6: Trigger risk analysis job
+    // Step 7: Trigger risk analysis job
     await step.run("trigger-risk-analysis", async () => {
       try {
         await step.sendEvent("trigger-risk-analysis-event", {
@@ -107,6 +124,36 @@ export const parseGongTranscriptJob = inngest.createFunction(
         // Log but don't fail the main job if risk analysis trigger fails
         console.error("Failed to trigger risk analysis:", error);
         return { riskAnalysisTriggered: false, error: String(error) };
+      }
+    });
+
+    // Step 8: Trigger consolidation job (if 2+ parsed calls exist)
+    await step.run("trigger-consolidation", async () => {
+      try {
+        // Check how many parsed calls exist for this opportunity
+        const parsedCallCount = await prisma.gongCall.count({
+          where: {
+            opportunityId: updatedCall.opportunityId,
+            parsingStatus: ParsingStatus.completed,
+          },
+        });
+
+        // Only trigger consolidation if we have 2+ parsed calls
+        if (parsedCallCount >= 2) {
+          await step.sendEvent("trigger-consolidation-event", {
+            name: "gong/insights.consolidate",
+            data: {
+              opportunityId: updatedCall.opportunityId,
+            },
+          });
+          return { consolidationTriggered: true, parsedCallCount };
+        }
+
+        return { consolidationTriggered: false, parsedCallCount, reason: "Less than 2 parsed calls" };
+      } catch (error) {
+        // Log but don't fail the main job if consolidation trigger fails
+        console.error("Failed to trigger consolidation:", error);
+        return { consolidationTriggered: false, error: String(error) };
       }
     });
 

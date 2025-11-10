@@ -31,8 +31,6 @@ import {
   InlineDatePicker,
   InlineCurrencyInput,
 } from "@/components/ui/inline-editable";
-import { DecisionMakerSection } from "@/components/opportunity/DecisionMakerSection";
-import { Contact } from "@/types/contact";
 import { MeetingBriefViewer } from "@/components/features/ai/MeetingBriefViewer";
 
 interface OpportunityDetailClientProps {
@@ -82,7 +80,6 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
   const [isDeleting, setIsDeleting] = useState(false);
   const [isGeneratingResearch, setIsGeneratingResearch] = useState(false);
   const [researchStatus, setResearchStatus] = useState(opportunity.accountResearchStatus);
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const router = useRouter();
 
   // Poll for research status when generating
@@ -129,22 +126,6 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
       }
     };
   }, [researchStatus, opportunity.id, router]);
-
-  // Load contacts for decision maker section
-  useEffect(() => {
-    const loadContacts = async () => {
-      try {
-        const response = await fetch(`/api/v1/opportunities/${opportunity.id}/contacts`);
-        if (response.ok) {
-          const data = await response.json();
-          setContacts(data);
-        }
-      } catch (error) {
-        console.error("Failed to load contacts:", error);
-      }
-    };
-    loadContacts();
-  }, [opportunity.id]);
 
   const handleUpdateOpportunity = async (data: OpportunityUpdateInput) => {
     try {
@@ -368,16 +349,14 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           {/* Deal Context */}
           <div>
             <h3 className="text-sm font-medium mb-3">Deal Context</h3>
-            <div className="mb-4">
-              <h4 className="text-sm font-medium mb-3">Decision Makers</h4>
-              <DecisionMakerSection
-                contacts={contacts}
-                opportunityId={opportunity.id}
-                apiEndpoint={`/api/v1/opportunities/${opportunity.id}/contacts`}
-                onContactsUpdate={setContacts}
-              />
-            </div>
             <div className="grid gap-4 md:grid-cols-2">
+              <InlineTextarea
+                label="Decision Makers"
+                value={opportunity.decisionMakers || ""}
+                onSave={async (value) => handleFieldUpdate("decisionMakers", value)}
+                placeholder="Who are the decision makers? Include names, titles, and roles..."
+                rows={3}
+              />
               <InlineTextInput
                 label="Competition"
                 value={opportunity.competition || ""}
@@ -559,11 +538,6 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
             <GongCallsSection
               opportunityId={opportunity.id}
               calls={opportunity.gongCalls || []}
-              consolidatedPainPoints={opportunity.consolidatedPainPoints as string[] | null | undefined}
-              consolidatedGoals={opportunity.consolidatedGoals as string[] | null | undefined}
-              consolidatedRiskAssessment={opportunity.consolidatedRiskAssessment}
-              lastConsolidatedAt={opportunity.lastConsolidatedAt}
-              consolidationCallCount={opportunity.consolidationCallCount}
             />
             <GoogleNotesSection
               opportunityId={opportunity.id}

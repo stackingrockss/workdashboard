@@ -1,3 +1,5 @@
+import type { RiskAssessment } from "./gong-call";
+
 export type OpportunityStage =
   | "discovery"
   | "demo"
@@ -130,6 +132,12 @@ export interface Opportunity {
   painPointsHistory?: string | null;
   goalsHistory?: string | null;
   nextStepsHistory?: string | null;
+  // Consolidated insights from multiple calls
+  consolidatedPainPoints?: string[] | null;
+  consolidatedGoals?: string[] | null;
+  consolidatedRiskAssessment?: RiskAssessment | null;
+  lastConsolidatedAt?: string | null;
+  consolidationCallCount?: number | null;
   owner: OpportunityOwner;
   granolaNotes?: Array<{
     id: string;
