@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { OpportunityDetailClient } from "@/components/features/opportunities/opportunity-detail-client";
 import { getCurrentUser } from "@/lib/auth";
+import type { MeetingBriefMetadata } from "@/types/opportunity";
 
 interface OpportunityPageProps {
   params: Promise<{ id: string }>;
@@ -62,7 +63,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     accountResearch: opportunityFromDB.accountResearch || undefined,
     accountResearchStatus: opportunityFromDB.accountResearchStatus || undefined,
     accountResearchMobile: opportunityFromDB.accountResearchMobile || undefined,
-    accountResearchMeta: opportunityFromDB.accountResearchMeta as Record<string, unknown> | undefined,
+    accountResearchMeta: (opportunityFromDB.accountResearchMeta || undefined) as MeetingBriefMetadata | null | undefined,
     painPointsHistory: opportunityFromDB.painPointsHistory || undefined,
     goalsHistory: opportunityFromDB.goalsHistory || undefined,
     nextStepsHistory: opportunityFromDB.nextStepsHistory || undefined,
