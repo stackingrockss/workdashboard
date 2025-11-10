@@ -17,4 +17,5 @@ export const { GET, POST, PUT } = serve({
     analyzeCallRiskJob,
     // Add more job functions here as needed
   ],
+  signingKey: process.env.INNGEST_SIGNING_KEY,
 });
