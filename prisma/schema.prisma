@@ -209,6 +209,7 @@ model Opportunity {
   painPointsHistory       String?                   @db.Text
   goalsHistory            String?                   @db.Text
   nextStepsHistory        String?                   @db.Text
+  parsedGongCallIds       String[]                  @default([])
   organizationId          String
   contacts                Contact[]
   gongCalls               GongCall[]

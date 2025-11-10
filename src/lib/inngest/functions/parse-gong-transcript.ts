@@ -74,11 +74,12 @@ export const parseGongTranscriptJob = inngest.createFunction(
       });
     });
 
-    // Step 5: Update opportunity history
+    // Step 5: Update opportunity history (with duplicate prevention)
     await step.run("update-opportunity-history", async () => {
       try {
         await appendToOpportunityHistory({
           opportunityId: updatedCall.opportunityId,
+          gongCallId, // Pass call ID to track and prevent duplicates
           meetingDate: updatedCall.meetingDate,
           painPoints: parseResult.data!.painPoints,
           goals: parseResult.data!.goals,

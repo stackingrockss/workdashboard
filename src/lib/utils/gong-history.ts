@@ -173,15 +173,18 @@ function updateHistoryForDate(
 /**
  * Main function to append Gong call insights to opportunity history
  * Updates painPointsHistory, goalsHistory, and nextStepsHistory fields
+ * Tracks parsed calls to prevent duplicate entries
  */
 export async function appendToOpportunityHistory({
   opportunityId,
+  gongCallId,
   meetingDate,
   painPoints = [],
   goals = [],
   nextSteps = [],
 }: {
   opportunityId: string;
+  gongCallId: string;
   meetingDate: Date | string;
   painPoints?: string[];
   goals?: string[];
@@ -197,11 +200,18 @@ export async function appendToOpportunityHistory({
       painPointsHistory: true,
       goalsHistory: true,
       nextStepsHistory: true,
+      parsedGongCallIds: true,
     },
   });
 
   if (!opportunity) {
     throw new Error(`Opportunity not found: ${opportunityId}`);
+  }
+
+  // Check if this call has already been parsed
+  if (opportunity.parsedGongCallIds.includes(gongCallId)) {
+    console.log(`[gong-history] Call ${gongCallId} already parsed for opportunity ${opportunityId}, skipping duplicate`);
+    return opportunity; // Return existing opportunity without changes
   }
 
   // Update each history field
@@ -223,15 +233,20 @@ export async function appendToOpportunityHistory({
     nextSteps
   );
 
-  // Save to database
+  // Save to database and track this parsed call
   const updatedOpportunity = await prisma.opportunity.update({
     where: { id: opportunityId },
     data: {
       painPointsHistory: updatedPainPointsHistory,
       goalsHistory: updatedGoalsHistory,
       nextStepsHistory: updatedNextStepsHistory,
+      parsedGongCallIds: {
+        push: gongCallId, // Add this call ID to the tracking array
+      },
     },
   });
+
+  console.log(`[gong-history] Successfully updated opportunity ${opportunityId} with insights from call ${gongCallId}`);
 
   return updatedOpportunity;
 }
