@@ -55,9 +55,8 @@ export const consolidateInsightsJob = inngest.createFunction(
 
     // Step 2: Transform data for consolidation AI
     const callInsights = calls.map((call) => {
-      const meetingDate = call.meetingDate instanceof Date
-        ? call.meetingDate.toISOString()
-        : String(call.meetingDate);
+      // Convert meetingDate to ISO string (Prisma returns Date objects)
+      const meetingDate = new Date(call.meetingDate).toISOString();
 
       return {
         callId: call.id,
