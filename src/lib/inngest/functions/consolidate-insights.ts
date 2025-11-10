@@ -54,19 +54,23 @@ export const consolidateInsightsJob = inngest.createFunction(
     }
 
     // Step 2: Transform data for consolidation AI
-    const callInsights = calls.map((call) => ({
-      callId: call.id,
-      meetingDate: typeof call.meetingDate === 'string'
-        ? call.meetingDate
-        : call.meetingDate.toISOString(),
-      painPoints: Array.isArray(call.painPoints)
-        ? (call.painPoints as string[])
-        : [],
-      goals: Array.isArray(call.goals) ? (call.goals as string[]) : [],
-      riskAssessment: call.riskAssessment
-        ? (call.riskAssessment as RiskAssessment)
-        : null,
-    }));
+    const callInsights = calls.map((call) => {
+      const meetingDate = call.meetingDate instanceof Date
+        ? call.meetingDate.toISOString()
+        : String(call.meetingDate);
+
+      return {
+        callId: call.id,
+        meetingDate,
+        painPoints: Array.isArray(call.painPoints)
+          ? (call.painPoints as string[])
+          : [],
+        goals: Array.isArray(call.goals) ? (call.goals as string[]) : [],
+        riskAssessment: call.riskAssessment
+          ? (call.riskAssessment as RiskAssessment)
+          : null,
+      };
+    });
 
     // Step 3: Consolidate insights using AI
     const consolidationResult = await step.run(
