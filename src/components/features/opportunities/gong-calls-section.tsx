@@ -28,6 +28,7 @@ import { formatDateShort } from "@/lib/format";
 import { ParseGongTranscriptDialog } from "./parse-gong-transcript-dialog";
 import { GongCallInsightsDialog } from "./gong-call-insights-dialog";
 import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
+import type { RiskAssessment } from "@/types/gong-call";
 
 interface GongCallsSectionProps {
   opportunityId: string;
@@ -370,6 +371,7 @@ export function GongCallsSection({ opportunityId, calls }: GongCallsSectionProps
             people: (selectedCallForViewing.parsedPeople as PersonExtracted[]) || [],
             nextSteps: (selectedCallForViewing.nextSteps as string[]) || [],
           }}
+          riskAssessment={(selectedCallForViewing.riskAssessment as RiskAssessment) || null}
           onContactsImported={() => {
             router.refresh();
           }}

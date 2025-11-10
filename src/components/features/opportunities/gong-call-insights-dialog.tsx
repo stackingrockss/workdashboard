@@ -14,6 +14,7 @@
 
 import { useState } from "react";
 import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
+import type { RiskAssessment } from "@/types/gong-call";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,7 @@ import {
   Copy,
   Check,
   UserPlus,
+  ShieldAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -52,6 +54,7 @@ interface GongCallInsightsDialogProps {
     people: PersonExtracted[];
     nextSteps: string[];
   };
+  riskAssessment?: RiskAssessment | null;
   onContactsImported?: () => void;
 }
 
@@ -65,6 +68,7 @@ export function GongCallInsightsDialog({
   gongCallTitle,
   opportunityId,
   insights,
+  riskAssessment,
   onContactsImported,
 }: GongCallInsightsDialogProps) {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
@@ -89,7 +93,7 @@ export function GongCallInsightsDialog({
   };
 
   // Handle contact import completion
-  const handleImportComplete = (result: BulkImportResult) => {
+  const handleImportComplete = (_result: BulkImportResult) => {
     setShowContactImport(false);
     onContactsImported?.();
   };
@@ -243,6 +247,164 @@ export function GongCallInsightsDialog({
     );
   };
 
+  // Get risk level badge color
+  const getRiskLevelColor = (level: string) => {
+    switch (level) {
+      case "low":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "medium":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "high":
+        return "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200";
+      case "critical":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      default:
+        return "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200";
+    }
+  };
+
+  // Get risk severity badge color
+  const getRiskSeverityColor = (severity: string) => {
+    switch (severity) {
+      case "low":
+        return "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300";
+      case "medium":
+        return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300";
+      case "high":
+        return "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300";
+      default:
+        return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300";
+    }
+  };
+
+  // Get risk category icon and label
+  const getRiskCategoryInfo = (category: string) => {
+    switch (category) {
+      case "budget":
+        return { label: "Budget", emoji: "💰" };
+      case "timeline":
+        return { label: "Timeline", emoji: "⏰" };
+      case "competition":
+        return { label: "Competition", emoji: "🏆" };
+      case "technical":
+        return { label: "Technical", emoji: "⚙️" };
+      case "alignment":
+        return { label: "Alignment", emoji: "🎯" };
+      case "resistance":
+        return { label: "Resistance", emoji: "🚧" };
+      default:
+        return { label: category, emoji: "⚠️" };
+    }
+  };
+
+  // Render risk assessment section
+  const renderRiskAssessmentSection = () => {
+    if (!riskAssessment) {
+      return (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-slate-400" />
+            <h4 className="font-semibold text-slate-900 dark:text-slate-100">
+              Risk Assessment
+            </h4>
+          </div>
+          <p className="text-sm text-slate-500 dark:text-slate-400 italic">
+            Risk analysis pending...
+          </p>
+        </div>
+      );
+    }
+
+    const { riskLevel, riskFactors, overallSummary, recommendedActions } = riskAssessment;
+
+    return (
+      <div className="space-y-4">
+        {/* Header with overall risk level */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="h-5 w-5 text-red-600" />
+            <h4 className="font-semibold text-slate-900 dark:text-slate-100">
+              Risk Assessment
+            </h4>
+          </div>
+          <Badge className={getRiskLevelColor(riskLevel)}>
+            {riskLevel.toUpperCase()}
+          </Badge>
+        </div>
+
+        {/* Overall Summary */}
+        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+          <p className="text-sm text-slate-700 dark:text-slate-300">
+            {overallSummary}
+          </p>
+        </div>
+
+        {/* Risk Factors */}
+        {riskFactors.length > 0 && (
+          <div className="space-y-3">
+            <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Risk Factors ({riskFactors.length})
+            </h5>
+            <div className="space-y-3">
+              {riskFactors.map((factor, index) => {
+                const categoryInfo = getRiskCategoryInfo(factor.category);
+                return (
+                  <div
+                    key={index}
+                    className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{categoryInfo.emoji}</span>
+                        <span className="font-medium text-sm text-slate-900 dark:text-slate-100">
+                          {categoryInfo.label}
+                        </span>
+                      </div>
+                      <Badge
+                        variant="secondary"
+                        className={getRiskSeverityColor(factor.severity)}
+                      >
+                        {factor.severity}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-slate-700 dark:text-slate-300">
+                      {factor.description}
+                    </p>
+                    <div className="bg-slate-100 dark:bg-slate-700 rounded p-2">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 italic">
+                        &ldquo;{factor.evidence}&rdquo;
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Recommended Actions */}
+        {recommendedActions.length > 0 && (
+          <div className="space-y-2">
+            <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Recommended Actions
+            </h5>
+            <ul className="space-y-2">
+              {recommendedActions.map((action, index) => (
+                <li
+                  key={index}
+                  className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2"
+                >
+                  <span className="text-blue-500 mt-1">→</span>
+                  <span>{action}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -262,6 +424,11 @@ export function GongCallInsightsDialog({
           </div>
         ) : (
           <div className="space-y-6 py-4">
+            {/* Risk Assessment */}
+            {renderRiskAssessmentSection()}
+
+            <Separator />
+
             {/* Pain Points */}
             {renderSection(
               "Pain Points",

@@ -85,6 +85,7 @@ model GongCall {
   goals           Json?
   parsedPeople    Json?
   nextSteps       Json?
+  riskAssessment  Json?
   parsedAt        DateTime?
   parsingStatus   ParsingStatus?
   parsingError    String?

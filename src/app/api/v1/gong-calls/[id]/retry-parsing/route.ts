@@ -1,7 +1,7 @@
 // API endpoint to retry parsing for a stuck GongCall
 import { NextRequest, NextResponse } from 'next/server';
 import { inngest } from '@/lib/inngest/client';
-import prisma from '@/lib/db';
+import { prisma } from '@/lib/db';
 
 export async function POST(
   request: NextRequest,

@@ -4,6 +4,7 @@
 import { serve } from "inngest/next";
 import { inngest } from "@/lib/inngest/client";
 import { parseGongTranscriptJob } from "@/lib/inngest/functions/parse-gong-transcript";
+import { analyzeCallRiskJob } from "@/lib/inngest/functions/analyze-call-risk";
 
 /**
  * Inngest endpoint handler
@@ -13,6 +14,7 @@ export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
     parseGongTranscriptJob,
+    analyzeCallRiskJob,
     // Add more job functions here as needed
   ],
 });

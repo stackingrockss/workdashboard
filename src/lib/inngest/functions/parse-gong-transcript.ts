@@ -93,6 +93,23 @@ export const parseGongTranscriptJob = inngest.createFunction(
       }
     });
 
+    // Step 6: Trigger risk analysis job
+    await step.run("trigger-risk-analysis", async () => {
+      try {
+        await step.sendEvent("trigger-risk-analysis-event", {
+          name: "gong/risk.analyze",
+          data: {
+            gongCallId,
+          },
+        });
+        return { riskAnalysisTriggered: true };
+      } catch (error) {
+        // Log but don't fail the main job if risk analysis trigger fails
+        console.error("Failed to trigger risk analysis:", error);
+        return { riskAnalysisTriggered: false, error: String(error) };
+      }
+    });
+
     return {
       success: true,
       gongCallId,

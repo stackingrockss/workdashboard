@@ -137,7 +137,7 @@ export function ParseGongTranscriptDialog({
   };
 
   // Handle contact import completion
-  const handleImportComplete = (result: BulkImportResult) => {
+  const handleImportComplete = (_result: BulkImportResult) => {
     onContactsImported?.();
     setStep("results"); // Go back to results view
   };

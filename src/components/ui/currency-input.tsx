@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { formatCurrencyInput, parseCurrencyInput } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 export interface CurrencyInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange" | "value" | "type"> {
