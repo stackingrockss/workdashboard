@@ -47,7 +47,7 @@ export const parseGongTranscriptJob = inngest.createFunction(
           },
         },
       });
-      return gongCall?.opportunity.organization?.name;
+      return gongCall?.opportunity?.organization?.name || undefined;
     });
 
     // Step 3: Parse the transcript using AI
