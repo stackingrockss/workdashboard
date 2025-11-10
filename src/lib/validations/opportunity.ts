@@ -61,7 +61,7 @@ const baseOpportunitySchema = z.object({
   competition: z.string().max(200).optional().nullable().transform(val => val === "" ? null : val),
   legalReviewStatus: z.enum(["not_started", "in_progress", "complete", "not_applicable"]).optional().nullable().default("not_started"),
   securityReviewStatus: z.enum(["not_started", "in_progress", "complete", "not_applicable"]).optional().nullable().default("not_started"),
-  platformType: z.enum(["oem", "api", "isv"]).optional().nullable().transform(val => val === "" ? null : val),
+  platformType: z.enum(["oem", "api", "isv"]).optional().nullable(),
   businessCaseStatus: z.enum(["not_started", "in_progress", "complete", "not_applicable"]).optional().nullable().default("not_started"),
   pinnedToWhiteboard: z.boolean().optional(),
   painPointsHistory: z.string().optional(),
