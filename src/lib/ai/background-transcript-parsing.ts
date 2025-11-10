@@ -1,10 +1,7 @@
 // src/lib/ai/background-transcript-parsing.ts
-// Background Gong transcript parsing helper for non-blocking AI processing
+// Background Gong transcript parsing helper using Inngest for reliable job processing
 
-import { parseGongTranscript } from "./parse-gong-transcript";
-import { prisma } from "@/lib/db";
-import { ParsingStatus } from "@prisma/client";
-import { appendToOpportunityHistory } from "@/lib/utils/gong-history";
+import { inngest } from "@/lib/inngest/client";
 
 /**
  * Context for background transcript parsing
@@ -15,8 +12,8 @@ export interface BackgroundParsingContext {
 }
 
 /**
- * Triggers Gong transcript parsing in the background (fire-and-forget)
- * This function is called when a user submits a transcript and does NOT block the response
+ * Triggers Gong transcript parsing using Inngest background jobs
+ * This function sends an event to Inngest and returns immediately (non-blocking)
  *
  * @param context - GongCall ID and transcript text
  */
@@ -25,88 +22,16 @@ export async function triggerTranscriptParsing(
 ): Promise<void> {
   const { gongCallId, transcriptText } = context;
 
-  // Fire-and-forget: Don't await, let it run in background
-  // Wrap in Promise.resolve().then() to ensure it runs asynchronously
-  Promise.resolve().then(async () => {
-    try {
-      console.log(`[Background Parsing] Starting transcript parsing for GongCall ${gongCallId}`);
-
-      // Update status to 'parsing'
-      await prisma.gongCall.update({
-        where: { id: gongCallId },
-        data: {
-          parsingStatus: ParsingStatus.parsing,
-          parsingError: null, // Clear any previous errors
-        },
-      });
-
-      // Parse transcript using existing AI function
-      const result = await parseGongTranscript(transcriptText);
-
-      if (result.success && result.data) {
-        // Update GongCall with parsed results
-        const updatedGongCall = await prisma.gongCall.update({
-          where: { id: gongCallId },
-          data: {
-            painPoints: JSON.parse(JSON.stringify(result.data.painPoints)),
-            goals: JSON.parse(JSON.stringify(result.data.goals)),
-            parsedPeople: JSON.parse(JSON.stringify(result.data.people)),
-            nextSteps: JSON.parse(JSON.stringify(result.data.nextSteps)),
-            parsedAt: new Date(),
-            parsingStatus: ParsingStatus.completed,
-            parsingError: null,
-          },
-          include: {
-            opportunity: true,
-          },
-        });
-
-        console.log(`[Background Parsing] Successfully parsed transcript for GongCall ${gongCallId}`);
-
-        // Update opportunity history with parsed insights
-        try {
-          await appendToOpportunityHistory({
-            opportunityId: updatedGongCall.opportunityId,
-            meetingDate: updatedGongCall.meetingDate,
-            painPoints: result.data.painPoints,
-            goals: result.data.goals,
-            nextSteps: result.data.nextSteps,
-          });
-          console.log(`[Background Parsing] Updated opportunity history for Opportunity ${updatedGongCall.opportunityId}`);
-        } catch (historyError) {
-          // Log error but don't fail the parsing - history update is non-critical
-          console.error(`[Background Parsing] Failed to update opportunity history:`, historyError);
-        }
-      } else {
-        // Mark as failed if parsing didn't succeed
-        await prisma.gongCall.update({
-          where: { id: gongCallId },
-          data: {
-            parsingStatus: ParsingStatus.failed,
-            parsingError: result.error || "Unknown parsing error",
-          },
-        });
-
-        console.error(`[Background Parsing] Failed to parse transcript for GongCall ${gongCallId}:`, result.error);
-      }
-    } catch (error) {
-      // Silently handle errors - don't throw to avoid disrupting the API response
-      console.error(`[Background Parsing] Error parsing transcript for GongCall ${gongCallId}:`, error);
-
-      // Attempt to mark as failed (best effort)
-      try {
-        await prisma.gongCall.update({
-          where: { id: gongCallId },
-          data: {
-            parsingStatus: ParsingStatus.failed,
-            parsingError: error instanceof Error ? error.message : "Unexpected error during parsing",
-          },
-        });
-      } catch (updateError) {
-        console.error(`[Background Parsing] Failed to update status to 'failed':`, updateError);
-      }
-    }
+  // Send event to Inngest - job runs reliably in the background
+  await inngest.send({
+    name: "gong/transcript.parse",
+    data: {
+      gongCallId,
+      transcriptText,
+    },
   });
+
+  console.log(`[Inngest] Queued transcript parsing job for GongCall ${gongCallId}`);
 }
 
 /**
@@ -118,9 +43,8 @@ export async function triggerTranscriptParsing(
 export function triggerTranscriptParsingAsync(
   context: BackgroundParsingContext
 ): void {
-  // Don't await - just trigger and return
+  // Trigger Inngest job asynchronously (don't await)
   triggerTranscriptParsing(context).catch((error) => {
-    // This should never happen since we catch internally, but just in case
-    console.error("[Background Parsing] Unexpected error in async trigger:", error);
+    console.error("[Inngest] Failed to queue parsing job:", error);
   });
 }
