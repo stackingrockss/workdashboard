@@ -248,11 +248,9 @@ export function formatMeetingBrief(fullBrief: string, accountName: string): Form
   // Generate mobile cheat sheet
   const mobileCheatSheet = generateMobileCheatSheet(metadata, accountName);
 
-  // Enhance full brief with executive summary
-  const enhancedFullBrief = enhanceFullBrief(fullBrief, metadata);
-
+  // Return AI output as-is (no executive summary injection)
   return {
-    fullBrief: enhancedFullBrief,
+    fullBrief: fullBrief,
     mobileCheatSheet,
     metadata,
   };
