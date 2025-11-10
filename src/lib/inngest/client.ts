@@ -10,4 +10,5 @@ import { Inngest } from "inngest";
 export const inngest = new Inngest({
   id: "opportunity-tracker",
   name: "Opportunity Tracker",
+  eventKey: process.env.INNGEST_EVENT_KEY,
 });
