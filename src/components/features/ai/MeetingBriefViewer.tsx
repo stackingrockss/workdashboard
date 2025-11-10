@@ -28,7 +28,38 @@ export const MeetingBriefViewer = ({
   const [view, setView] = useState<"full" | "mobile">("full");
 
   // Extract background content (sections after executive summary)
-  const backgroundContent = fullBrief.split("## 1.").slice(1).join("## 1.");
+  // Try multiple patterns to handle different content formats
+  const extractBackgroundContent = (content: string): string => {
+    // Try splitting on "## 1." first (numbered sections)
+    if (content.includes("## 1.")) {
+      return content.split("## 1.").slice(1).join("## 1.");
+    }
+
+    // Try splitting after executive summary heading variations
+    const executiveSummaryPatterns = [
+      /## 🎯 EXECUTIVE SUMMARY[\s\S]*?\n(?=##)/,
+      /## EXECUTIVE SUMMARY[\s\S]*?\n(?=##)/,
+      /## Executive Summary[\s\S]*?\n(?=##)/,
+    ];
+
+    for (const pattern of executiveSummaryPatterns) {
+      const match = content.match(pattern);
+      if (match) {
+        return content.substring(match.index! + match[0].length);
+      }
+    }
+
+    // Fallback: return everything after first major section break
+    const firstSectionMatch = content.match(/^## .+?\n[\s\S]*?\n(?=## )/m);
+    if (firstSectionMatch) {
+      return content.substring(firstSectionMatch.index! + firstSectionMatch[0].length);
+    }
+
+    // Last resort: return the full content
+    return content;
+  };
+
+  const backgroundContent = extractBackgroundContent(fullBrief);
 
   return (
     <div className="space-y-6">
