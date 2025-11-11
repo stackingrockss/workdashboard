@@ -1,0 +1,222 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/db';
+import { googleCalendarClient } from '@/lib/integrations/google-calendar';
+import {
+  calendarEventFilterSchema,
+  createCalendarEventSchema,
+} from '@/lib/validations/calendar';
+
+/**
+ * GET /api/v1/integrations/google/calendar/events
+ * Fetches calendar events for the authenticated user
+ */
+export async function GET(req: NextRequest) {
+  try {
+    // Authenticate user
+    const supabase = await createClient();
+    const {
+      data: { user: supabaseUser },
+    } = await supabase.auth.getUser();
+
+    if (!supabaseUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Find user in database
+    const user = await prisma.user.findUnique({
+      where: { supabaseId: supabaseUser.id },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Parse and validate query parameters
+    const searchParams = req.nextUrl.searchParams;
+    const filterInput = {
+      startDate: searchParams.get('startDate') || undefined,
+      endDate: searchParams.get('endDate') || undefined,
+      accountId: searchParams.get('accountId') || undefined,
+      opportunityId: searchParams.get('opportunityId') || undefined,
+      externalOnly: searchParams.get('externalOnly') || undefined,
+      pageToken: searchParams.get('pageToken') || undefined,
+      maxResults: searchParams.get('maxResults')
+        ? parseInt(searchParams.get('maxResults')!)
+        : undefined,
+    };
+
+    const validation = calendarEventFilterSchema.safeParse(filterInput);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Invalid filter parameters', details: validation.error },
+        { status: 400 }
+      );
+    }
+
+    const filters = validation.data;
+
+    // Set default date range if not provided (today to 30 days from now)
+    const startDate = filters.startDate
+      ? new Date(filters.startDate)
+      : new Date();
+    const endDate = filters.endDate
+      ? new Date(filters.endDate)
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+    // Fetch events from Google Calendar
+    const result = await googleCalendarClient.listEvents(
+      user.id,
+      startDate,
+      endDate,
+      {
+        accountId: filters.accountId,
+        opportunityId: filters.opportunityId,
+        externalOnly: filters.externalOnly !== false, // Default to true
+        pageToken: filters.pageToken,
+        maxResults: filters.maxResults,
+      }
+    );
+
+    return NextResponse.json({
+      events: result.events,
+      nextPageToken: result.nextPageToken,
+      hasMore: !!result.nextPageToken,
+    });
+  } catch (error) {
+    console.error('Failed to fetch calendar events:', error);
+
+    // Handle specific error messages
+    if (error instanceof Error && error.message?.includes('Calendar not connected')) {
+      return NextResponse.json(
+        {
+          error: 'Calendar not connected',
+          message: 'Please connect your Google Calendar in Settings.',
+        },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Failed to fetch calendar events' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/v1/integrations/google/calendar/events
+ * Creates a new calendar event
+ */
+export async function POST(req: NextRequest) {
+  try {
+    // Authenticate user
+    const supabase = await createClient();
+    const {
+      data: { user: supabaseUser },
+    } = await supabase.auth.getUser();
+
+    if (!supabaseUser) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Find user in database
+    const user = await prisma.user.findUnique({
+      where: { supabaseId: supabaseUser.id },
+      include: { organization: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Parse and validate request body
+    const body = await req.json();
+    const validation = createCalendarEventSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: 'Invalid event data', details: validation.error },
+        { status: 400 }
+      );
+    }
+
+    const eventData = validation.data;
+
+    // If opportunity ID is provided, add contacts as attendees
+    if (eventData.opportunityId) {
+      const opportunity = await prisma.opportunity.findUnique({
+        where: {
+          id: eventData.opportunityId,
+          organizationId: user.organizationId!,
+        },
+        include: {
+          contacts: { select: { email: true } },
+        },
+      });
+
+      if (!opportunity) {
+        return NextResponse.json(
+          { error: 'Opportunity not found' },
+          { status: 404 }
+        );
+      }
+
+      // Add opportunity contacts to attendees
+      const contactEmails = opportunity.contacts
+        .map((c) => c.email)
+        .filter(Boolean) as string[];
+
+      eventData.attendees = [
+        ...(eventData.attendees || []),
+        ...contactEmails,
+      ].filter((email, index, self) => self.indexOf(email) === index); // Remove duplicates
+    }
+
+    // Create event in Google Calendar
+    const createdEvent = await googleCalendarClient.createEvent(user.id, {
+      ...eventData,
+      startTime: new Date(eventData.startTime),
+      endTime: new Date(eventData.endTime),
+    });
+
+    // Optionally: Store event in database for faster access
+    // (Uncomment if you want to persist events in DB)
+    // await prisma.calendarEvent.create({
+    //   data: {
+    //     userId: user.id,
+    //     googleEventId: createdEvent.id,
+    //     summary: createdEvent.summary,
+    //     description: createdEvent.description,
+    //     location: createdEvent.location,
+    //     startTime: createdEvent.startTime,
+    //     endTime: createdEvent.endTime,
+    //     attendees: createdEvent.attendees,
+    //     isExternal: createdEvent.isExternal,
+    //     organizerEmail: createdEvent.organizerEmail,
+    //     meetingUrl: createdEvent.meetingUrl,
+    //     opportunityId: eventData.opportunityId,
+    //   },
+    // });
+
+    return NextResponse.json({ event: createdEvent }, { status: 201 });
+  } catch (error) {
+    console.error('Failed to create calendar event:', error);
+
+    if (error instanceof Error && error.message?.includes('Calendar not connected')) {
+      return NextResponse.json(
+        {
+          error: 'Calendar not connected',
+          message: 'Please connect your Google Calendar in Settings.',
+        },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: 'Failed to create calendar event' },
+      { status: 500 }
+    );
+  }
+}

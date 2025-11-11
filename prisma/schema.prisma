@@ -9,21 +9,22 @@ datasource db {
 }
 
 model Account {
-  id             String        @id @default(cuid())
+  id             String          @id @default(cuid())
   name           String
   website        String?
   industry       String?
-  priority       String        @default("medium")
-  health         String        @default("good")
+  priority       String          @default("medium")
+  health         String          @default("good")
   notes          String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   ownerId        String?
   organizationId String
-  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner          User?         @relation("AccountOwner", fields: [ownerId], references: [id])
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner          User?           @relation("AccountOwner", fields: [ownerId], references: [id])
   contacts       Contact[]
   opportunities  Opportunity[]
+  calendarEvents CalendarEvent[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -171,6 +172,7 @@ model Opportunity {
   name                    String
   amountArr               Int
   nextStep                String?
+  cbc                     String?                   @db.Text
   closeDate               DateTime?
   stage                   OpportunityStage
   ownerId                 String
@@ -210,6 +212,7 @@ model Opportunity {
   gongCalls               GongCall[]
   googleNotes             GoogleNote[]
   granolaNotes            GranolaNote[]
+  calendarEvents          CalendarEvent[]
   account                 Account?                  @relation(fields: [accountId], references: [id])
   organization            Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner                   User                      @relation(fields: [ownerId], references: [id])
@@ -256,25 +259,73 @@ model OrganizationSettings {
 }
 
 model User {
-  id             String        @id @default(cuid())
-  email          String        @unique
+  id             String         @id @default(cuid())
+  email          String         @unique
   name           String?
   avatarUrl      String?
-  createdAt      DateTime      @default(now())
-  supabaseId     String?       @unique
+  createdAt      DateTime       @default(now())
+  supabaseId     String?        @unique
   managerId      String?
   organizationId String?
-  role           UserRole      @default(REP)
+  role           UserRole       @default(REP)
   opportunities  Opportunity[]
-  ownedAccounts  Account[]     @relation("AccountOwner")
+  ownedAccounts  Account[]      @relation("AccountOwner")
   invitations    Invitation[]
   kanbanViews    KanbanView[]
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  manager        User?         @relation("ManagerReps", fields: [managerId], references: [id])
-  directReports  User[]        @relation("ManagerReps")
+  oauthTokens    OAuthToken[]
+  calendarEvents CalendarEvent[]
+  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  manager        User?          @relation("ManagerReps", fields: [managerId], references: [id])
+  directReports  User[]         @relation("ManagerReps")
 
   @@index([organizationId])
   @@index([managerId])
+  @@schema("opportunity_tracker")
+}
+
+model OAuthToken {
+  id           String   @id @default(cuid())
+  userId       String
+  provider     String   // "google", "microsoft", "apple"
+  accessToken  String   @db.Text // Encrypted
+  refreshToken String?  @db.Text // Encrypted
+  expiresAt    DateTime
+  scopes       String[] // Granted OAuth scopes
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@index([expiresAt])
+  @@schema("opportunity_tracker")
+}
+
+model CalendarEvent {
+  id             String       @id @default(cuid())
+  userId         String
+  googleEventId  String       // Google's event ID
+  summary        String       // Event title
+  description    String?      @db.Text
+  location       String?
+  startTime      DateTime
+  endTime        DateTime
+  attendees      String[]     // Email addresses
+  isExternal     Boolean      // Has attendees outside organization
+  organizerEmail String?
+  meetingUrl     String?      // Google Meet, Zoom, etc.
+  opportunityId  String?      // Link to opportunity (optional)
+  accountId      String?      // Link to account (optional)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunity    Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  account        Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, googleEventId])
+  @@index([userId, startTime])
+  @@index([opportunityId])
+  @@index([accountId])
   @@schema("opportunity_tracker")
 }
 

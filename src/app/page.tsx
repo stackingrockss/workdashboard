@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/format";
 import { TrendingUp, Target, DollarSign, Award } from "lucide-react";
 import Link from "next/link";
+import { UpcomingMeetingsWidget } from "@/components/calendar/upcoming-meetings-widget";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +111,9 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Upcoming External Meetings */}
+      <UpcomingMeetingsWidget />
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* By Quarter */}

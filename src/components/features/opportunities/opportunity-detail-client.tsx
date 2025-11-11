@@ -12,7 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users, ExternalLink, AlertCircle, Target, ListChecks } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -34,6 +34,8 @@ import {
 import { DecisionMakerSection } from "@/components/opportunity/DecisionMakerSection";
 import { Contact } from "@/types/contact";
 import { MeetingBriefViewer } from "@/components/features/ai/MeetingBriefViewer";
+import { RelatedEventsSection } from "@/components/calendar/related-events-section";
+import { TimelineSection } from "./timeline/timeline-section";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -292,10 +294,14 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4" />
             Overview
+          </TabsTrigger>
+          <TabsTrigger value="timeline" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Timeline
           </TabsTrigger>
           <TabsTrigger value="research" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
@@ -358,6 +364,14 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
                 value={opportunity.nextStep || ""}
                 onSave={async (value) => handleFieldUpdate("nextStep", value)}
                 placeholder="e.g. Schedule demo call"
+                className="md:col-span-2 lg:col-span-3"
+              />
+              <InlineTextarea
+                label="Call Between Call (CBC)"
+                value={opportunity.cbc || ""}
+                onSave={async (value) => handleFieldUpdate("cbc", value)}
+                placeholder="Action items and follow-ups before next call..."
+                rows={4}
                 className="md:col-span-2 lg:col-span-3"
               />
             </div>
@@ -424,6 +438,11 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
               />
             </div>
           </div>
+        </TabsContent>
+
+        {/* Timeline Tab */}
+        <TabsContent value="timeline" className="mt-4">
+          <TimelineSection opportunityId={opportunity.id} />
         </TabsContent>
 
         {/* Research & Notes Tab */}
@@ -570,6 +589,14 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
               notes={opportunity.googleNotes || []}
             />
           </div>
+
+          {/* Calendar Events Section */}
+          <RelatedEventsSection
+            opportunityId={opportunity.id}
+            opportunityName={opportunity.name}
+            accountId={opportunity.accountId}
+            contactEmails={contacts.map((c) => c.email).filter((email): email is string => !!email)}
+          />
         </TabsContent>
 
         {/* Contacts Tab */}
@@ -593,6 +620,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
               amountArr: opportunity.amountArr,
               confidenceLevel: opportunity.confidenceLevel,
               nextStep: opportunity.nextStep,
+              cbc: opportunity.cbc,
               closeDate: opportunity.closeDate,
               stage: opportunity.stage,
               forecastCategory: opportunity.forecastCategory ?? undefined,

@@ -1,5 +1,19 @@
 # Claude Agent Rules for Sales Opportunity Tracker
 
+**Last Updated:** 2025-11-11
+
+## 📚 Documentation Structure
+
+This file imports specialized documentation for different aspects of the codebase:
+
+@.claude/ARCHITECTURE.md
+@.claude/API.md
+@.claude/PROMPTS.md
+@.claude/INTEGRATIONS.md
+@.claude/MULTI_TENANCY.md
+
+---
+
 ## 🧠 General Philosophy
 
 - **Always prioritize clarity, modularity, and developer experience**
@@ -9,6 +23,7 @@
 - Ensure accessibility by using semantic HTML, ARIA attributes, and keyboard navigation for all interactive elements (especially drag-and-drop, modals, and filters)
 - **Business logic focus**: This is a sales/CRM tool—prioritize data accuracy, validation, and clear user workflows for sales teams
 - **Prefer Server Components by default**: Use `"use client"` only when you need interactivity, state, or browser APIs
+- **Multi-tenant architecture**: Always scope queries by `organizationId` for strict data isolation
 
 ---
 
@@ -21,100 +36,33 @@
 | **Styling** | TailwindCSS v4 |
 | **UI Kit** | shadcn/ui (New York style, Slate base) |
 | **Database** | Prisma + PostgreSQL |
-| **Auth** | *To be determined* (Supabase or NextAuth) |
+| **Auth** | Supabase (SSR + Auth) ✅ Implemented |
 | **State** | useState, Context, Zustand if needed |
 | **Validation** | Zod |
-| **Forms** | *To install*: React Hook Form + @hookform/resolvers |
-| **Toasts** | *To install*: sonner or react-hot-toast |
+| **Forms** | React Hook Form + @hookform/resolvers ✅ Installed |
+| **Toasts** | sonner ✅ Installed |
 | **Icons** | lucide-react |
-| **Drag & Drop** | *Future*: @dnd-kit (recommended for accessibility) |
+| **Drag & Drop** | @dnd-kit ✅ Installed |
+| **Background Jobs** | Inngest (async processing) |
+| **AI** | Google Gemini (@google/generative-ai) |
+| **Date Utilities** | date-fns |
+| **Org Charts** | reactflow + dagre |
+| **Markdown** | react-markdown + remark-gfm |
+| **Git Hooks** | husky |
 | **Deployment** | Vercel |
 | **Error Tracking** | *Optional*: Sentry or LogRocket |
 | **Analytics** | *Optional*: Vercel Analytics or Mixpanel |
 
 **Path Aliases** (configured in `tsconfig.json` and `components.json`):
 ```ts
-import { Button } from "@/components/ui/button";     // → src/components/ui/button
-import { formatCurrency } from "@/lib/format";       // → src/lib/format
-import { Opportunity } from "@/types/opportunity";   // → src/types/opportunity
-import { useDebounce } from "@/hooks/useDebounce";   // → src/hooks/useDebounce
+import { Button } from "@/components/ui/button";                  // → src/components/ui/button
+import { formatCurrencyCompact } from "@/lib/format";             // → src/lib/format
+import { Opportunity } from "@/types/opportunity";                // → src/types/opportunity
+import { opportunityCreateSchema } from "@/lib/validations/opportunity"; // → src/lib/validations/opportunity
+import { prisma } from "@/lib/db";                                // → src/lib/db
 ```
 
 **Always use path aliases (`@/`)** instead of relative imports (`../../`) for better maintainability.
-
----
-
-## 📁 Folder Structure
-
-```
-/opportunity-tracker
-  /src
-    /app
-      /opportunities
-        /[id]
-          page.tsx
-      /dashboard
-      /api
-        /v1
-          /opportunities
-            route.ts
-            /[id]
-              route.ts
-      layout.tsx
-      page.tsx
-      globals.css
-    /components
-      /kanban
-        KanbanBoard.tsx
-        KanbanBoardWrapper.tsx
-        KanbanColumn.tsx
-        OpportunityCard.tsx
-        DraggableOpportunityCard.tsx
-        ColumnTemplateDialog.tsx
-      /forms
-        opportunity-form.tsx
-        column-form.tsx
-      /ui (shadcn components)
-        button.tsx
-        card.tsx
-        dialog.tsx
-        tabs.tsx
-        dropdown-menu.tsx
-        tooltip.tsx
-        ...
-    /lib
-      /validations
-        opportunity.ts
-      /templates
-        column-templates.ts
-      /utils
-        quarter.ts
-        quarterly-view.ts
-      utils.ts
-      db.ts
-      format.ts
-    /types
-      opportunity.ts
-    /hooks (create as needed)
-      useDebounce.ts
-      useOpportunities.ts
-    /data
-      mock-opportunities.ts (temporary, replace with DB)
-  /prisma
-    schema.prisma
-    /migrations
-  /public
-    /images
-```
-
-**Rules:**
-- Keep all app routes under `/src/app`
-- Store reusable business components in `/src/components` (e.g., `KanbanBoard`, `OpportunityCard`)
-- Store shadcn/ui components in `/src/components/ui`
-- Place Prisma schema and migrations in `/prisma`
-- Store utility functions, validation schemas, and DB helpers in `/src/lib`
-- Define TypeScript types in `/src/types`
-- Create `/src/hooks` for custom React hooks
 
 ---
 
@@ -126,7 +74,7 @@ import { useDebounce } from "@/hooks/useDebounce";   // → src/hooks/useDebounc
   - Effect hooks (`useEffect`, `useLayoutEffect`)
   - Event handlers (`onClick`, `onChange`)
   - Browser APIs (`window`, `localStorage`)
-  - Third-party libraries that require client-side rendering
+  - Third-party libraries that require client-side rendering (e.g., @dnd-kit, reactflow)
 - Always define props via TypeScript interfaces (never use `any`)
 - Destructure props in function signatures for clarity:
   ```tsx
@@ -139,6 +87,8 @@ import { useDebounce } from "@/hooks/useDebounce";   // → src/hooks/useDebounc
   - `<KanbanColumn />`
   - `<OpportunityDialog />`
   - `<OpportunityForm />`
+  - `<ContactCard />`
+  - `<AccountForm />`
 - Document reusable components with JSDoc comments including props, usage examples, and dependencies
 - **Kanban-specific rules:**
   - Always memoize filtered/grouped opportunity data using `useMemo`
@@ -149,91 +99,20 @@ import { useDebounce } from "@/hooks/useDebounce";   // → src/hooks/useDebounc
 
 ---
 
-## 🗄️ Database & Prisma Rules
-
-**Current Schema:**
-- **User**: `id`, `email`, `name`, `avatarUrl`
-- **Opportunity**: `id`, `name`, `account`, `amountArr`, `probability`, `nextStep`, `closeDate`, `stage`, `ownerId`
-- **OpportunityStage** enum: `prospect`, `qualification`, `proposal`, `negotiation`, `closedWon`, `closedLost`
-
-**Rules:**
-- ✅ **Use Prisma for all database access**—no raw SQL
-- Always validate inputs with Zod before database operations
-- Use `@prisma/client` types directly in TypeScript interfaces
-- Run `npx prisma generate` after schema changes
-- Run `npx prisma migrate dev --name <description>` for new migrations
-- **Always scope queries by `ownerId`** when dealing with user-specific data
-- Use `prisma/client` singleton from `/src/lib/db.ts`
-- Follow Prisma naming conventions:
-  - Models: PascalCase (e.g., `Opportunity`, `User`)
-  - Fields: camelCase (e.g., `amountArr`, `closeDate`)
-  - Relations: pluralize for one-to-many (e.g., `opportunities: Opportunity[]`)
-- **Include relations when needed**: Use `include: { owner: true }` to get owner data with opportunities
-- Use `orderBy`, `skip`, `take` for pagination and sorting
-
----
-
-## 🔐 Auth Rules
-
-**Status:** Auth not yet implemented.
-
-**When implementing:**
-- Use Supabase Auth (preferred) or NextAuth.js
-- Wrap protected routes with session checks (e.g., `createServerComponentClient()` for Supabase)
-- Redirect unauthenticated users to `/login`
-- Store user info in session and link opportunities to `ownerId`
-- Implement role-based access control (RBAC) if needed (e.g., admin vs. sales rep)
-- Use middleware (`middleware.ts` in root) to protect `/opportunities` and `/api/v1/*` routes
-- Never expose sensitive user data in client components—fetch in server components
-
----
-
-## 🚀 API Rules
-
-**Current API structure:**
-- `POST /api/v1/opportunities` → Create opportunity
-- `GET /api/v1/opportunities` → List opportunities (with filters)
-- `GET /api/v1/opportunities/[id]` → Get single opportunity
-- `PATCH /api/v1/opportunities/[id]` → Update opportunity
-- `DELETE /api/v1/opportunities/[id]` → Delete opportunity
-
-**Rules:**
-- Always validate request body with Zod schemas (from `/src/lib/validations/`)
-- Return **consistent JSON responses** matching existing patterns:
-  ```ts
-  // Success (list)
-  return NextResponse.json({ opportunities }, { status: 200 });
-
-  // Success (single)
-  return NextResponse.json({ opportunity }, { status: 200 });
-
-  // Created
-  return NextResponse.json({ opportunity: created }, { status: 201 });
-
-  // Error
-  return NextResponse.json({ error: "Invalid input" }, { status: 400 });
-
-  // Validation error (use Zod's flatten)
-  return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-  ```
-- Wrap async logic in `try/catch` blocks
-- Use `skip` and `take` for pagination on list endpoints
-- Version all API routes under `/api/v1/` to allow future changes
-- Always scope queries by user session (once auth is implemented)
-- Use HTTP status codes correctly: `200` (OK), `201` (Created), `400` (Bad Request), `401` (Unauthorized), `404` (Not Found), `500` (Server Error)
-- Always include `{ owner: true }` when returning opportunities to match the `Opportunity` type
-
----
-
 ## 🔧 Form Handling Rules
 
-- Use **React Hook Form + Zod** for all forms (requires installing `react-hook-form` and `@hookform/resolvers`)
+- Use **React Hook Form + Zod** for all forms
 - Define Zod schemas in `/src/lib/validations/`
-- **Reuse existing schemas**: Use `opportunityCreateSchema` and `opportunityUpdateSchema` from `/src/lib/validations/opportunity.ts`
+- **Reuse existing schemas**:
+  - `opportunityCreateSchema`, `opportunityUpdateSchema` from `/src/lib/validations/opportunity.ts`
+  - `accountCreateSchema`, `accountUpdateSchema` from `/src/lib/validations/account.ts`
+  - `contactCreateSchema`, `contactUpdateSchema` from `/src/lib/validations/contact.ts`
+  - `userUpdateSchema` from `/src/lib/validations/user.ts`
+  - And others...
 - Display inline errors for each field
 - Show loading state on submit button (e.g., `disabled` + spinner)
 - Use `onSubmit` with `async/await`, not `.then()`
-- Debounce real-time inputs (e.g., search, filters) using a custom `useDebounce` hook or `lodash.debounce`
+- Debounce real-time inputs (e.g., search, filters) using a custom `useDebounce` hook
 - Ensure forms are accessible:
   - Use `<label>` tags with `htmlFor`
   - Use ARIA attributes for errors (`aria-invalid`, `aria-describedby`)
@@ -246,6 +125,7 @@ import { useDebounce } from "@/hooks/useDebounce";   // → src/hooks/useDebounc
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { opportunityCreateSchema, type OpportunityCreateInput } from "@/lib/validations/opportunity";
+import { toast } from "sonner";
 
 const form = useForm<OpportunityCreateInput>({
   resolver: zodResolver(opportunityCreateSchema),
@@ -286,12 +166,12 @@ const onSubmit = async (data: OpportunityCreateInput) => {
 - Each column should have a clear header with stage name and count
 - Cards should be visually distinct with borders and hover effects
 - Use consistent spacing (e.g., `gap-4` between columns, `p-4` inside cards)
-- Display key info on cards: opportunity name, account, ARR, probability, close date
+- Display key info on cards: opportunity name, account, ARR, confidence level, close date
 - Use badges to indicate stage, status, or priority
 - Use grid layout for columns: `grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6`
 
 **Kanban Column System:**
-The Kanban board supports two view modes and includes a template system for quick setup:
+The Kanban board supports multiple view modes and templates:
 
 1. **Custom View Mode** (default):
    - Users create and manage their own columns via database (`KanbanColumn` model)
@@ -321,28 +201,35 @@ The Kanban board supports two view modes and includes a template system for quic
    - Provides "opinionated defaults" without forcing a specific structure
    - Users can immediately switch to custom view or apply different templates
 
-5. **View Mode Toggle**:
-   - Tabs UI component in toolbar: "Custom" vs "Quarterly"
-   - User preference persisted in localStorage (`kanban-view-mode`)
-   - "Add Column" button hidden in quarterly mode (virtual columns cannot be added)
+5. **View Management**:
+   - Users can create multiple personal views
+   - Admins can create shared views for entire organization
+   - Tabs UI component to switch between views
+   - View preferences persisted per user
 
 **Technical Implementation:**
 - Custom mode: Uses `columns` from database, groups by `opportunity.columnId`
 - Quarterly mode: Uses `generateQuarterlyColumns()` and `groupOpportunitiesByQuarter()` from `/src/lib/utils/quarterly-view.ts`
 - Templates: Use `getTemplateById()` and `prepareTemplateForCreation()` from `/src/lib/templates/column-templates.ts`
-- Fiscal year support: All quarter calculations use `fiscalYearStartMonth` from user settings
+- Fiscal year support: All quarter calculations use `fiscalYearStartMonth` from organization settings
 - Virtual columns have IDs like `virtual-Q1-2025` to distinguish from database columns
 
 **Currency & Date Formatting:**
 - **Always use formatting utilities** from `/src/lib/format.ts`:
   ```tsx
-  import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
+  import { formatCurrencyCompact, formatDateShort, formatCurrencyInput, parseCurrencyInput } from "@/lib/format";
 
   // Display ARR
   {formatCurrencyCompact(opportunity.amountArr)} // → "$50K"
 
   // Display close date
   {formatDateShort(opportunity.closeDate)} // → "Dec 31, 2024"
+
+  // Currency input field (no $ symbol, with commas)
+  {formatCurrencyInput(1234567)} // → "1,234,567"
+
+  // Parse currency input back to number
+  {parseCurrencyInput("$1,234,567")} // → 1234567
   ```
 - Do not hardcode currency/date formatting—reuse existing utilities
 
@@ -353,10 +240,10 @@ The Kanban board supports two view modes and includes a template system for quic
 - Use **ESLint** and **Prettier** for code formatting
 - Current ESLint config extends `next/core-web-vitals` and `next/typescript`
 - Use **Jest + React Testing Library** for unit tests (requires installation)
-- Test critical components: `OpportunityCard`, `KanbanBoard`, `OpportunityForm`
+- Test critical components: `OpportunityCard`, `KanbanBoard`, `OpportunityForm`, `ContactCard`
 - Test API routes with mock Prisma client
 - Aim for **80%+ test coverage** on critical paths
-- Mock external services (e.g., Prisma, auth) using `msw` or Vitest mocks
+- Mock external services (e.g., Prisma, auth, Gemini AI) using `msw` or Vitest mocks
 - Use Playwright for e2e tests (post-MVP)
 
 ---
@@ -367,14 +254,14 @@ The Kanban board supports two view modes and includes a template system for quic
 |--------|-----------|---------|
 | **Components** | PascalCase.tsx | `OpportunityCard.tsx`, `KanbanBoard.tsx` |
 | **Variables** | camelCase | `opportunities`, `filterText`, `amountArr` |
-| **DB Models** | PascalCase | `Opportunity`, `User` |
+| **DB Models** | PascalCase | `Opportunity`, `User`, `Account` |
 | **Routes** | kebab-case folders | `/opportunities`, `/api/v1/opportunities` |
 | **API handlers** | RESTful + HTTP methods | `GET /api/v1/opportunities`, `POST /api/v1/opportunities` |
 | **Constants** | UPPER_SNAKE_CASE | `API_BASE_URL`, `DEFAULT_STAGE` |
 | **Custom Hooks** | usePascalCase | `useOpportunities`, `useKanbanFilters`, `useDebounce` |
-| **Enums** | PascalCase | `OpportunityStage` |
-| **Zod Schemas** | camelCase + "Schema" suffix | `opportunityCreateSchema`, `opportunityUpdateSchema` |
-| **Type Exports** | PascalCase + "Input" or "Data" suffix | `OpportunityCreateInput`, `OpportunityUpdateInput` |
+| **Enums** | PascalCase | `OpportunityStage`, `UserRole` |
+| **Zod Schemas** | camelCase + "Schema" suffix | `opportunityCreateSchema`, `accountUpdateSchema` |
+| **Type Exports** | PascalCase + "Input" or "Data" suffix | `OpportunityCreateInput`, `AccountUpdateInput` |
 
 ---
 
@@ -385,11 +272,13 @@ The Kanban board supports two view modes and includes a template system for quic
 - ❌ No console logs in production code (use error tracking instead)
 - ❌ No business logic in `page.tsx` files—isolate to helpers, components, or API routes
 - ❌ No hardcoded values—use constants, environment variables, or database data
+- ❌ **No hardcoded organizationId** - always use authenticated user's organizationId
 - ❌ Avoid adding new dependencies without justification
 - ❌ Avoid client-side fetching of sensitive data when server-side rendering or API routes can be used
 - ❌ Don't use relative imports (`../../lib/utils`) when path aliases (`@/lib/utils`) are available
 - ❌ Don't add `"use client"` unnecessarily—default to server components
 - ❌ Don't create custom formatters when `/src/lib/format.ts` utilities exist
+- ❌ **Never expose cross-org data** - always verify ownership and organizationId
 
 ---
 
@@ -403,7 +292,7 @@ The Kanban board supports two view modes and includes a template system for quic
 **Use proper code blocks:**
 ```tsx
 // src/components/kanban/OpportunityCard.tsx
-// Displays a single opportunity card with ARR, probability, and next steps
+// Displays a single opportunity card with ARR, confidence level, and next steps
 ```
 
 **For updates:**
@@ -418,132 +307,10 @@ When implementing features, always clarify:
 - "Would you like me to scaffold the route/component/API as a placeholder or build it to completion with full logic and UI?"
 - "Should this form be part of the dashboard, a modal, or on its own page?"
 - "What data source should this component pull from (e.g., Prisma query, API route, mock data)?"
-- "Should this feature be scoped to a specific user (via `ownerId`) or global?"
+- "Should this feature be scoped to a specific user (via `ownerId`) or available to all in the organization?"
 - "Should this be a server component or client component?"
-- "Do you want me to install missing dependencies (e.g., React Hook Form, Sonner) before proceeding?"
-
----
-
-## 📋 Claude Prompt Templates
-
-### 🧱 Scaffold a Page
-
-```
-Create a new page component for the route `/dashboard`. It should:
-- Display key sales metrics (total ARR, win rate, deals in pipeline)
-- Fetch data from the database via Prisma (server component)
-- Use shadcn/ui Card components for metrics
-- Use Tailwind for responsive layout
-- Handle loading and error states
-- Use formatCurrencyCompact for ARR display
-```
-
-### 🧪 Create a Form with Validation
-
-```
-Build an `OpportunityForm.tsx` component. It should:
-- Allow users to create/edit an opportunity with fields: name, account, amountArr, probability, nextStep, closeDate, stage
-- Use React Hook Form + Zod for validation
-- Reuse opportunityCreateSchema from /src/lib/validations/opportunity.ts
-- Display inline errors for each field
-- Use shadcn/ui components (Input, Select, Button, DatePicker)
-- On submit, send data to `/api/v1/opportunities` via POST
-- Show a success toast on completion (using sonner)
-- Note: This requires installing react-hook-form, @hookform/resolvers, and sonner
-```
-
-### 🔐 Protect a Page with Auth
-
-```
-Wrap the `/opportunities` page so it only renders if the user is authenticated.
-- If not authenticated, redirect to `/login`
-- Use `createServerComponentClient()` (Supabase) to get the session
-- Pass `session.user.id` as `ownerId` to scope queries
-- Keep the page as a server component
-```
-
-### 🔎 Create a Reusable Component
-
-```
-Create an `OpportunityCard.tsx` component that accepts:
-- `opportunity: Opportunity` (matching the type from /src/types/opportunity.ts)
-- `onOpen?: (id: string) => void` callback (optional, makes it a client component)
-- Displays: name, account, ARR (formatted with formatCurrencyCompact), probability, stage badge, close date (formatted with formatDateShort)
-- Has a "View Details" button that triggers `onOpen` if provided
-- Uses shadcn/ui Card and Badge components
-- Responsive and styled with Tailwind
-- Only add "use client" if onOpen is provided
-```
-
-### 📊 Generate a Dashboard Chart
-
-```
-Create a chart component that shows total ARR by stage.
-- Research and recommend a charting library compatible with React 19 (e.g., Recharts, Tremor, or visx)
-- Fetch opportunity data grouped by stage (server component)
-- X-axis: stage name; Y-axis: total ARR (formatted as currency)
-- Title: "Pipeline by Stage"
-- Responsive and styled with Tailwind
-```
-
-### ⚙️ Add API Endpoint
-
-```
-Create a `GET /api/v1/opportunities/stats` API route that returns:
-- Total number of opportunities
-- Total ARR across all stages
-- Win rate (closedWon / (closedWon + closedLost))
-- Average deal size
-- Validate user session and scope to `ownerId` (when auth is implemented)
-- Return JSON in format: { stats: { total, totalArr, winRate, avgDealSize } }
-- Include proper error handling with try/catch
-```
-
-### 🧪 Unit Test a Component
-
-```
-Write a Jest test for the `OpportunityCard.tsx` component.
-- Mock a sample `Opportunity` object
-- Check that the opportunity name, account, and ARR render correctly
-- Verify the ARR uses formatCurrencyCompact
-- Verify the close date uses formatDateShort
-- Ensure the stage badge displays the correct text
-- Test that clicking "View Details" triggers the `onOpen` callback
-```
-
-### 🧩 Update an Existing Component
-
-```
-Update the `KanbanBoard.tsx` component to:
-- Add a dropdown filter for "My Opportunities" vs. "All Opportunities"
-- Update the filtering logic to support `ownerId` filtering
-- Ensure TypeScript types are updated
-- Use shadcn/ui DropdownMenu component
-- Maintain existing search functionality
-- Include tests for the new filter
-```
-
-### 🗄️ Update Prisma Schema
-
-```
-Update `prisma/schema.prisma` to add a new model or field:
-- Add a `Note` model with fields for `id`, `content`, `opportunityId`, `authorId`, `createdAt`
-- Add a relation to the `Opportunity` model (notes: Note[])
-- Generate and apply migrations using `npx prisma migrate dev --name add-notes`
-- Run `npx prisma generate` to update Prisma Client
-- Update related API routes and types in `/src/types`
-- Create Zod validation schema in `/src/lib/validations/note.ts`
-```
-
-### 🪝 Create a Custom Hook
-
-```
-Create a `useDebounce` custom hook in `/src/hooks/useDebounce.ts`:
-- Accept a value and delay (ms)
-- Return the debounced value
-- Use TypeScript generics for type safety
-- Include JSDoc comments with usage example
-```
+- "Do you want me to install missing dependencies before proceeding?"
+- "What user roles (ADMIN, MANAGER, REP, VIEWER) should have access to this feature?"
 
 ---
 
@@ -557,18 +324,21 @@ When reviewing code (Claude- or dev-generated), ensure:
 ✅ **Business logic is isolated** from `page.tsx` (moved to `/lib` or components)
 ✅ **Includes try/catch for async calls**
 ✅ **Includes Zod validation** where inputs exist
-✅ **Reuses existing schemas** (`opportunityCreateSchema`, etc.)
-✅ **Uses formatting utilities** (`formatCurrencyCompact`, `formatDateShort`)
+✅ **Reuses existing schemas** (`opportunityCreateSchema`, `accountCreateSchema`, etc.)
+✅ **Uses formatting utilities** (`formatCurrencyCompact`, `formatDateShort`, `formatCurrencyInput`)
 ✅ **Avoids hardcoded values** (uses database, constants, or environment variables)
 ✅ **Reuses functions or components** (no logic duplication)
 ✅ **Descriptive prop names and comments** for non-obvious logic
 ✅ **Fallback UI states** (loading, empty, error)
 ✅ **No performance bottlenecks** (excessive API calls, unoptimized loops, large state updates)
 ✅ **No unnecessary dependencies** introduced
-✅ **Data is scoped to users** (queries include `ownerId` where appropriate)
+✅ **Data is scoped to organization** (queries include `organizationId`)
+✅ **User permissions checked** (role-based access control)
 ✅ **Server components by default** (only uses `"use client"` when necessary)
 ✅ **API responses match existing format** (`{ opportunities }` or `{ opportunity }`)
 ✅ **Uses path aliases** (`@/`) instead of relative imports
+✅ **Confidence level** (1-5 scale) used instead of deprecated probability field
+✅ **Stage names correct** (discovery, demo, validateSolution, decisionMakerApproval, contracting, closedWon, closedLost)
 
 ---
 
@@ -580,11 +350,13 @@ When reviewing code (Claude- or dev-generated), ensure:
 - **Use feature branches** for development (e.g., `feature/opportunity-form`, `fix/kanban-drag-drop`)
 - **Sales-specific considerations**:
   - Always format ARR as currency using `formatCurrencyCompact` (e.g., `$50K`)
-  - Validate probability is between 0-100 (handled in Zod schema)
+  - Validate confidence level is between 1-5 (handled in Zod schema)
   - Ensure close dates are in the future for open opportunities
-  - Use clear stage transitions in UI (e.g., Prospect → Qualification → Proposal → Negotiation → Closed)
+  - Use clear stage transitions in UI (e.g., Discovery → Demo → Validate Solution → Decision Maker Approval → Contracting → Closed Won/Lost)
   - Provide audit trails for opportunity updates (use `updatedAt` timestamps)
   - Display owner avatars and names using the `owner` relation
+  - Track customer interactions via Gong calls, Granola notes, and Google notes
+  - Use AI features to parse meeting notes and generate account research
 
 ---
 
@@ -605,23 +377,30 @@ As the app grows, Claude should:
 
 3. **Avoid Logic Duplication**
    - Do not rewrite logic already in `/src/lib` or `/src/components`—import it instead
-   - Reuse existing utilities like `formatCurrencyCompact` and `formatDateShort`
+   - Reuse existing utilities like `formatCurrencyCompact`, `formatDateShort`, `formatCurrencyInput`, `parseCurrencyInput`
    - If logic looks similar to an existing function, ask the dev or reuse it
 
 4. **Stick to the UI Design System**
    - Use shadcn/ui components (New York style, Slate base color)
    - Never use raw HTML inputs or create custom styles unless instructed
-   - Reuse existing components like `OpportunityCard`, `KanbanBoard`, `KanbanColumn`
+   - Reuse existing components like `OpportunityCard`, `KanbanBoard`, `KanbanColumn`, `ContactCard`, `AccountForm`
 
 5. **Add Error Handling and Feedback**
    - Always wrap async actions in `try/catch` blocks
-   - Display UI feedback (e.g., toast) for success/failure
+   - Display UI feedback (e.g., toast) for success/failure using `sonner`
    - Log and handle edge cases: no data, API failure, invalid auth, etc.
    - Use consistent error response format: `{ error: "message" }`
 
-6. **Ask When Ambiguous**
+6. **Multi-Tenancy Discipline**
+   - **Always scope queries by `organizationId`** for strict data isolation
+   - Check user permissions (ADMIN, MANAGER, REP, VIEWER) before sensitive actions
+   - Verify ownership before update/delete operations
+   - Never expose cross-org data in API responses or UI
+
+7. **Ask When Ambiguous**
    - If you're not sure what the route should be called, where logic belongs, or what props a component expects, **ask for clarification**
-   - If a required dependency is missing (e.g., React Hook Form, Sonner), **ask before proceeding**
+   - If a required dependency is missing, **ask before proceeding**
+   - If user permissions are unclear, **ask about role requirements**
 
 ---
 
@@ -705,6 +484,13 @@ npm run start
 
 # Linting
 npm run lint
+
+# Verification
+npm run verify              # Lint + TypeScript + Build
+
+# Scripts
+npm run verify-auth         # Verify Supabase auth setup
+npm run migrate:fix-orgs    # Run org migration script
 ```
 
 **File Locations:**
@@ -716,3 +502,91 @@ npm run lint
 - shadcn/ui components: `src/components/ui/`
 - Business components: `src/components/`
 - **Subagent configurations:** `.claude/agents/`
+- **Documentation:** `.claude/` (ARCHITECTURE.md, API.md, PROMPTS.md, INTEGRATIONS.md, MULTI_TENANCY.md)
+
+**Key Environment Variables:**
+- `DATABASE_URL` - PostgreSQL connection string
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anon key
+- `GOOGLE_AI_API_KEY` - Gemini API key
+- `INNGEST_EVENT_KEY` - Inngest key for background jobs
+
+**Important Database Fields:**
+- Use `confidenceLevel` (1-5), **not** `probability` (deprecated)
+- Use correct stage names: `discovery`, `demo`, `validateSolution`, `decisionMakerApproval`, `contracting`, `closedWon`, `closedLost`
+- Always include `organizationId` in all queries
+- Link opportunities to accounts via `accountId` (optional)
+- Use `ownerId` for user-specific filtering
+
+**User Roles:**
+- `ADMIN` - Full org access, can manage settings and users
+- `MANAGER` - Can view/edit direct reports' data
+- `REP` - Standard user, own data only
+- `VIEWER` - Read-only access
+
+---
+
+## 🎯 Quick Decision Tree
+
+**When should I use "use client"?**
+- Need state (useState, useReducer)? → Yes
+- Need effects (useEffect, useLayoutEffect)? → Yes
+- Need event handlers (onClick, onChange)? → Yes
+- Need browser APIs (window, localStorage)? → Yes
+- Using @dnd-kit, reactflow, or client-only libraries? → Yes
+- Otherwise → No (use server component)
+
+**Which Zod schema should I use?**
+- Creating opportunity → `opportunityCreateSchema`
+- Updating opportunity → `opportunityUpdateSchema`
+- Creating account → `accountCreateSchema`
+- Updating account → `accountUpdateSchema`
+- Creating contact → `contactCreateSchema`
+- Updating user → `userUpdateSchema`
+- Creating invitation → `invitationCreateSchema`
+- See `/src/lib/validations/` for complete list
+
+**Which formatting function should I use?**
+- Display currency compact → `formatCurrencyCompact(amountArr)` → "$50K"
+- Display currency full → `formatCurrency(amountArr)` → "$50,000"
+- Currency input field → `formatCurrencyInput(1234567)` → "1,234,567"
+- Parse currency input → `parseCurrencyInput("$1,234,567")` → 1234567
+- Display date → `formatDateShort(closeDate)` → "Dec 31, 2024"
+
+**Which API endpoint should I call?**
+- See [API.md](.claude/API.md) for complete list
+- Opportunities: `/api/v1/opportunities`
+- Accounts: `/api/v1/accounts`
+- Contacts: `/api/v1/opportunities/[id]/contacts` or `/api/v1/accounts/[id]/contacts`
+- Gong calls: `/api/v1/opportunities/[id]/gong-calls`
+- Granola notes: `/api/v1/opportunities/[id]/granola-notes`
+- Google notes: `/api/v1/opportunities/[id]/google-notes`
+- Views: `/api/v1/views`
+- Users: `/api/v1/users`
+- Invitations: `/api/v1/invitations`
+- Organization: `/api/v1/organization`
+
+**How do I check permissions?**
+- See [MULTI_TENANCY.md](.claude/MULTI_TENANCY.md) for complete guide
+- Always scope by `organizationId` first
+- Check user role (ADMIN, MANAGER, REP, VIEWER)
+- Verify ownership for edit/delete operations
+- Use permission helpers from `/src/lib/permissions.ts`
+
+**Where should I put this code?**
+- React component → `/src/components/`
+- Page component → `/src/app/`
+- API route → `/src/app/api/v1/`
+- Type definition → `/src/types/`
+- Validation schema → `/src/lib/validations/`
+- Utility function → `/src/lib/`
+- Custom hook → `/src/hooks/`
+
+---
+
+**For detailed information, see:**
+- Database schema & folder structure → [ARCHITECTURE.md](.claude/ARCHITECTURE.md)
+- API endpoints & patterns → [API.md](.claude/API.md)
+- Prompt templates → [PROMPTS.md](.claude/PROMPTS.md)
+- AI & external integrations → [INTEGRATIONS.md](.claude/INTEGRATIONS.md)
+- Multi-tenancy & permissions → [MULTI_TENANCY.md](.claude/MULTI_TENANCY.md)

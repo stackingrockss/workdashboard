@@ -59,6 +59,7 @@ export function OpportunityForm({
     amountArr: initialData?.amountArr || 0,
     confidenceLevel: initialData?.confidenceLevel || getDefaultConfidenceLevel("discovery"),
     nextStep: initialData?.nextStep || "",
+    cbc: initialData?.cbc || "",
     closeDate: initialData?.closeDate || "",
     quarter: initialData?.quarter || "",
     stage: initialData?.stage || "discovery",
@@ -126,6 +127,7 @@ export function OpportunityForm({
         ...formData,
         accountWebsite: formData.accountWebsite?.trim() || undefined,
         nextStep: formData.nextStep?.trim() || undefined,
+        cbc: formData.cbc?.trim() || undefined,
         riskNotes: formData.riskNotes?.trim() || undefined,
         ownerId: formData.ownerId?.trim() || undefined,
       };
@@ -253,6 +255,17 @@ export function OpportunityForm({
           value={formData.nextStep || ""}
           onChange={(e) => setFormData({ ...formData, nextStep: e.target.value })}
           placeholder="e.g. Schedule demo call"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="cbc">Call Between Call (CBC)</Label>
+        <Textarea
+          id="cbc"
+          value={formData.cbc || ""}
+          onChange={(e) => setFormData({ ...formData, cbc: e.target.value })}
+          placeholder="Action items and follow-ups before next call..."
+          rows={4}
         />
       </div>
 

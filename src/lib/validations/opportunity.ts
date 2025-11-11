@@ -40,6 +40,7 @@ const baseOpportunitySchema = z.object({
   amountArr: z.number().int().nonnegative().optional().default(0),
   confidenceLevel: z.number().int().min(1).max(5).optional().default(3), // 1-5 scale (replaces probability)
   nextStep: z.string().max(500).optional().nullable().transform(val => val === "" ? null : val),
+  cbc: z.string().max(5000).optional().nullable().transform(val => val === "" ? null : val), // Call Between Call action items
   quarter: z.string().max(20).optional().nullable().transform(val => val === "" ? null : val),
   stage: z.enum([
     "discovery",
