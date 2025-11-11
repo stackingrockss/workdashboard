@@ -4,26 +4,39 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function checkCallData() {
-  const callId = 'cmhs5om5c0005la046w8p9wpx';
-
-  const call = await prisma.gongCall.findUnique({
-    where: { id: callId },
+  // Find the most recent parsed call
+  const recentCalls = await prisma.gongCall.findMany({
+    where: { parsingStatus: 'completed' },
+    orderBy: { parsedAt: 'desc' },
+    take: 3,
   });
 
-  if (!call) {
-    console.error('Call not found');
+  if (recentCalls.length === 0) {
+    console.error('No parsed calls found');
     return;
   }
 
-  console.log(`Call: ${call.title}`);
-  console.log(`Status: ${call.parsingStatus}`);
-  console.log(`Parsed At: ${call.parsedAt}\n`);
+  for (const call of recentCalls) {
+    console.log('='.repeat(70));
+    console.log(`Call: ${call.title}`);
+    console.log(`Status: ${call.parsingStatus}`);
+    console.log(`Parsed At: ${call.parsedAt}\n`);
 
-  console.log('=== RAW DATA ===');
-  console.log('painPoints:', JSON.stringify(call.painPoints, null, 2));
-  console.log('\ngoals:', JSON.stringify(call.goals, null, 2));
-  console.log('\nnextSteps:', JSON.stringify(call.nextSteps, null, 2));
-  console.log('\nparsedPeople:', JSON.stringify(call.parsedPeople, null, 2));
+    console.log('=== PARSED DATA ===');
+    console.log('painPoints:', JSON.stringify(call.painPoints, null, 2));
+    console.log('\ngoals:', JSON.stringify(call.goals, null, 2));
+    console.log('\nnextSteps:', JSON.stringify(call.nextSteps, null, 2));
+    console.log('\nparsedPeople:', JSON.stringify(call.parsedPeople, null, 2));
+
+    console.log('\n=== RISK ASSESSMENT ===');
+    if (call.riskAssessment) {
+      console.log('✅ Risk Assessment exists:');
+      console.log(JSON.stringify(call.riskAssessment, null, 2));
+    } else {
+      console.log('❌ No risk assessment found');
+    }
+    console.log('\n');
+  }
 
   await prisma.$disconnect();
 }

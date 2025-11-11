@@ -7,6 +7,11 @@ export const gongCallCreateSchema = z.object({
   noteType: z.enum(["customer", "internal", "prospect"], {
     required_error: "Note type is required",
   }).default("customer"),
+  transcriptText: z
+    .string()
+    .min(100, "Transcript must be at least 100 characters")
+    .max(100000, "Transcript must not exceed 100,000 characters")
+    .optional(),
 });
 
 export const gongCallUpdateSchema = gongCallCreateSchema.partial();

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { gongCallCreateSchema } from "@/lib/validations/gong-call";
+import { triggerTranscriptParsingAsync } from "@/lib/ai/background-transcript-parsing";
 
 // GET /api/v1/opportunities/[id]/gong-calls - List all Gong calls for an opportunity
 export async function GET(
@@ -41,14 +42,26 @@ export async function POST(
       return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });
     }
 
+    // Create the call with optional transcript
     const call = await prisma.gongCall.create({
       data: {
         opportunityId: id,
         title: parsed.data.title,
         url: parsed.data.url,
         meetingDate: new Date(parsed.data.meetingDate),
+        noteType: parsed.data.noteType,
+        transcriptText: parsed.data.transcriptText,
+        parsingStatus: parsed.data.transcriptText ? "parsing" : null,
       },
     });
+
+    // If transcript was provided, trigger parsing in background
+    if (parsed.data.transcriptText) {
+      await triggerTranscriptParsingAsync({
+        gongCallId: call.id,
+        transcriptText: parsed.data.transcriptText,
+      });
+    }
 
     // Revalidate the opportunity detail page to show new call immediately
     revalidatePath(`/opportunities/${id}`);
