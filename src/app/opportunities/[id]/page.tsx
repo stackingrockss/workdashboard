@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { OpportunityDetailClient } from "@/components/features/opportunities/opportunity-detail-client";
 import { getCurrentUser } from "@/lib/auth";
 import type { MeetingBriefMetadata } from "@/types/opportunity";
+import type { RiskAssessment } from "@/types/gong-call";
 
 interface OpportunityPageProps {
   params: Promise<{ id: string }>;
@@ -73,6 +74,12 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     securityReviewStatus: opportunityFromDB.securityReviewStatus || undefined,
     platformType: opportunityFromDB.platformType || undefined,
     businessCaseStatus: opportunityFromDB.businessCaseStatus || undefined,
+    // Consolidated insights from multiple Gong calls (AI-generated)
+    consolidatedPainPoints: opportunityFromDB.consolidatedPainPoints ? (opportunityFromDB.consolidatedPainPoints as string[]) : undefined,
+    consolidatedGoals: opportunityFromDB.consolidatedGoals ? (opportunityFromDB.consolidatedGoals as string[]) : undefined,
+    consolidatedRiskAssessment: opportunityFromDB.consolidatedRiskAssessment ? (opportunityFromDB.consolidatedRiskAssessment as RiskAssessment) : undefined,
+    lastConsolidatedAt: opportunityFromDB.lastConsolidatedAt?.toISOString() || undefined,
+    consolidationCallCount: opportunityFromDB.consolidationCallCount || undefined,
     owner: {
       id: opportunityFromDB.owner.id,
       name: opportunityFromDB.owner.name || opportunityFromDB.owner.email || "Unknown",
