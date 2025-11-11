@@ -1,6 +1,13 @@
 // Manually run risk analysis for calls missing it
+// DEVELOPMENT SCRIPT - DO NOT RUN IN PRODUCTION
 import { PrismaClient } from '@prisma/client';
-import { analyzeCallRisk } from './src/lib/ai/analyze-call-risk';
+import { analyzeCallRisk } from '@/lib/ai/analyze-call-risk';
+
+// Safety check - prevent running in production
+if (process.env.NODE_ENV === 'production') {
+  console.error('❌ This script should not run in production!');
+  process.exit(1);
+}
 
 const prisma = new PrismaClient();
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Building2, Star, Presentation, Bell, Users } from "lucide-react";
+import { LayoutDashboard, Target, Building2, Presentation, Bell, Users } from "lucide-react";
 
 const navItems = [
   {
@@ -21,11 +21,6 @@ const navItems = [
     title: "Prospects",
     href: "/prospects",
     icon: Building2,
-  },
-  {
-    title: "Key Deal Review",
-    href: "/key-deal-review",
-    icon: Star,
   },
   {
     title: "Whiteboarding",

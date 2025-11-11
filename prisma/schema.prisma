@@ -31,18 +31,6 @@ model Account {
   @@schema("opportunity_tracker")
 }
 
-model CompanySettings {
-  id                   String   @id @default(cuid())
-  userId               String   @unique
-  companyName          String?
-  companyWebsite       String?
-  fiscalYearStartMonth Int      @default(1)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@schema("opportunity_tracker")
-}
 
 model Contact {
   id            String           @id @default(cuid())
@@ -92,6 +80,7 @@ model GongCall {
   opportunity     Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
+  @@index([parsingStatus])
   @@schema("opportunity_tracker")
 }
 
@@ -230,6 +219,7 @@ model Opportunity {
   @@index([accountId])
   @@index([columnId])
   @@index([closeDate])
+  @@index([pinnedToWhiteboard])
   @@schema("opportunity_tracker")
 }
 
@@ -266,23 +256,22 @@ model OrganizationSettings {
 }
 
 model User {
-  id              String           @id @default(cuid())
-  email           String           @unique
-  name            String?
-  avatarUrl       String?
-  createdAt       DateTime         @default(now())
-  supabaseId      String?          @unique
-  managerId       String?
-  organizationId  String?
-  role            UserRole         @default(REP)
-  companySettings CompanySettings?
-  opportunities   Opportunity[]
-  ownedAccounts   Account[]        @relation("AccountOwner")
-  invitations     Invitation[]
-  kanbanViews     KanbanView[]
-  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  manager         User?            @relation("ManagerReps", fields: [managerId], references: [id])
-  directReports   User[]           @relation("ManagerReps")
+  id             String        @id @default(cuid())
+  email          String        @unique
+  name           String?
+  avatarUrl      String?
+  createdAt      DateTime      @default(now())
+  supabaseId     String?       @unique
+  managerId      String?
+  organizationId String?
+  role           UserRole      @default(REP)
+  opportunities  Opportunity[]
+  ownedAccounts  Account[]     @relation("AccountOwner")
+  invitations    Invitation[]
+  kanbanViews    KanbanView[]
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  manager        User?         @relation("ManagerReps", fields: [managerId], references: [id])
+  directReports  User[]        @relation("ManagerReps")
 
   @@index([organizationId])
   @@index([managerId])

@@ -43,15 +43,12 @@ export async function POST(req: NextRequest) {
     const user = await requireAuth();
 
     const json = await req.json();
-    console.log("Received opportunity creation request:", json);
 
     const parsed = opportunityCreateSchema.safeParse(json);
     if (!parsed.success) {
-      console.error("Validation failed:", parsed.error.flatten());
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
     const data = parsed.data;
-    console.log("Validation passed, data:", data);
 
     // If account name is provided instead of accountId, find or create the account
     let accountId = data.accountId;

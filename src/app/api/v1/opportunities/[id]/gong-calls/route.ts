@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { gongCallCreateSchema } from "@/lib/validations/gong-call";
 import { triggerTranscriptParsingAsync } from "@/lib/ai/background-transcript-parsing";
+import { requireAuth } from "@/lib/auth";
 
 // GET /api/v1/opportunities/[id]/gong-calls - List all Gong calls for an opportunity
 export async function GET(
@@ -11,12 +12,27 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
+    const user = await requireAuth();
+
+    // Verify opportunity exists and belongs to user's organization
+    const opportunity = await prisma.opportunity.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id
+      },
+    });
+
+    if (!opportunity) {
+      return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });
+    }
+
     const calls = await prisma.gongCall.findMany({
       where: { opportunityId: id },
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json({ calls });
-  } catch {
+  } catch (error) {
+    console.error('Failed to fetch Gong calls:', error);
     return NextResponse.json({ error: "Failed to fetch Gong calls" }, { status: 500 });
   }
 }
@@ -28,18 +44,39 @@ export async function POST(
 ) {
   const { id } = await params;
   try {
+    const user = await requireAuth();
+
     const json = await req.json();
     const parsed = gongCallCreateSchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
     }
 
-    // Verify opportunity exists
-    const opportunity = await prisma.opportunity.findUnique({
-      where: { id },
+    // Verify opportunity exists and belongs to user's organization
+    const opportunity = await prisma.opportunity.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id
+      },
     });
+
     if (!opportunity) {
       return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });
+    }
+
+    // Check for duplicate URL
+    const existingCall = await prisma.gongCall.findFirst({
+      where: {
+        opportunityId: id,
+        url: parsed.data.url,
+      },
+    });
+
+    if (existingCall) {
+      return NextResponse.json(
+        { error: "A call with this URL already exists for this opportunity" },
+        { status: 409 }
+      );
     }
 
     // Create the call with optional transcript
@@ -67,7 +104,8 @@ export async function POST(
     revalidatePath(`/opportunities/${id}`);
 
     return NextResponse.json({ call }, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error('Failed to create Gong call:', error);
     return NextResponse.json({ error: "Failed to create Gong call" }, { status: 500 });
   }
 }

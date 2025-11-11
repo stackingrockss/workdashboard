@@ -10,6 +10,8 @@ import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle, Pin, Externa
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { FORECAST_LABELS } from "@/lib/constants";
 
 export interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -31,12 +33,6 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
   const accountName = opportunity.account?.name || opportunity.accountName || "No Account";
   const accountWebsite = opportunity.account?.website;
 
-  const forecastLabels: Record<string, string> = {
-    pipeline: "Pipeline",
-    bestCase: "Best Case",
-    forecast: "Commit",
-  };
-
   const handlePinToggle = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
     setIsPinning(true);
@@ -51,9 +47,11 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
       if (!response.ok) throw new Error("Failed to update pin status");
 
       setIsPinned(!isPinned);
+      toast.success(isPinned ? "Unpinned from whiteboard" : "Pinned to whiteboard");
       router.refresh(); // Refresh server components
     } catch (error) {
       console.error("Failed to toggle pin:", error);
+      toast.error("Failed to update pin status. Please try again.");
     } finally {
       setIsPinning(false);
     }
@@ -117,6 +115,7 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
               className="h-7 w-7"
               onClick={handlePinToggle}
               disabled={isPinning}
+              aria-label={isPinned ? "Unpin from whiteboard" : "Pin to whiteboard"}
               title={isPinned ? "Unpin from whiteboard" : "Pin to whiteboard"}
             >
               <Pin
@@ -133,7 +132,7 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
                   variant={opportunity.forecastCategory === "forecast" ? "default" : "outline"}
                   className="text-center text-[10px]"
                 >
-                  {forecastLabels[opportunity.forecastCategory]}
+                  {FORECAST_LABELS[opportunity.forecastCategory]}
                 </Badge>
               )}
             </div>

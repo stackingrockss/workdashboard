@@ -1,32 +1,24 @@
+import type { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
+import type {
+  RiskLevel,
+  RiskCategory,
+  RiskSeverity,
+  RiskFactor,
+  RiskAssessment
+} from "@/lib/validations/gong-call";
+
+// Re-export risk assessment types from validation schemas (single source of truth)
+export type {
+  RiskLevel,
+  RiskCategory,
+  RiskSeverity,
+  RiskFactor,
+  RiskAssessment
+};
+
 export type NoteType = "customer" | "internal" | "prospect";
 
 export type ParsingStatus = "pending" | "parsing" | "completed" | "failed";
-
-export type RiskLevel = "low" | "medium" | "high" | "critical";
-
-export type RiskCategory =
-  | "budget"
-  | "timeline"
-  | "competition"
-  | "technical"
-  | "alignment"
-  | "resistance";
-
-export type RiskSeverity = "low" | "medium" | "high";
-
-export interface RiskFactor {
-  category: RiskCategory;
-  description: string;
-  severity: RiskSeverity;
-  evidence: string; // Quote or context from transcript
-}
-
-export interface RiskAssessment {
-  riskLevel: RiskLevel;
-  riskFactors: RiskFactor[];
-  overallSummary: string;
-  recommendedActions: string[];
-}
 
 export interface GongCall {
   id: string;
@@ -39,11 +31,11 @@ export interface GongCall {
   updatedAt: string; // ISO date string
   // Parsed transcript fields
   transcriptText?: string | null;
-  painPoints?: unknown; // JSON field - array of strings
-  goals?: unknown; // JSON field - array of strings
-  parsedPeople?: unknown; // JSON field - array of PersonExtracted objects
-  nextSteps?: unknown; // JSON field - array of strings
-  riskAssessment?: unknown; // JSON field - RiskAssessment object
+  painPoints?: string[] | null;
+  goals?: string[] | null;
+  parsedPeople?: PersonExtracted[] | null;
+  nextSteps?: string[] | null;
+  riskAssessment?: RiskAssessment | null;
   parsedAt?: string | null; // ISO date string when transcript was parsed
   // Background processing status
   parsingStatus?: ParsingStatus | null;

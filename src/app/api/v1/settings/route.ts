@@ -1,29 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { companySettingsSchema } from "@/lib/validations/company-settings";
+import { z } from "zod";
 import { requireAuth } from "@/lib/auth";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
+
+// Validation schema for organization settings (fiscal year only)
+const settingsSchema = z.object({
+  fiscalYearStartMonth: z.number().int().min(1).max(12),
+});
 
 export async function GET() {
   try {
     const user = await requireAuth();
 
-    const settings = await prisma.companySettings.findUnique({
-      where: { userId: user.id },
+    // Get user's organization
+    const userWithOrg = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { organization: true },
     });
 
-    // If no settings exist, return defaults
-    if (!settings) {
-      return NextResponse.json({
-        settings: {
-          companyName: null,
-          companyWebsite: null,
-          fiscalYearStartMonth: 1,
-        },
-      });
+    if (!userWithOrg?.organization) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ settings });
+    // Return organization fiscal year settings
+    return NextResponse.json({
+      settings: {
+        fiscalYearStartMonth: userWithOrg.organization.fiscalYearStartMonth,
+      },
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -37,7 +42,7 @@ export async function POST(req: NextRequest) {
     const user = await requireAuth();
 
     const json = await req.json();
-    const parsed = companySettingsSchema.safeParse(json);
+    const parsed = settingsSchema.safeParse(json);
 
     if (!parsed.success) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
@@ -45,41 +50,37 @@ export async function POST(req: NextRequest) {
 
     const data = parsed.data;
 
+    // Get user's organization
+    const userWithOrg = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { organization: true },
+    });
+
+    if (!userWithOrg?.organization) {
+      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    }
+
+    const organization = userWithOrg.organization;
+
     // Check if fiscal year start month is changing
-    const existingSettings = await prisma.companySettings.findUnique({
-      where: { userId: user.id },
+    const fiscalYearChanged = organization.fiscalYearStartMonth !== data.fiscalYearStartMonth;
+
+    // Update organization's fiscal year start month
+    const updatedOrg = await prisma.organization.update({
+      where: { id: organization.id },
+      data: { fiscalYearStartMonth: data.fiscalYearStartMonth },
     });
 
-    const fiscalYearChanged =
-      existingSettings &&
-      existingSettings.fiscalYearStartMonth !== data.fiscalYearStartMonth;
-
-    // Upsert settings (create if doesn't exist, update if it does)
-    const settings = await prisma.companySettings.upsert({
-      where: { userId: user.id },
-      update: {
-        companyName: data.companyName,
-        companyWebsite: data.companyWebsite,
-        fiscalYearStartMonth: data.fiscalYearStartMonth,
-      },
-      create: {
-        userId: user.id,
-        companyName: data.companyName,
-        companyWebsite: data.companyWebsite,
-        fiscalYearStartMonth: data.fiscalYearStartMonth,
-      },
-    });
-
-    // If fiscal year changed, recalculate all opportunity quarters
-    if (fiscalYearChanged || !existingSettings) {
+    // If fiscal year changed, recalculate all opportunity quarters for this organization
+    if (fiscalYearChanged) {
       console.log(
         `Fiscal year changed to month ${data.fiscalYearStartMonth}, recalculating quarters...`
       );
 
-      // Recalculate quarters for all opportunities with close dates
+      // Recalculate quarters for all opportunities in this organization with close dates
       const opportunities = await prisma.opportunity.findMany({
         where: {
-          ownerId: user.id,
+          owner: { organizationId: organization.id },
           closeDate: { not: null },
         },
       });
@@ -103,7 +104,11 @@ export async function POST(req: NextRequest) {
       console.log(`Updated ${opportunities.length} opportunities with new quarters`);
     }
 
-    return NextResponse.json({ settings });
+    return NextResponse.json({
+      settings: {
+        fiscalYearStartMonth: updatedOrg.fiscalYearStartMonth,
+      },
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

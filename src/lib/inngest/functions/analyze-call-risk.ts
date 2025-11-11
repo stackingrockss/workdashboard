@@ -14,6 +14,11 @@ export const analyzeCallRiskJob = inngest.createFunction(
     id: "analyze-call-risk",
     name: "Analyze Gong Call Risk",
     retries: 3, // Auto-retry up to 3 times on failure
+    // Increase timeout for AI analysis of long transcripts
+    // Gemini API can take 30-60s for 80K+ character transcripts
+    concurrency: {
+      limit: 3, // Limit concurrent risk analyses to avoid rate limits
+    },
   },
   { event: "gong/risk.analyze" },
   async ({ event, step }) => {

@@ -102,6 +102,44 @@ IMPORTANT RULES:
 // Main Parsing Function
 // ============================================================================
 
+/**
+ * Parses a Gong call transcript to extract actionable sales insights
+ *
+ * This function uses AI (Gemini) to analyze sales call transcripts and extract:
+ * - Pain points: Current problems, frustrations, and challenges the prospect is facing
+ * - Goals: Desired future state, business outcomes, and strategic initiatives
+ * - People: Participants and mentioned individuals with their roles
+ * - Next steps: Action items, follow-ups, and commitments made
+ *
+ * @param transcriptText - The full transcript text from the Gong call (minimum 100 characters)
+ * @param userOrganizationName - Optional organization name to differentiate internal vs external people
+ * @returns Promise resolving to parse result with success flag and data/error
+ *
+ * @example
+ * ```typescript
+ * const result = await parseGongTranscript(transcriptText, "Acme Corp");
+ * if (result.success && result.data) {
+ *   console.log(`Pain Points: ${result.data.painPoints.length}`);
+ *   console.log(`Goals: ${result.data.goals.length}`);
+ *   console.log(`People: ${result.data.people.length}`);
+ *   console.log(`Next Steps: ${result.data.nextSteps.length}`);
+ * } else {
+ *   console.error('Parsing failed:', result.error);
+ * }
+ * ```
+ *
+ * @remarks
+ * - Requires GEMINI_API_KEY environment variable
+ * - Minimum transcript length: 100 characters
+ * - Maximum transcript length: 80,000 characters (to stay within API limits)
+ * - Never throws errors - returns error in result object instead
+ * - Uses gemini-2.5-pro model for superior reasoning and nuance detection
+ * - Automatically classifies contact roles using AI after extraction
+ *
+ * @see {@link GongParseResult} for return type
+ * @see {@link GongTranscriptParsed} for data structure
+ * @see {@link PersonExtracted} for people data structure
+ */
 export async function parseGongTranscript(
   transcriptText: string,
   userOrganizationName?: string

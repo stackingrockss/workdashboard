@@ -83,20 +83,20 @@ export async function GET(request: NextRequest) {
         : [],
     }));
 
-    // Get fiscal year start month (from user settings or default)
+    // Get fiscal year start month from organization
     let fiscalYearStartMonth = 1;
-    if (params.userId) {
-      const settings = await prisma.companySettings.findUnique({
-        where: { userId: params.userId },
-        select: { fiscalYearStartMonth: true },
-      });
-      fiscalYearStartMonth = settings?.fiscalYearStartMonth || 1;
-    } else if (params.organizationId) {
+    if (params.organizationId) {
       const org = await prisma.organization.findUnique({
         where: { id: params.organizationId },
         select: { fiscalYearStartMonth: true },
       });
       fiscalYearStartMonth = org?.fiscalYearStartMonth || 1;
+    } else if (params.userId) {
+      const userWithOrg = await prisma.user.findUnique({
+        where: { id: params.userId },
+        select: { organization: { select: { fiscalYearStartMonth: true } } },
+      });
+      fiscalYearStartMonth = userWithOrg?.organization?.fiscalYearStartMonth || 1;
     }
 
     // Add built-in views

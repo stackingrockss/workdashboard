@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { SerializedKanbanView } from "@/types/view";
 import { getAllBuiltInViews } from "@/lib/utils/built-in-views";
+import { getVisibleUserIds, isAdmin } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,8 @@ export default async function OpportunitiesPage() {
   // Require authentication
   const user = await requireAuth();
 
-  // Get user's fiscal year settings
-  const settings = await prisma.companySettings.findUnique({
-    where: { userId: user.id },
-  });
-  const fiscalYearStartMonth = settings?.fiscalYearStartMonth ?? 1;
+  // Get organization's fiscal year settings
+  const fiscalYearStartMonth = user.organization?.fiscalYearStartMonth ?? 1;
 
   // Fetch custom views from database (user-specific + organization-specific)
   const dbViews = await prisma.kanbanView.findMany({
@@ -82,8 +80,15 @@ export default async function OpportunitiesPage() {
   // Check if user is new (no custom views)
   const isNewUser = customViews.length === 0;
 
-  // Fetch opportunities from database
+  // Build visibility filter based on user role
+  const visibleUserIds = getVisibleUserIds(user, user.directReports);
+  const whereClause = isAdmin(user)
+    ? { organizationId: user.organization.id } // Admin sees all in org
+    : { ownerId: { in: visibleUserIds } }; // Others see based on visibility
+
+  // Fetch opportunities from database with proper scoping
   const opportunitiesFromDB = await prisma.opportunity.findMany({
+    where: whereClause,
     orderBy: { updatedAt: "desc" },
     include: {
       owner: true,

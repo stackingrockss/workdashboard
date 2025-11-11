@@ -1,5 +1,12 @@
 // Check what data is actually in the parsed call
+// DEVELOPMENT SCRIPT - DO NOT RUN IN PRODUCTION
 import { PrismaClient } from '@prisma/client';
+
+// Safety check - prevent running in production
+if (process.env.NODE_ENV === 'production') {
+  console.error('❌ This script should not run in production!');
+  process.exit(1);
+}
 
 const prisma = new PrismaClient();
 

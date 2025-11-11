@@ -140,10 +140,7 @@ export async function PATCH(
 
       // Recalculate quarter when close date changes
       if (data.closeDate) {
-        const settings = await prisma.companySettings.findUnique({
-          where: { userId: user.id },
-        });
-        const fiscalYearStartMonth = settings?.fiscalYearStartMonth ?? 1;
+        const fiscalYearStartMonth = user.organization?.fiscalYearStartMonth ?? 1;
         const closeDate = parseISODateSafe(data.closeDate);
         const newQuarter = getQuarterFromDate(closeDate, fiscalYearStartMonth);
         updateData.quarter = newQuarter;

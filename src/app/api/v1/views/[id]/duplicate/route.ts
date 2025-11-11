@@ -53,20 +53,20 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       userId = requestUserId || user.id;
       organizationId = requestOrgId || null;
 
-      // Get fiscal year start month
+      // Get fiscal year start month from organization
       let fiscalYearStartMonth = 1;
-      if (userId) {
-        const settings = await prisma.companySettings.findUnique({
-          where: { userId },
-          select: { fiscalYearStartMonth: true },
-        });
-        fiscalYearStartMonth = settings?.fiscalYearStartMonth || 1;
-      } else if (organizationId) {
+      if (organizationId) {
         const org = await prisma.organization.findUnique({
           where: { id: organizationId },
           select: { fiscalYearStartMonth: true },
         });
         fiscalYearStartMonth = org?.fiscalYearStartMonth || 1;
+      } else if (userId) {
+        const userWithOrg = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { organization: { select: { fiscalYearStartMonth: true } } },
+        });
+        fiscalYearStartMonth = userWithOrg?.organization?.fiscalYearStartMonth || 1;
       }
 
       // Generate built-in columns

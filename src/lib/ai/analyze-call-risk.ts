@@ -140,6 +140,40 @@ Return ONLY valid JSON matching this exact structure:
 // Main Risk Analysis Function
 // ============================================================================
 
+/**
+ * Analyzes a sales call transcript to identify deal risks across 6 categories
+ *
+ * This function uses AI (Gemini) to analyze sales call transcripts and extract:
+ * - Risk level (low, medium, high, critical)
+ * - Risk factors across 6 categories: budget, timeline, competition, technical, alignment, resistance
+ * - Overall risk summary
+ * - Recommended actions to mitigate risks
+ *
+ * @param transcriptText - The full transcript text from the sales call (minimum 100 characters)
+ * @returns Promise resolving to risk analysis result with success flag and data/error
+ *
+ * @example
+ * ```typescript
+ * const result = await analyzeCallRisk(transcriptText);
+ * if (result.success && result.data) {
+ *   console.log(`Risk Level: ${result.data.riskLevel}`);
+ *   console.log(`Risk Factors: ${result.data.riskFactors.length}`);
+ *   result.data.recommendedActions.forEach(action => console.log(`- ${action}`));
+ * } else {
+ *   console.error('Risk analysis failed:', result.error);
+ * }
+ * ```
+ *
+ * @remarks
+ * - Requires GEMINI_API_KEY environment variable
+ * - Minimum transcript length: 100 characters
+ * - Maximum transcript length: 80,000 characters (to stay within API limits)
+ * - Never throws errors - returns error in result object instead
+ * - Uses gemini-2.5-pro model by default
+ *
+ * @see {@link RiskAnalysisResult} for return type
+ * @see {@link RiskAssessment} for data structure
+ */
 export async function analyzeCallRisk(
   transcriptText: string
 ): Promise<RiskAnalysisResult> {

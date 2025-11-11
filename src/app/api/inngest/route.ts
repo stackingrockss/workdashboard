@@ -7,6 +7,10 @@ import { parseGongTranscriptJob } from "@/lib/inngest/functions/parse-gong-trans
 import { analyzeCallRiskJob } from "@/lib/inngest/functions/analyze-call-risk";
 import { consolidateInsightsJob } from "@/lib/inngest/functions/consolidate-insights";
 
+// Increase timeout for long-running AI jobs
+// Vercel Pro: 300s (5 min), Hobby: 60s max
+export const maxDuration = 300;
+
 /**
  * Inngest endpoint handler
  * This route handles all Inngest job execution and webhook events
