@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -57,8 +58,10 @@ export function GongCallsSection({
   const [url, setUrl] = useState("");
   const [meetingDate, setMeetingDate] = useState("");
   const [noteType, setNoteType] = useState<NoteType>("customer");
+  const [transcriptText, setTranscriptText] = useState("");
   const [selectedCallForParsing, setSelectedCallForParsing] = useState<GongCall | null>(null);
   const [selectedCallForViewing, setSelectedCallForViewing] = useState<GongCall | null>(null);
+  const [isConsolidating, setIsConsolidating] = useState(false);
   const router = useRouter();
 
   // Auto-refresh when any call is in "parsing" state
@@ -113,13 +116,18 @@ export function GongCallsSection({
         url,
         meetingDate: new Date(meetingDate).toISOString(),
         noteType,
+        transcriptText: transcriptText.trim() || undefined,
       });
-      toast.success("Gong call added successfully!");
+      const successMessage = transcriptText.trim()
+        ? "Call added. Parsing transcript in background..."
+        : "Gong call added successfully!";
+      toast.success(successMessage);
       setIsAddDialogOpen(false);
       setTitle("");
       setUrl("");
       setMeetingDate("");
       setNoteType("customer");
+      setTranscriptText("");
       router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to add Gong call");
@@ -140,6 +148,35 @@ export function GongCallsSection({
     }
   };
 
+  const handleTriggerConsolidation = async () => {
+    setIsConsolidating(true);
+    try {
+      const response = await fetch(`/api/v1/opportunities/${opportunityId}/consolidate-insights`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to trigger consolidation");
+      }
+
+      toast.success("Consolidation started! Refreshing in a moment...");
+
+      // Wait a few seconds for Inngest job to complete, then refresh
+      setTimeout(() => {
+        router.refresh();
+      }, 5000);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to trigger consolidation");
+      setIsConsolidating(false);
+    }
+  };
+
+  // Count parsed calls
+  const parsedCallCount = calls.filter(
+    (call) => call.parsingStatus === "completed" && call.parsedAt
+  ).length;
+
   // Check if we should show consolidated insights
   const showConsolidated =
     consolidatedPainPoints &&
@@ -148,6 +185,9 @@ export function GongCallsSection({
     lastConsolidatedAt &&
     consolidationCallCount &&
     consolidationCallCount >= 2;
+
+  // Check if consolidation should be available but hasn't run
+  const shouldConsolidate = parsedCallCount >= 2 && !showConsolidated;
 
   return (
     <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3">
@@ -162,6 +202,38 @@ export function GongCallsSection({
           Add Call
         </Button>
       </div>
+
+      {/* Consolidation Trigger Prompt (shown when 2+ calls parsed but not consolidated) */}
+      {shouldConsolidate && (
+        <div className="mb-6 p-4 border-2 border-blue-500 bg-blue-50 dark:bg-blue-950 rounded-lg">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+                Ready to Consolidate Insights
+              </h4>
+              <p className="text-sm text-blue-700 dark:text-blue-300">
+                You have {parsedCallCount} parsed calls. Generate a consolidated summary of pain points,
+                goals, and risk assessment across all calls.
+              </p>
+            </div>
+            <Button
+              onClick={handleTriggerConsolidation}
+              disabled={isConsolidating}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isConsolidating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Consolidating...
+                </>
+              ) : (
+                <>Generate Summary</>
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Consolidated Insights Card (shown when 2+ calls parsed) */}
       {showConsolidated && (
@@ -367,6 +439,30 @@ export function GongCallsSection({
               <p className="text-xs text-muted-foreground">
                 Is this a customer-facing call or internal discussion?
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="transcript-text">Transcript (Optional)</Label>
+              <Textarea
+                id="transcript-text"
+                value={transcriptText}
+                onChange={(e) => setTranscriptText(e.target.value)}
+                placeholder="Paste Gong transcript here (optional)..."
+                rows={6}
+                className="resize-y"
+              />
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  {transcriptText.trim()
+                    ? transcriptText.length >= 100
+                      ? "✓ Transcript will be parsed automatically"
+                      : `Need ${100 - transcriptText.length} more characters (min 100)`
+                    : "You can paste the transcript now or add it later"}
+                </span>
+                <span className={transcriptText.length > 100000 ? "text-destructive" : ""}>
+                  {transcriptText.length.toLocaleString()} / 100,000
+                </span>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
