@@ -65,7 +65,7 @@ export async function POST(
     }
 
     // Save to database
-    const updatedCall = await prisma.gongCall.update({
+    await prisma.gongCall.update({
       where: { id },
       data: {
         riskAssessment: JSON.parse(JSON.stringify(result.data)),

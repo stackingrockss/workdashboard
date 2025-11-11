@@ -93,7 +93,7 @@ export function GongCallInsightsDialog({
   };
 
   // Handle contact import completion
-  const handleImportComplete = (_result: BulkImportResult) => {
+  const handleImportComplete = () => {
     setShowContactImport(false);
     onContactsImported?.();
   };
