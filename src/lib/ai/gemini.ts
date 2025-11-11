@@ -106,9 +106,11 @@ export async function generateWithSystemInstruction(
 
       // Only retry on 503 errors
       if (is503Error && attempt < maxRetries - 1) {
-        // Exponential backoff: 2s, 4s, 8s
-        const delayMs = Math.pow(2, attempt + 1) * 1000;
-        console.log(`Retrying after ${delayMs}ms...`);
+        // Exponential backoff with jitter: 3s, 6s, 12s (+ random 0-2s)
+        const baseDelay = Math.pow(2, attempt + 1) * 1500;
+        const jitter = Math.random() * 2000; // Random 0-2 seconds
+        const delayMs = baseDelay + jitter;
+        console.log(`Retrying after ${Math.round(delayMs / 1000)}s due to model overload...`);
         await sleep(delayMs);
         continue;
       }
