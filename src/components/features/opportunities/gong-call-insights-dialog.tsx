@@ -26,7 +26,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ContactImportReview } from "@/components/contacts/ContactImportReview";
-import { BulkImportResult } from "@/lib/api/contacts";
 import {
   AlertTriangle,
   Target,

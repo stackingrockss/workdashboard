@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/inline-editable";
 import { DecisionMakerSection } from "@/components/opportunity/DecisionMakerSection";
 import { Contact } from "@/types/contact";
-import { MeetingBriefViewer } from "@/components/features/ai/MeetingBriefViewer";
 import { RelatedEventsSection } from "@/components/calendar/related-events-section";
 import { TimelineSection } from "./timeline/timeline-section";
 
@@ -448,51 +447,24 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         {/* Research & Notes Tab */}
         <TabsContent value="research" className="space-y-4 mt-4">
           <div className="grid gap-4">
-            {/* Show new MeetingBriefViewer if metadata exists, otherwise show legacy InlineTextareaWithAI */}
-            {opportunity.accountResearchMeta && opportunity.accountResearchMobile ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Pre-Meeting Intelligence</h3>
-                  <Button
-                    onClick={handleGenerateAccountResearch}
-                    disabled={isGeneratingResearch || researchStatus === "generating"}
-                    size="sm"
-                    variant="outline"
-                  >
-                    {isGeneratingResearch || researchStatus === "generating" ? (
-                      <>Regenerating...</>
-                    ) : (
-                      <>Regenerate with Gemini</>
-                    )}
-                  </Button>
-                </div>
-                <MeetingBriefViewer
-                  accountName={opportunity.account?.name || opportunity.accountName || ""}
-                  fullBrief={opportunity.accountResearch || ""}
-                  mobileCheatSheet={opportunity.accountResearchMobile}
-                  metadata={opportunity.accountResearchMeta}
-                />
-              </div>
-            ) : (
-              /* Legacy inline editor for old data or when no metadata exists */
-              <InlineTextareaWithAI
-                label="Account Research"
-                value={opportunity.accountResearch || ""}
-                onSave={async (value) => handleFieldUpdate("accountResearch", value)}
-                placeholder={
-                  researchStatus === "generating"
-                    ? "Generating account research with AI... This may take 10-30 seconds."
-                    : researchStatus === "failed"
-                    ? "AI generation failed. Click 'Generate with Gemini' to retry."
-                    : "AI-powered account research and pre-meeting intelligence..."
-                }
-                rows={8}
-                className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
-                onGenerate={handleGenerateAccountResearch}
-                isGenerating={isGeneratingResearch || researchStatus === "generating"}
-                generateButtonLabel="Generate with Gemini"
-              />
-            )}
+            {/* Account research with AI generation */}
+            <InlineTextareaWithAI
+              label="Account Research"
+              value={opportunity.accountResearch || ""}
+              onSave={async (value) => handleFieldUpdate("accountResearch", value)}
+              placeholder={
+                researchStatus === "generating"
+                  ? "Generating account research with AI... This may take 10-30 seconds."
+                  : researchStatus === "failed"
+                  ? "AI generation failed. Click 'Generate with Gemini' to retry."
+                  : "AI-powered account research and pre-meeting intelligence..."
+              }
+              rows={8}
+              className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
+              onGenerate={handleGenerateAccountResearch}
+              isGenerating={isGeneratingResearch || researchStatus === "generating"}
+              generateButtonLabel="Generate with Gemini"
+            />
             <InlineTextarea
               label="Risk Notes"
               value={opportunity.riskNotes || ""}

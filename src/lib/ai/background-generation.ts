@@ -48,14 +48,11 @@ export async function triggerAccountResearchGeneration(
       });
 
       if (result.success && result.fullBrief) {
-        // Update opportunity with all structured research fields
-        // This matches the manual generation endpoint pattern in /api/v1/ai/meeting-notes
+        // Update opportunity with research
         await prisma.opportunity.update({
           where: { id: opportunityId },
           data: {
             accountResearch: result.fullBrief,
-            accountResearchMobile: result.mobileCheatSheet,
-            accountResearchMeta: JSON.parse(JSON.stringify(result.metadata)),
             accountResearchGeneratedAt: new Date(),
             accountResearchStatus: AccountResearchStatus.completed,
           },

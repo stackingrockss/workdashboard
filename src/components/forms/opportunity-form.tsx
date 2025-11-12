@@ -71,17 +71,17 @@ export function OpportunityForm({
     businessCaseStatus: initialData?.businessCaseStatus || "not_started",
   });
 
-  // Load fiscal year settings
+  // Load fiscal year settings from organization
   useEffect(() => {
     async function loadSettings() {
       try {
-        const response = await fetch("/api/v1/settings");
+        const response = await fetch("/api/v1/organization");
         const data = await response.json();
-        if (response.ok && data.settings) {
-          setFiscalYearStartMonth(data.settings.fiscalYearStartMonth || 1);
+        if (response.ok && data.organization) {
+          setFiscalYearStartMonth(data.organization.fiscalYearStartMonth || 1);
         }
       } catch (error) {
-        console.error("Failed to load settings:", error);
+        console.error("Failed to load organization settings:", error);
       }
     }
     loadSettings();

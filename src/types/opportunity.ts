@@ -59,36 +59,6 @@ export type PlatformType = "oem" | "api" | "isv";
 
 export type AccountResearchStatus = "generating" | "completed" | "failed";
 
-// Meeting Brief Metadata Types
-export interface MeetingBriefMetadata {
-  executiveSummary: {
-    criticalInsight: string;
-    topQuestions: string[];
-    keyMetrics: Array<{
-      metric: string;
-      value: string;
-      talkingPoint: string;
-    }>;
-    risks: string[];
-    openingLine: string;
-  };
-  quickReference: {
-    conversationStarters: string[];
-    discoveryQuestions: Array<{
-      priority: "HIGH" | "MEDIUM" | "OPTIONAL";
-      question: string;
-      whyAsk: string;
-      listenFor: string[];
-    }>;
-    financials: Array<{
-      metric: string;
-      value: string;
-      yoyChange: string;
-      howToUse: string;
-    }>;
-  };
-}
-
 export interface OpportunityOwner {
   id: string;
   name: string;
@@ -119,8 +89,6 @@ export interface Opportunity {
   notes?: string | null;
   accountResearch?: string | null;
   accountResearchStatus?: AccountResearchStatus | null;
-  accountResearchMobile?: string | null;
-  accountResearchMeta?: MeetingBriefMetadata | null;
   accountResearchGeneratedAt?: string | null;
   // New fields from CSV
   decisionMakers?: string | null;
@@ -215,4 +183,31 @@ export function getConfidenceLevelLabel(level: number): string {
   return labelMap[level] || "Unknown";
 }
 
-
+// Meeting brief metadata types
+export interface MeetingBriefMetadata {
+  executiveSummary: {
+    criticalInsight: string;
+    topQuestions: string[];
+    keyMetrics: Array<{
+      metric: string;
+      value: string;
+      talkingPoint: string;
+    }>;
+    risks: string[];
+  };
+  quickReference: {
+    conversationStarters: string[];
+    discoveryQuestions: Array<{
+      question: string;
+      whyAsk: string;
+      listenFor: string[];
+      priority: "HIGH" | "MEDIUM" | "OPTIONAL";
+    }>;
+    financials: Array<{
+      metric: string;
+      value: string;
+      yoyChange: string;
+      howToUse: string;
+    }>;
+  };
+}

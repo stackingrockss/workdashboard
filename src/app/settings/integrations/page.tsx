@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ import { Calendar, CheckCircle, XCircle, Loader2, RefreshCw, Unplug } from "luci
 import { toast } from "sonner";
 import { CalendarConnectionStatus } from "@/types/calendar";
 
-export default function IntegrationsSettingsPage() {
+function IntegrationsContent() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -274,5 +274,17 @@ export default function IntegrationsSettingsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+export default function IntegrationsSettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    }>
+      <IntegrationsContent />
+    </Suspense>
   );
 }

@@ -5,7 +5,6 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { OpportunityDetailClient } from "@/components/features/opportunities/opportunity-detail-client";
 import { getCurrentUser } from "@/lib/auth";
-import type { MeetingBriefMetadata } from "@/types/opportunity";
 import type { RiskAssessment } from "@/types/gong-call";
 
 interface OpportunityPageProps {
@@ -64,8 +63,6 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     notes: opportunityFromDB.notes || undefined,
     accountResearch: opportunityFromDB.accountResearch || undefined,
     accountResearchStatus: opportunityFromDB.accountResearchStatus || undefined,
-    accountResearchMobile: opportunityFromDB.accountResearchMobile || undefined,
-    accountResearchMeta: (opportunityFromDB.accountResearchMeta || undefined) as MeetingBriefMetadata | null | undefined,
     painPointsHistory: opportunityFromDB.painPointsHistory || undefined,
     goalsHistory: opportunityFromDB.goalsHistory || undefined,
     nextStepsHistory: opportunityFromDB.nextStepsHistory || undefined,

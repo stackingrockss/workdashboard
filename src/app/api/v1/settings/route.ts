@@ -1,119 +1,47 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { z } from "zod";
-import { requireAuth } from "@/lib/auth";
-import { getQuarterFromDate } from "@/lib/utils/quarter";
 
-// Validation schema for organization settings (fiscal year only)
-const settingsSchema = z.object({
-  fiscalYearStartMonth: z.number().int().min(1).max(12),
-});
-
+/**
+ * GET /api/v1/settings
+ * Get user and organization settings
+ */
 export async function GET() {
   try {
-    const user = await requireAuth();
-
-    // Get user's organization
-    const userWithOrg = await prisma.user.findUnique({
-      where: { id: user.id },
-      include: { organization: true },
-    });
-
-    if (!userWithOrg?.organization) {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-    }
-
-    // Return organization fiscal year settings
-    return NextResponse.json({
-      settings: {
-        fiscalYearStartMonth: userWithOrg.organization.fiscalYearStartMonth,
-      },
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
+    const user = await getCurrentUser();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
-  }
-}
 
-export async function POST(req: NextRequest) {
-  try {
-    const user = await requireAuth();
-
-    const json = await req.json();
-    const parsed = settingsSchema.safeParse(json);
-
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
-    }
-
-    const data = parsed.data;
-
-    // Get user's organization
+    // Get user settings with organization info
     const userWithOrg = await prisma.user.findUnique({
       where: { id: user.id },
-      include: { organization: true },
-    });
-
-    if (!userWithOrg?.organization) {
-      return NextResponse.json({ error: "Organization not found" }, { status: 404 });
-    }
-
-    const organization = userWithOrg.organization;
-
-    // Check if fiscal year start month is changing
-    const fiscalYearChanged = organization.fiscalYearStartMonth !== data.fiscalYearStartMonth;
-
-    // Update organization's fiscal year start month
-    const updatedOrg = await prisma.organization.update({
-      where: { id: organization.id },
-      data: { fiscalYearStartMonth: data.fiscalYearStartMonth },
-    });
-
-    // If fiscal year changed, recalculate all opportunity quarters for this organization
-    if (fiscalYearChanged) {
-      console.log(
-        `Fiscal year changed to month ${data.fiscalYearStartMonth}, recalculating quarters...`
-      );
-
-      // Recalculate quarters for all opportunities in this organization with close dates
-      const opportunities = await prisma.opportunity.findMany({
-        where: {
-          owner: { organizationId: organization.id },
-          closeDate: { not: null },
+      include: {
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            fiscalYearStartMonth: true,
+          },
         },
-      });
+      },
+    });
 
-      console.log(`Recalculating quarters for ${opportunities.length} opportunities`);
-
-      // Update each opportunity's quarter field
-      for (const opp of opportunities) {
-        if (opp.closeDate) {
-          const newQuarter = getQuarterFromDate(
-            opp.closeDate,
-            data.fiscalYearStartMonth
-          );
-          await prisma.opportunity.update({
-            where: { id: opp.id },
-            data: { quarter: newQuarter },
-          });
-        }
-      }
-
-      console.log(`Updated ${opportunities.length} opportunities with new quarters`);
+    if (!userWithOrg || !userWithOrg.organization) {
+      return NextResponse.json({ error: "User or organization not found" }, { status: 404 });
     }
 
     return NextResponse.json({
-      settings: {
-        fiscalYearStartMonth: updatedOrg.fiscalYearStartMonth,
+      user: {
+        id: userWithOrg.id,
+        name: userWithOrg.name,
+        email: userWithOrg.email,
+        role: userWithOrg.role,
       },
+      organization: userWithOrg.organization,
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    console.error("Failed to save settings:", error);
-    return NextResponse.json({ error: "Failed to save settings" }, { status: 500 });
+    console.error("Failed to fetch settings:", error);
+    return NextResponse.json({ error: "Failed to fetch settings" }, { status: 500 });
   }
 }

@@ -11,7 +11,6 @@ datasource db {
 model Account {
   id             String          @id @default(cuid())
   name           String
-  website        String?
   industry       String?
   priority       String          @default("medium")
   health         String          @default("good")
@@ -20,18 +19,18 @@ model Account {
   updatedAt      DateTime        @updatedAt
   ownerId        String?
   organizationId String
+  website        String?
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner          User?           @relation("AccountOwner", fields: [ownerId], references: [id])
+  calendarEvents CalendarEvent[]
   contacts       Contact[]
   opportunities  Opportunity[]
-  calendarEvents CalendarEvent[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
   @@index([ownerId])
   @@schema("opportunity_tracker")
 }
-
 
 model Contact {
   id            String           @id @default(cuid())
@@ -61,24 +60,24 @@ model Contact {
 }
 
 model GongCall {
-  id              String         @id @default(cuid())
-  opportunityId   String
-  title           String
-  url             String
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  meetingDate     DateTime
-  noteType        NoteType?      @default(customer)
-  transcriptText  String?        @db.Text
-  painPoints      Json?
-  goals           Json?
-  parsedPeople    Json?
-  nextSteps       Json?
-  riskAssessment  Json?
-  parsedAt        DateTime?
-  parsingStatus   ParsingStatus?
-  parsingError    String?
-  opportunity     Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  id             String         @id @default(cuid())
+  opportunityId  String
+  title          String
+  url            String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  meetingDate    DateTime
+  noteType       NoteType?      @default(customer)
+  goals          Json?
+  nextSteps      Json?
+  painPoints     Json?
+  parsedAt       DateTime?
+  parsedPeople   Json?
+  transcriptText String?
+  parsingError   String?
+  parsingStatus  ParsingStatus?
+  riskAssessment Json?
+  opportunity    Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
   @@index([parsingStatus])
@@ -123,8 +122,8 @@ model Invitation {
   expiresAt      DateTime
   acceptedAt     DateTime?
   createdAt      DateTime     @default(now())
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invitedBy      User         @relation(fields: [invitedById], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, email])
   @@schema("opportunity_tracker")
@@ -157,8 +156,8 @@ model KanbanView {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
   columns        KanbanColumn[]
-  user           User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, name])
   @@unique([organizationId, name])
@@ -168,54 +167,52 @@ model KanbanView {
 }
 
 model Opportunity {
-  id                      String                    @id @default(cuid())
-  name                    String
-  amountArr               Int
-  nextStep                String?
-  cbc                     String?                   @db.Text
-  closeDate               DateTime?
-  stage                   OpportunityStage
-  ownerId                 String
-  createdAt               DateTime                  @default(now())
-  updatedAt               DateTime                  @updatedAt
-  accountId               String?
-  accountName             String?
-  quarter                 String?
-  forecastCategory        ForecastCategory?
-  notes                   String?
-  riskNotes               String?
-  columnId                String?
-  accountResearch         String?                   @db.Text
-  accountResearchStatus   AccountResearchStatus?
-  accountResearchMobile   String?                   @db.Text
-  accountResearchMeta     Json?
+  id                         String                 @id @default(cuid())
+  name                       String
+  amountArr                  Int
+  nextStep                   String?
+  closeDate                  DateTime?
+  stage                      OpportunityStage
+  ownerId                    String
+  createdAt                  DateTime               @default(now())
+  updatedAt                  DateTime               @updatedAt
+  accountId                  String?
+  accountName                String?
+  quarter                    String?
+  forecastCategory           ForecastCategory?
+  notes                      String?
+  riskNotes                  String?
+  columnId                   String?
+  accountResearch            String?
+  confidenceLevel            Int                    @default(3)
+  decisionMakers             String?
+  competition                String?
+  legalReviewStatus          ReviewStatus?          @default(not_started)
+  securityReviewStatus       ReviewStatus?          @default(not_started)
+  platformType               PlatformType?
+  businessCaseStatus         ReviewStatus?          @default(not_started)
+  organizationId             String
+  pinnedToWhiteboard         Boolean                @default(false)
+  accountResearchStatus      AccountResearchStatus?
   accountResearchGeneratedAt DateTime?
-  confidenceLevel         Int                       @default(3)
-  decisionMakers          String?
-  competition             String?
-  legalReviewStatus       ReviewStatus?             @default(not_started)
-  securityReviewStatus    ReviewStatus?             @default(not_started)
-  platformType            PlatformType?
-  businessCaseStatus      ReviewStatus?             @default(not_started)
-  pinnedToWhiteboard      Boolean                   @default(false)
-  painPointsHistory       String?                   @db.Text
-  goalsHistory            String?                   @db.Text
-  nextStepsHistory        String?                   @db.Text
-  parsedGongCallIds       String[]                  @default([])
-  consolidatedPainPoints  Json?
-  consolidatedGoals       Json?
+  goalsHistory               String?
+  nextStepsHistory           String?
+  painPointsHistory          String?
+  parsedGongCallIds          String[]               @default([])
+  consolidatedGoals          Json?
+  consolidatedPainPoints     Json?
   consolidatedRiskAssessment Json?
-  lastConsolidatedAt      DateTime?
-  consolidationCallCount  Int?
-  organizationId          String
-  contacts                Contact[]
-  gongCalls               GongCall[]
-  googleNotes             GoogleNote[]
-  granolaNotes            GranolaNote[]
-  calendarEvents          CalendarEvent[]
-  account                 Account?                  @relation(fields: [accountId], references: [id])
-  organization            Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner                   User                      @relation(fields: [ownerId], references: [id])
+  consolidationCallCount     Int?
+  lastConsolidatedAt         DateTime?
+  cbc                        String?
+  calendarEvents             CalendarEvent[]
+  contacts                   Contact[]
+  gongCalls                  GongCall[]
+  googleNotes                GoogleNote[]
+  granolaNotes               GranolaNote[]
+  account                    Account?               @relation(fields: [accountId], references: [id])
+  organization               Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner                      User                   @relation(fields: [ownerId], references: [id])
 
   @@index([organizationId])
   @@index([ownerId])
@@ -235,11 +232,11 @@ model Organization {
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
   accounts             Account[]
-  opportunities        Opportunity[]
-  users                User[]
-  kanbanViews          KanbanView[]
   invitations          Invitation[]
+  kanbanViews          KanbanView[]
+  opportunities        Opportunity[]
   settings             OrganizationSettings?
+  users                User[]
 
   @@schema("opportunity_tracker")
 }
@@ -259,24 +256,24 @@ model OrganizationSettings {
 }
 
 model User {
-  id             String         @id @default(cuid())
-  email          String         @unique
+  id             String          @id @default(cuid())
+  email          String          @unique
   name           String?
   avatarUrl      String?
-  createdAt      DateTime       @default(now())
-  supabaseId     String?        @unique
+  createdAt      DateTime        @default(now())
+  supabaseId     String?         @unique
   managerId      String?
   organizationId String?
-  role           UserRole       @default(REP)
-  opportunities  Opportunity[]
-  ownedAccounts  Account[]      @relation("AccountOwner")
+  role           UserRole        @default(REP)
+  ownedAccounts  Account[]       @relation("AccountOwner")
+  calendarEvents CalendarEvent[]
   invitations    Invitation[]
   kanbanViews    KanbanView[]
   oauthTokens    OAuthToken[]
-  calendarEvents CalendarEvent[]
-  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  manager        User?          @relation("ManagerReps", fields: [managerId], references: [id])
-  directReports  User[]         @relation("ManagerReps")
+  opportunities  Opportunity[]
+  manager        User?           @relation("ManagerReps", fields: [managerId], references: [id])
+  directReports  User[]          @relation("ManagerReps")
+  organization   Organization?   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([managerId])
@@ -286,11 +283,11 @@ model User {
 model OAuthToken {
   id           String   @id @default(cuid())
   userId       String
-  provider     String   // "google", "microsoft", "apple"
-  accessToken  String   @db.Text // Encrypted
-  refreshToken String?  @db.Text // Encrypted
+  provider     String
+  accessToken  String
+  refreshToken String?
   expiresAt    DateTime
-  scopes       String[] // Granted OAuth scopes
+  scopes       String[]
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -304,23 +301,23 @@ model OAuthToken {
 model CalendarEvent {
   id             String       @id @default(cuid())
   userId         String
-  googleEventId  String       // Google's event ID
-  summary        String       // Event title
-  description    String?      @db.Text
+  googleEventId  String
+  summary        String
+  description    String?
   location       String?
   startTime      DateTime
   endTime        DateTime
-  attendees      String[]     // Email addresses
-  isExternal     Boolean      // Has attendees outside organization
+  attendees      String[]
+  isExternal     Boolean
   organizerEmail String?
-  meetingUrl     String?      // Google Meet, Zoom, etc.
-  opportunityId  String?      // Link to opportunity (optional)
-  accountId      String?      // Link to account (optional)
+  meetingUrl     String?
+  opportunityId  String?
+  accountId      String?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
+  account        Account?     @relation(fields: [accountId], references: [id])
+  opportunity    Opportunity? @relation(fields: [opportunityId], references: [id])
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  opportunity    Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
-  account        Account?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
 
   @@unique([userId, googleEventId])
   @@index([userId, startTime])

@@ -65,8 +65,6 @@ export async function POST(req: NextRequest) {
           where: { id: opportunityId },
           data: {
             accountResearch: result.fullBrief,
-            accountResearchMobile: result.mobileCheatSheet,
-            accountResearchMeta: JSON.parse(JSON.stringify(result.metadata)), // Convert to Prisma Json type
             accountResearchGeneratedAt: new Date(),
             accountResearchStatus: "completed",
           },
@@ -81,8 +79,6 @@ export async function POST(req: NextRequest) {
       success: true,
       notes: result.fullBrief, // Legacy field
       fullBrief: result.fullBrief,
-      mobileCheatSheet: result.mobileCheatSheet,
-      metadata: result.metadata,
       accountName,
     });
   } catch (error) {

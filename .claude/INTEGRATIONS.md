@@ -147,74 +147,26 @@ ${transcriptText}
 2. Trigger background job (Inngest)
 3. Fetch account data (website, industry, opportunity details)
 4. Call Gemini with research prompt
-5. Store result in `accountResearch` field
-6. Generate mobile-optimized version in `accountResearchMobile`
-7. Generate structured metadata in `accountResearchMeta` (JSON)
-8. Set status to `completed`
+5. Store result in `accountResearch` field (plain text/markdown)
+6. Set status to `completed`
 
 **Research Prompt:**
-```
-You are preparing an executive briefing for a sales meeting.
+See `/src/lib/ai/meeting-notes.ts` for the full Gemini prompt and system instructions.
 
-Account: ${accountName}
-Website: ${accountWebsite}
-Industry: ${industry}
-Opportunity: ${opportunityName} ($${amountArr} ARR)
-Stage: ${stage}
+The prompt generates comprehensive background research including:
+- Business overview and financial context
+- Provider network size and healthcare context
+- Recent news and strategic initiatives
+- Pain points and challenges
+- Tech stack and current vendors
+- Competitive position
+- Decision-making context
+- Verifiable-specific fit analysis
+- Discovery questions
+- Conversation starters and social proof
 
-Generate a comprehensive meeting brief with:
-1. Executive Summary (2-3 paragraphs):
-   - Company overview
-   - Business model and key products/services
-   - Recent news and developments
-   - Market position and competitive landscape
-
-2. Quick Reference:
-   - Key metrics (revenue, employees, funding, etc.)
-   - Discovery questions (prioritized HIGH/MEDIUM/OPTIONAL)
-   - Conversation starters
-   - Financial talking points
-
-3. Strategic Insights:
-   - Potential pain points relevant to our solution
-   - Likely objections and how to address them
-   - Key stakeholders to engage
-   - Risks and opportunities
-
-Format as professional markdown. Be concise but thorough.
-```
-
-**Metadata Schema:**
-```typescript
-interface MeetingBriefMetadata {
-  executiveSummary: {
-    criticalInsight: string;
-    topQuestions: string[];
-    keyMetrics: Array<{
-      metric: string;
-      value: string;
-      talkingPoint: string;
-    }>;
-    risks: string[];
-    openingLine: string;
-  };
-  quickReference: {
-    conversationStarters: string[];
-    discoveryQuestions: Array<{
-      priority: 'HIGH' | 'MEDIUM' | 'OPTIONAL';
-      question: string;
-      whyAsk: string;
-      listenFor: string[];
-    }>;
-    financials: Array<{
-      metric: string;
-      value: string;
-      yoyChange: string;
-      howToUse: string;
-    }>;
-  };
-}
-```
+**Output Format:**
+Plain text/markdown stored in `accountResearch` field. No structured metadata or mobile-optimized format.
 
 **Display:**
 - Use `react-markdown` with `remark-gfm` for rendering
