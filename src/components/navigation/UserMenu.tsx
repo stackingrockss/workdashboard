@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { LogOut, User as UserIcon, Settings, Building2 } from "lucide-react";
+import { LogOut, User as UserIcon, Settings } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
 
 export function UserMenu() {
@@ -115,14 +115,10 @@ export function UserMenu() {
           <UserIcon className="mr-2 h-4 w-4" />
           <span>Profile</span>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/settings")}>
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
-        </DropdownMenuItem>
         {userRole === "ADMIN" && (
           <DropdownMenuItem onClick={() => router.push("/settings/organization")}>
-            <Building2 className="mr-2 h-4 w-4" />
-            <span>Organization</span>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Organization Settings</span>
           </DropdownMenuItem>
         )}
         <DropdownMenuSeparator />

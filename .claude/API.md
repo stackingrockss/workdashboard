@@ -709,11 +709,6 @@ Get current authenticated user
 
 ---
 
-#### `GET /api/v1/settings`
-Get user settings (deprecated, use `/api/v1/me`)
-
----
-
 ### Gong Calls
 
 #### `POST /api/v1/gong-calls/[id]/retry-parsing`
