@@ -60,9 +60,22 @@ export const contactBulkImportSchema = z.object({
   contacts: z.array(contactBulkImportItemSchema).min(1, "At least one contact is required").max(50, "Maximum 50 contacts per batch"),
 });
 
+// Schema for batch duplicate checking
+export const contactBatchDuplicateCheckItemSchema = z.object({
+  firstName: z.string().min(1, "First name is required").max(100),
+  lastName: z.string().min(1, "Last name is required").max(100),
+  email: z.string().email("Invalid email address").optional().nullable().or(z.literal("")),
+});
+
+export const contactBatchDuplicateCheckSchema = z.object({
+  contacts: z.array(contactBatchDuplicateCheckItemSchema).min(1, "At least one contact is required").max(100, "Maximum 100 contacts per batch"),
+});
+
 // Types inferred from schemas
 export type ContactCreateInput = z.infer<typeof contactCreateSchema>;
 export type ContactUpdateInput = z.infer<typeof contactUpdateSchema>;
 export type ContactPositionUpdate = z.infer<typeof contactPositionUpdateSchema>;
 export type ContactBulkImportItem = z.infer<typeof contactBulkImportItemSchema>;
 export type ContactBulkImportInput = z.infer<typeof contactBulkImportSchema>;
+export type ContactBatchDuplicateCheckItem = z.infer<typeof contactBatchDuplicateCheckItemSchema>;
+export type ContactBatchDuplicateCheckInput = z.infer<typeof contactBatchDuplicateCheckSchema>;

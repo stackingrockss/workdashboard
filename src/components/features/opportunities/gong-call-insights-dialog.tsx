@@ -12,7 +12,7 @@
  * Allows user to import contacts from the parsed people list.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 import type { RiskAssessment } from "@/types/gong-call";
 import {
@@ -55,6 +55,7 @@ interface GongCallInsightsDialogProps {
   };
   riskAssessment?: RiskAssessment | null;
   onContactsImported?: () => void;
+  autoOpenContactImport?: boolean; // If true, opens ContactImportReview immediately
 }
 
 // ============================================================================
@@ -69,9 +70,17 @@ export function GongCallInsightsDialog({
   insights,
   riskAssessment,
   onContactsImported,
+  autoOpenContactImport = false,
 }: GongCallInsightsDialogProps) {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
-  const [showContactImport, setShowContactImport] = useState(false);
+  const [showContactImport, setShowContactImport] = useState(autoOpenContactImport);
+
+  // Auto-open contact import if requested and there are contacts
+  useEffect(() => {
+    if (open && autoOpenContactImport && insights.people.length > 0) {
+      setShowContactImport(true);
+    }
+  }, [open, autoOpenContactImport, insights.people.length]);
 
   // Debug: Log insights data when dialog opens
   console.log('GongCallInsightsDialog insights:', {

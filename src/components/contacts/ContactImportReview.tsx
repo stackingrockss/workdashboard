@@ -15,7 +15,7 @@
 import { useState, useEffect } from "react";
 import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 import { splitFullName } from "@/lib/utils/contact-duplicate-detection";
-import { bulkCreateContacts, type BulkImportResult } from "@/lib/api/contacts";
+import { bulkCreateContacts, batchCheckDuplicateContacts, type BulkImportResult } from "@/lib/api/contacts";
 import { ContactBulkImportItem } from "@/lib/validations/contact";
 import { ContactRole, ContactSentiment } from "@/types/contact";
 import { Button } from "@/components/ui/button";
@@ -87,41 +87,44 @@ export function ContactImportReview({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [people]);
 
-  // Check for duplicates (client-side API call)
+  // Check for duplicates using batch API (much faster than sequential calls)
   const checkForDuplicates = async (contactList: ContactImportItem[]) => {
     setIsCheckingDuplicates(true);
     try {
-      // For each contact, check if duplicate exists
-      // Note: This is a simplified version - in production, you'd call a batch API endpoint
-      const updatedContacts = [...contactList];
+      // Prepare batch request with all contacts
+      const contactsToCheck = contactList.map((item) => {
+        const { firstName, lastName } = splitFullName(item.person.name);
+        return {
+          firstName,
+          lastName,
+          email: null, // Email not extracted from transcripts
+        };
+      });
 
-      for (let i = 0; i < updatedContacts.length; i++) {
-        const person = updatedContacts[i].person;
-        const { firstName, lastName } = splitFullName(person.name);
+      // Single batch API call instead of N sequential calls
+      const batchResult = await batchCheckDuplicateContacts(opportunityId, {
+        contacts: contactsToCheck,
+      });
 
-        // Call duplicate check API
-        const response = await fetch(
-          `/api/v1/opportunities/${opportunityId}/contacts/check-duplicate`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ firstName, lastName, email: null }),
-          }
-        );
-
-        if (response.ok) {
-          const duplicateCheck = await response.json();
-          if (duplicateCheck.isDuplicate && duplicateCheck.matches.length > 0) {
-            updatedContacts[i].isDuplicate = true;
-            updatedContacts[i].duplicateReason = `Similar to: ${duplicateCheck.matches[0].firstName} ${duplicateCheck.matches[0].lastName}`;
-          }
+      // Update contacts with duplicate status
+      const updatedContacts = contactList.map((contact, index) => {
+        const duplicateCheck = batchResult.results[index];
+        if (duplicateCheck && duplicateCheck.isDuplicate && duplicateCheck.matches.length > 0) {
+          const match = duplicateCheck.matches[0];
+          return {
+            ...contact,
+            isDuplicate: true,
+            duplicateReason: `Similar to: ${match.firstName} ${match.lastName}`,
+          };
         }
-      }
+        return contact;
+      });
 
       setContacts(updatedContacts);
     } catch (error) {
       console.error("Error checking duplicates:", error);
-      // Continue without duplicate checking
+      // Continue without duplicate checking - don't block the import flow
+      toast.warning("Could not check for duplicates - proceeding with import");
     } finally {
       setIsCheckingDuplicates(false);
     }

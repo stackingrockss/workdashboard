@@ -61,6 +61,7 @@ export function GongCallsSection({
   const [transcriptText, setTranscriptText] = useState("");
   const [selectedCallForParsing, setSelectedCallForParsing] = useState<GongCall | null>(null);
   const [selectedCallForViewing, setSelectedCallForViewing] = useState<GongCall | null>(null);
+  const [autoOpenContactImport, setAutoOpenContactImport] = useState(false);
   const [isConsolidating, setIsConsolidating] = useState(false);
   const router = useRouter();
 
@@ -84,17 +85,29 @@ export function GongCallsSection({
       (call) => call.parsingStatus === "completed" && call.parsedAt
     );
 
-    // Check localStorage to avoid showing toast on initial page load
+    // Check sessionStorage to avoid showing toast on initial page load
     completedCalls.forEach((call) => {
       const toastKey = `gong-parsed-${call.id}`;
       const hasShownToast = sessionStorage.getItem(toastKey);
 
       if (!hasShownToast) {
-        toast.success(`"${call.title}" parsed successfully! Click to view insights.`, {
-          duration: 5000,
+        // Count contacts extracted
+        const peopleCount = (call.parsedPeople as PersonExtracted[] | null)?.length || 0;
+
+        // Create message with contact count
+        let message = `"${call.title}" parsed successfully!`;
+        if (peopleCount > 0) {
+          message += ` ${peopleCount} contact${peopleCount !== 1 ? 's' : ''} found.`;
+        }
+
+        toast.success(message, {
+          duration: 6000,
           action: {
-            label: "View",
-            onClick: () => setSelectedCallForViewing(call),
+            label: "Review & Import",
+            onClick: () => {
+              setAutoOpenContactImport(true);
+              setSelectedCallForViewing(call);
+            },
           },
         });
         sessionStorage.setItem(toastKey, "true");
@@ -505,7 +518,10 @@ export function GongCallsSection({
         <GongCallInsightsDialog
           open={!!selectedCallForViewing}
           onOpenChange={(open) => {
-            if (!open) setSelectedCallForViewing(null);
+            if (!open) {
+              setSelectedCallForViewing(null);
+              setAutoOpenContactImport(false); // Reset flag when dialog closes
+            }
           }}
           gongCallTitle={selectedCallForViewing.title}
           opportunityId={opportunityId}
@@ -519,6 +535,7 @@ export function GongCallsSection({
           onContactsImported={() => {
             router.refresh();
           }}
+          autoOpenContactImport={autoOpenContactImport}
         />
       )}
     </div>

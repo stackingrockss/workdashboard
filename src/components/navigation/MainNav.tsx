@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Target, Building2, Presentation, Bell, Users } from "lucide-react";
+import { LayoutDashboard, Target, Building2, Presentation, Bell } from "lucide-react";
 
 const navItems = [
   {
@@ -34,47 +33,12 @@ const navItems = [
   },
 ];
 
-const adminNavItems = [
-  {
-    title: "Users",
-    href: "/users",
-    icon: Users,
-    requiredRoles: ["ADMIN", "MANAGER"],
-  },
-];
-
 export function MainNav() {
   const pathname = usePathname();
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchUserRole() {
-      try {
-        const res = await fetch("/api/v1/me");
-        if (res.ok) {
-          const data = await res.json();
-          setUserRole(data.user?.role || null);
-        }
-      } catch (error) {
-        console.error("Error fetching user role:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchUserRole();
-  }, []);
-
-  // Combine nav items with admin items based on user role
-  const visibleNavItems = [
-    ...navItems,
-    ...(!loading && userRole ? adminNavItems.filter((item) => item.requiredRoles.includes(userRole)) : []),
-  ];
 
   return (
     <nav className="flex items-center gap-1">
-      {visibleNavItems.map((item) => {
+      {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = pathname === item.href ||
           (item.href !== "/" && pathname.startsWith(item.href));

@@ -182,32 +182,3 @@ export function getConfidenceLevelLabel(level: number): string {
   };
   return labelMap[level] || "Unknown";
 }
-
-// Meeting brief metadata types
-export interface MeetingBriefMetadata {
-  executiveSummary: {
-    criticalInsight: string;
-    topQuestions: string[];
-    keyMetrics: Array<{
-      metric: string;
-      value: string;
-      talkingPoint: string;
-    }>;
-    risks: string[];
-  };
-  quickReference: {
-    conversationStarters: string[];
-    discoveryQuestions: Array<{
-      question: string;
-      whyAsk: string;
-      listenFor: string[];
-      priority: "HIGH" | "MEDIUM" | "OPTIONAL";
-    }>;
-    financials: Array<{
-      metric: string;
-      value: string;
-      yoyChange: string;
-      howToUse: string;
-    }>;
-  };
-}

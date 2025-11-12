@@ -3,7 +3,9 @@ import {
   ContactCreateInput,
   ContactUpdateInput,
   ContactBulkImportInput,
+  ContactBatchDuplicateCheckInput,
 } from "@/lib/validations/contact";
+import type { DuplicateCheckResult } from "@/lib/utils/contact-duplicate-detection";
 
 const API_BASE = "/api/v1";
 
@@ -24,6 +26,11 @@ export interface BulkImportResult {
     skipped: Array<{ firstName: string; lastName: string; reason: string }>;
     errors: Array<{ firstName: string; lastName: string; error: string }>;
   };
+}
+
+export interface BatchDuplicateCheckResult {
+  success: boolean;
+  results: DuplicateCheckResult[];
 }
 
 /**
@@ -170,6 +177,33 @@ export async function bulkCreateContacts(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "Failed to bulk create contacts");
+  }
+
+  return response.json();
+}
+
+/**
+ * Batch check for duplicate contacts
+ * Much more efficient than calling checkForDuplicateContact individually
+ */
+export async function batchCheckDuplicateContacts(
+  opportunityId: string,
+  data: ContactBatchDuplicateCheckInput
+): Promise<BatchDuplicateCheckResult> {
+  const response = await fetch(
+    `${API_BASE}/opportunities/${opportunityId}/contacts/check-duplicates-batch`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(data),
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to check for duplicate contacts");
   }
 
   return response.json();
