@@ -12,7 +12,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -445,24 +447,40 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         {/* Research & Notes Tab */}
         <TabsContent value="research" className="space-y-4 mt-4">
           <div className="grid gap-4">
-            {/* Account research with AI generation */}
-            <InlineMarkdownWithAI
-              label="Account Research"
-              value={opportunity.accountResearch || ""}
-              onSave={async (value) => handleFieldUpdate("accountResearch", value)}
-              placeholder={
-                researchStatus === "generating"
-                  ? "Generating account research with AI... This may take 10-30 seconds."
-                  : researchStatus === "failed"
-                  ? "AI generation failed. Click 'Generate with Gemini' to retry."
-                  : "AI-powered account research and pre-meeting intelligence..."
-              }
-              rows={8}
-              className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
-              onGenerate={handleGenerateAccountResearch}
-              isGenerating={isGeneratingResearch || researchStatus === "generating"}
-              generateButtonLabel="Generate with Gemini"
-            />
+            {/* Account research with AI generation - Collapsible */}
+            <Collapsible defaultOpen={false}>
+              <Card>
+                <CollapsibleTrigger className="w-full">
+                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+                    <CardTitle className="flex items-center justify-between text-base">
+                      <span>Account Research</span>
+                      <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
+                    </CardTitle>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent className="pt-0">
+                    <InlineMarkdownWithAI
+                      label=""
+                      value={opportunity.accountResearch || ""}
+                      onSave={async (value) => handleFieldUpdate("accountResearch", value)}
+                      placeholder={
+                        researchStatus === "generating"
+                          ? "Generating account research with AI... This may take 10-30 seconds."
+                          : researchStatus === "failed"
+                          ? "AI generation failed. Click 'Generate with Gemini' to retry."
+                          : "AI-powered account research and pre-meeting intelligence..."
+                      }
+                      rows={8}
+                      className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
+                      onGenerate={handleGenerateAccountResearch}
+                      isGenerating={isGeneratingResearch || researchStatus === "generating"}
+                      generateButtonLabel="Generate with Gemini"
+                    />
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
             <InlineTextarea
               label="Risk Notes"
               value={opportunity.riskNotes || ""}
