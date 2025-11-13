@@ -65,24 +65,104 @@ export async function GET(req: NextRequest) {
       ? new Date(filters.endDate)
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    // Fetch events from Google Calendar (using database user ID, not Supabase ID)
-    const result = await googleCalendarClient.listEvents(
-      user.id, // This is the database user ID from line 27
-      startDate,
-      endDate,
-      {
-        accountId: filters.accountId,
-        opportunityId: filters.opportunityId,
-        externalOnly: filters.externalOnly !== false, // Default to true
-        pageToken: filters.pageToken,
-        maxResults: filters.maxResults,
-      }
-    );
+    // Check if force live sync is requested (bypass database cache)
+    const forceLiveSync = searchParams.get('forceLiveSync') === 'true';
+
+    // If forceLiveSync=true, fetch directly from Google API
+    if (forceLiveSync) {
+      const result = await googleCalendarClient.listEvents(
+        user.id,
+        startDate,
+        endDate,
+        {
+          accountId: filters.accountId,
+          opportunityId: filters.opportunityId,
+          externalOnly: filters.externalOnly !== false,
+          pageToken: filters.pageToken,
+          maxResults: filters.maxResults,
+        }
+      );
+
+      return NextResponse.json({
+        events: result.events,
+        nextPageToken: result.nextPageToken,
+        hasMore: !!result.nextPageToken,
+        source: 'live',
+      });
+    }
+
+    // Default: Read from database (cached events from background sync)
+    // Build Prisma where clause
+    const whereClause: {
+      userId: string;
+      startTime: { gte: Date; lte: Date };
+      isExternal?: boolean;
+      accountId?: string;
+      opportunityId?: string;
+    } = {
+      userId: user.id,
+      startTime: {
+        gte: startDate,
+        lte: endDate,
+      },
+    };
+
+    // Apply filters
+    if (filters.externalOnly !== false) {
+      whereClause.isExternal = true;
+    }
+
+    if (filters.accountId) {
+      whereClause.accountId = filters.accountId;
+    }
+
+    if (filters.opportunityId) {
+      whereClause.opportunityId = filters.opportunityId;
+    }
+
+    // Fetch events from database
+    const maxResults = filters.maxResults || 50;
+    const events = await prisma.calendarEvent.findMany({
+      where: whereClause,
+      orderBy: {
+        startTime: 'asc',
+      },
+      take: maxResults,
+      select: {
+        googleEventId: true,
+        summary: true,
+        description: true,
+        location: true,
+        startTime: true,
+        endTime: true,
+        attendees: true,
+        isExternal: true,
+        organizerEmail: true,
+        meetingUrl: true,
+        opportunityId: true,
+        accountId: true,
+      },
+    });
+
+    // Transform to match Google Calendar client response format
+    const transformedEvents = events.map(event => ({
+      id: event.googleEventId,
+      summary: event.summary,
+      description: event.description,
+      location: event.location,
+      startTime: event.startTime,
+      endTime: event.endTime,
+      attendees: event.attendees,
+      isExternal: event.isExternal,
+      organizerEmail: event.organizerEmail,
+      meetingUrl: event.meetingUrl,
+    }));
 
     return NextResponse.json({
-      events: result.events,
-      nextPageToken: result.nextPageToken,
-      hasMore: !!result.nextPageToken,
+      events: transformedEvents,
+      nextPageToken: undefined, // Database queries don't use pagination tokens
+      hasMore: events.length === maxResults, // If we got max results, there might be more
+      source: 'database',
     });
   } catch (error) {
     console.error('Failed to fetch calendar events:', error);
@@ -181,24 +261,29 @@ export async function POST(req: NextRequest) {
       endTime: new Date(eventData.endTime),
     });
 
-    // Optionally: Store event in database for faster access
-    // (Uncomment if you want to persist events in DB)
-    // await prisma.calendarEvent.create({
-    //   data: {
-    //     userId: user.id,
-    //     googleEventId: createdEvent.id,
-    //     summary: createdEvent.summary,
-    //     description: createdEvent.description,
-    //     location: createdEvent.location,
-    //     startTime: createdEvent.startTime,
-    //     endTime: createdEvent.endTime,
-    //     attendees: createdEvent.attendees,
-    //     isExternal: createdEvent.isExternal,
-    //     organizerEmail: createdEvent.organizerEmail,
-    //     meetingUrl: createdEvent.meetingUrl,
-    //     opportunityId: eventData.opportunityId,
-    //   },
-    // });
+    // Store event in database for faster access (Phase 3A: persistent storage)
+    try {
+      await prisma.calendarEvent.create({
+        data: {
+          userId: user.id,
+          googleEventId: createdEvent.id,
+          summary: createdEvent.summary,
+          description: createdEvent.description,
+          location: createdEvent.location,
+          startTime: createdEvent.startTime,
+          endTime: createdEvent.endTime,
+          attendees: createdEvent.attendees,
+          isExternal: createdEvent.isExternal,
+          organizerEmail: createdEvent.organizerEmail,
+          meetingUrl: createdEvent.meetingUrl,
+          opportunityId: eventData.opportunityId,
+        },
+      });
+    } catch (dbError) {
+      // Log but don't fail the request if DB write fails
+      // (Event is already created in Google Calendar)
+      console.error('Failed to save event to database:', dbError);
+    }
 
     return NextResponse.json({ event: createdEvent }, { status: 201 });
   } catch (error) {

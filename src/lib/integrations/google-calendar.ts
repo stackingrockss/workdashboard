@@ -117,6 +117,7 @@ export class GoogleCalendarClient {
       });
 
       const organizationDomain = user?.organization?.domain || '';
+      const userEmail = user?.email || undefined;
 
       // Transform Google Calendar events to our format
       const events = response.data.items
@@ -126,7 +127,8 @@ export class GoogleCalendarClient {
 
           const isExternal = this.isExternalEvent(
             attendeeEmails as string[],
-            organizationDomain
+            organizationDomain,
+            userEmail
           );
 
           // Extract meeting URL from various sources
@@ -247,13 +249,15 @@ export class GoogleCalendarClient {
       });
 
       const organizationDomain = user?.organization?.domain || '';
+      const userEmail = user?.email || undefined;
 
       const attendeeEmails =
         event.attendees?.map((a) => a.email).filter(Boolean) || [];
 
       const isExternal = this.isExternalEvent(
         attendeeEmails as string[],
-        organizationDomain
+        organizationDomain,
+        userEmail
       );
 
       const meetingUrl =
@@ -341,13 +345,15 @@ export class GoogleCalendarClient {
       });
 
       const organizationDomain = user?.organization?.domain || '';
+      const userEmail = user?.email || undefined;
 
       const attendeeEmails =
         event.attendees?.map((a) => a.email).filter(Boolean) || [];
 
       const isExternal = this.isExternalEvent(
         attendeeEmails as string[],
-        organizationDomain
+        organizationDomain,
+        userEmail
       );
 
       const meetingUrl =
@@ -445,13 +451,15 @@ export class GoogleCalendarClient {
       });
 
       const organizationDomain = user?.organization?.domain || '';
+      const userEmail = user?.email || undefined;
 
       const attendeeEmails =
         event.attendees?.map((a) => a.email).filter(Boolean) || [];
 
       const isExternal = this.isExternalEvent(
         attendeeEmails as string[],
-        organizationDomain
+        organizationDomain,
+        userEmail
       );
 
       const meetingUrl =
@@ -511,10 +519,15 @@ export class GoogleCalendarClient {
   /**
    * Checks if an event has external attendees
    * (compares attendee email domains with organization domain)
+   *
+   * @param attendees - List of attendee email addresses
+   * @param organizationDomain - Organization's domain (e.g., "verifiable.com")
+   * @param currentUserEmail - Email of current user to exclude from check (optional)
    */
   private isExternalEvent(
     attendees: string[],
-    organizationDomain: string
+    organizationDomain: string,
+    currentUserEmail?: string
   ): boolean {
     if (!organizationDomain || attendees.length === 0) {
       return false;
@@ -522,8 +535,19 @@ export class GoogleCalendarClient {
 
     const orgDomain = organizationDomain.toLowerCase();
 
-    // Check if any attendee has a different domain
-    return attendees.some((email) => {
+    // Filter out current user's email to avoid false negatives
+    // (user is always in their own meetings, but that doesn't make them internal)
+    const otherAttendees = currentUserEmail
+      ? attendees.filter(email => email.toLowerCase() !== currentUserEmail.toLowerCase())
+      : attendees;
+
+    // If only the user is in the meeting (no other attendees), it's not external
+    if (otherAttendees.length === 0) {
+      return false;
+    }
+
+    // Check if any other attendee has a different domain
+    return otherAttendees.some((email) => {
       const emailDomain = email.split('@')[1]?.toLowerCase();
       if (!emailDomain) {
         return false;

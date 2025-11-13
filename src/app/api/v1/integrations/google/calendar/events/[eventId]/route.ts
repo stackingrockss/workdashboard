@@ -63,26 +63,30 @@ export async function PATCH(
       updateData
     );
 
-    // Optionally: Update event in database if you're storing events
-    // (Uncomment if you want to sync with DB)
-    // await prisma.calendarEvent.updateMany({
-    //   where: {
-    //     userId: user.id,
-    //     googleEventId: eventId,
-    //   },
-    //   data: {
-    //     summary: updatedEvent.summary,
-    //     description: updatedEvent.description,
-    //     location: updatedEvent.location,
-    //     startTime: updatedEvent.startTime,
-    //     endTime: updatedEvent.endTime,
-    //     attendees: updatedEvent.attendees,
-    //     isExternal: updatedEvent.isExternal,
-    //     organizerEmail: updatedEvent.organizerEmail,
-    //     meetingUrl: updatedEvent.meetingUrl,
-    //     updatedAt: new Date(),
-    //   },
-    // });
+    // Update event in database (Phase 3A: persistent storage)
+    try {
+      await prisma.calendarEvent.updateMany({
+        where: {
+          userId: user.id,
+          googleEventId: eventId,
+        },
+        data: {
+          summary: updatedEvent.summary,
+          description: updatedEvent.description,
+          location: updatedEvent.location,
+          startTime: updatedEvent.startTime,
+          endTime: updatedEvent.endTime,
+          attendees: updatedEvent.attendees,
+          isExternal: updatedEvent.isExternal,
+          organizerEmail: updatedEvent.organizerEmail,
+          meetingUrl: updatedEvent.meetingUrl,
+        },
+      });
+    } catch (dbError) {
+      // Log but don't fail the request if DB update fails
+      // (Event is already updated in Google Calendar)
+      console.error('Failed to update event in database:', dbError);
+    }
 
     return NextResponse.json({ event: updatedEvent });
   } catch (error) {
@@ -142,14 +146,19 @@ export async function DELETE(
     // Delete event from Google Calendar
     await googleCalendarClient.deleteEvent(user.id, eventId, sendUpdates);
 
-    // Optionally: Delete event from database if you're storing events
-    // (Uncomment if you want to sync with DB)
-    // await prisma.calendarEvent.deleteMany({
-    //   where: {
-    //     userId: user.id,
-    //     googleEventId: eventId,
-    //   },
-    // });
+    // Delete event from database (Phase 3A: persistent storage)
+    try {
+      await prisma.calendarEvent.deleteMany({
+        where: {
+          userId: user.id,
+          googleEventId: eventId,
+        },
+      });
+    } catch (dbError) {
+      // Log but don't fail the request if DB delete fails
+      // (Event is already deleted from Google Calendar)
+      console.error('Failed to delete event from database:', dbError);
+    }
 
     return NextResponse.json({
       success: true,
