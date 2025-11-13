@@ -172,7 +172,7 @@ export function OpportunityForm({
         <Label htmlFor="accountWebsite">Company Website</Label>
         <Input
           id="accountWebsite"
-          type="url"
+          type="text"
           value={formData.accountWebsite}
           onChange={(e) => setFormData({ ...formData, accountWebsite: e.target.value })}
           placeholder="acme.com, localhost:3000, or https://example.com"
