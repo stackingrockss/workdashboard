@@ -61,9 +61,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Calculate expiration date
-    const expiresAt = new Date(
-      Date.now() + (tokens.expiry_date || Date.now() + 3600 * 1000)
-    );
+    // tokens.expiry_date is an absolute timestamp in milliseconds, not a duration
+    // If not provided, default to 1 hour from now (3600 seconds)
+    const expiresAt = tokens.expiry_date
+      ? new Date(tokens.expiry_date)
+      : new Date(Date.now() + 3600 * 1000);
 
     // Encrypt tokens before storing
     const encryptedAccessToken = encryptToken(tokens.access_token);
