@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Building2, Users, Plug } from "lucide-react";
+import { Building2, Users } from "lucide-react";
 import { OrganizationSettingsClient } from "./organization-settings-client";
 import { UserManagementClient } from "@/components/features/users/user-management-client";
-import { IntegrationsSettingsContent } from "./integrations-settings-content";
 
 export function OrganizationSettingsTabs() {
   const searchParams = useSearchParams();
@@ -15,14 +14,14 @@ export function OrganizationSettingsTabs() {
   // Update active tab from URL query parameter
   useEffect(() => {
     const tab = searchParams.get("tab");
-    if (tab && ["general", "team", "integrations"].includes(tab)) {
+    if (tab && ["general", "team"].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+      <TabsList className="grid w-full grid-cols-2 lg:w-[300px]">
         <TabsTrigger value="general" className="gap-2">
           <Building2 className="h-4 w-4" />
           General
@@ -30,10 +29,6 @@ export function OrganizationSettingsTabs() {
         <TabsTrigger value="team" className="gap-2">
           <Users className="h-4 w-4" />
           Team
-        </TabsTrigger>
-        <TabsTrigger value="integrations" className="gap-2">
-          <Plug className="h-4 w-4" />
-          Integrations
         </TabsTrigger>
       </TabsList>
 
@@ -51,12 +46,6 @@ export function OrganizationSettingsTabs() {
           </div>
           <UserManagementClient />
         </div>
-      </TabsContent>
-
-      <TabsContent value="integrations" className="space-y-6">
-        <Suspense fallback={<div className="text-muted-foreground">Loading integrations...</div>}>
-          <IntegrationsSettingsContent />
-        </Suspense>
       </TabsContent>
     </Tabs>
   );

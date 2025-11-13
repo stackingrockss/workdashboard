@@ -1,14 +1,15 @@
 // app/settings/integrations/page.tsx
-// Redirects to Organization Settings > Integrations tab
+// Redirects to User Settings > Integrations tab
 
 import { redirect } from "next/navigation";
 
 /**
- * Integrations have been moved to Organization Settings
+ * Integrations have been moved to User Settings
  *
- * Integration management is now located in /settings/organization under the "Integrations" tab.
- * This consolidates all admin settings in one place.
+ * Integration management is now located in /settings under the "Integrations" tab.
+ * This allows each user to connect their own personal integrations (Google Calendar, etc.)
+ * with individual authentication and OAuth tokens.
  */
 export default function IntegrationsSettingsPage() {
-  redirect("/settings/organization?tab=integrations");
+  redirect("/settings?tab=integrations");
 }

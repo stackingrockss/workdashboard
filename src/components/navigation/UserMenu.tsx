@@ -111,9 +111,9 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
+        <DropdownMenuItem onClick={() => router.push("/settings")}>
           <UserIcon className="mr-2 h-4 w-4" />
-          <span>Profile</span>
+          <span>Settings</span>
         </DropdownMenuItem>
         {userRole === "ADMIN" && (
           <DropdownMenuItem onClick={() => router.push("/settings/organization")}>
