@@ -59,7 +59,6 @@ export function OpportunityForm({
     amountArr: initialData?.amountArr || 0,
     confidenceLevel: initialData?.confidenceLevel || getDefaultConfidenceLevel("discovery"),
     nextStep: initialData?.nextStep || "",
-    cbc: initialData?.cbc || "",
     closeDate: initialData?.closeDate || "",
     quarter: initialData?.quarter || "",
     stage: initialData?.stage || "discovery",
@@ -127,7 +126,6 @@ export function OpportunityForm({
         ...formData,
         accountWebsite: formData.accountWebsite?.trim() || undefined,
         nextStep: formData.nextStep?.trim() || undefined,
-        cbc: formData.cbc?.trim() || undefined,
         riskNotes: formData.riskNotes?.trim() || undefined,
         ownerId: formData.ownerId?.trim() || undefined,
       };
@@ -177,7 +175,7 @@ export function OpportunityForm({
           type="url"
           value={formData.accountWebsite}
           onChange={(e) => setFormData({ ...formData, accountWebsite: e.target.value })}
-          placeholder="e.g. acme.com or https://acme.com"
+          placeholder="acme.com, localhost:3000, or https://example.com"
         />
         <p className="text-xs text-muted-foreground">
           Optional - Valuable for AI account research
@@ -255,16 +253,6 @@ export function OpportunityForm({
           value={formData.nextStep || ""}
           onChange={(e) => setFormData({ ...formData, nextStep: e.target.value })}
           placeholder="e.g. Schedule demo call"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="cbc">Call Between Call Date</Label>
-        <DatePicker
-          id="cbc"
-          value={formData.cbc || ""}
-          onChange={(value) => setFormData({ ...formData, cbc: value })}
-          placeholder="Select next call date"
         />
       </div>
 

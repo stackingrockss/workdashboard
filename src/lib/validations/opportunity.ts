@@ -13,6 +13,15 @@ const normalizeUrl = (url: string): string => {
   return trimmed;
 };
 
+// Lenient URL validation - accepts domains, localhost, IPs
+const isValidUrl = (url: string): boolean => {
+  // Allow common domain patterns, localhost, and IP addresses
+  const urlPattern = /^https?:\/\/([\w-]+(\.[\w-]+)*|localhost)(:\d+)?(\/.*)?$/i;
+  const ipPattern = /^https?:\/\/(\d{1,3}\.){3}\d{1,3}(:\d+)?(\/.*)?$/;
+
+  return urlPattern.test(url) || ipPattern.test(url);
+};
+
 const baseOpportunitySchema = z.object({
   name: z.string().min(2).max(120),
   // Support both old account field and new accountId for backward compatibility
@@ -28,14 +37,11 @@ const baseOpportunitySchema = z.object({
     .refine(
       (val) => {
         if (!val) return true; // Optional field
-        try {
-          new URL(val);
-          return true;
-        } catch {
-          return false;
-        }
+        return isValidUrl(val);
       },
-      { message: "Please enter a valid URL" }
+      {
+        message: "Please enter a valid URL (e.g., acme.com, localhost:3000, or https://example.com)"
+      }
     ),
   amountArr: z.number().int().nonnegative().optional().default(0),
   confidenceLevel: z.number().int().min(1).max(5).optional().default(3), // 1-5 scale (replaces probability)

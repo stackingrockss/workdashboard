@@ -130,11 +130,11 @@ export function DatePicker({
     if (isoDate) {
       // Valid complete date - update the parent with ISO format
       onChange(isoDate);
-    } else if (!formatted) {
-      // Empty input
+    } else {
+      // Empty or partial input - clear the parent value to keep UI and state in sync
+      // This prevents the "weird jump" when user deletes digits and then types new ones
       onChange("");
     }
-    // For partial dates, don't update onChange - let user finish typing
   };
 
   // Handle blur to validate the final input
