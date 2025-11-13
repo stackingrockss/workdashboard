@@ -26,11 +26,11 @@ import { Separator } from "@/components/ui/separator";
 import {
   InlineTextInput,
   InlineTextarea,
-  InlineTextareaWithAI,
   InlineSelect,
   InlineDatePicker,
   InlineCurrencyInput,
 } from "@/components/ui/inline-editable";
+import { InlineMarkdownWithAI } from "@/components/ui/inline-markdown";
 import { DecisionMakerSection } from "@/components/opportunity/DecisionMakerSection";
 import { Contact } from "@/types/contact";
 import { RelatedEventsSection } from "@/components/calendar/related-events-section";
@@ -446,7 +446,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
         <TabsContent value="research" className="space-y-4 mt-4">
           <div className="grid gap-4">
             {/* Account research with AI generation */}
-            <InlineTextareaWithAI
+            <InlineMarkdownWithAI
               label="Account Research"
               value={opportunity.accountResearch || ""}
               onSave={async (value) => handleFieldUpdate("accountResearch", value)}
