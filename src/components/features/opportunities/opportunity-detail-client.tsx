@@ -365,13 +365,11 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
                 placeholder="e.g. Schedule demo call"
                 className="md:col-span-2 lg:col-span-3"
               />
-              <InlineTextarea
-                label="Call Between Call (CBC)"
+              <InlineDatePicker
+                label="Call Between Call Date"
                 value={opportunity.cbc || ""}
                 onSave={async (value) => handleFieldUpdate("cbc", value)}
-                placeholder="Action items and follow-ups before next call..."
-                rows={4}
-                className="md:col-span-2 lg:col-span-3"
+                placeholder="Select next call date"
               />
             </div>
           </div>

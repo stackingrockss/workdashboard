@@ -259,13 +259,12 @@ export function OpportunityForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="cbc">Call Between Call (CBC)</Label>
-        <Textarea
+        <Label htmlFor="cbc">Call Between Call Date</Label>
+        <DatePicker
           id="cbc"
           value={formData.cbc || ""}
-          onChange={(e) => setFormData({ ...formData, cbc: e.target.value })}
-          placeholder="Action items and follow-ups before next call..."
-          rows={4}
+          onChange={(value) => setFormData({ ...formData, cbc: value })}
+          placeholder="Select next call date"
         />
       </div>
 

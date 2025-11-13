@@ -205,7 +205,7 @@ model Opportunity {
   consolidationCallCount     Int?
   lastConsolidatedAt         DateTime?
   consolidationStatus        ConsolidationStatus? @default(idle)
-  cbc                        String?
+  cbc                        DateTime?
   calendarEvents             CalendarEvent[]
   contacts                   Contact[]
   gongCalls                  GongCall[]

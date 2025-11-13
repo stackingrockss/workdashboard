@@ -49,6 +49,9 @@ export function mapPrismaOpportunityToOpportunity(
     amountArr: opp.amountArr,
     confidenceLevel: opp.confidenceLevel,
     nextStep: opp.nextStep || undefined,
+    cbc: opp.cbc
+      ? opp.cbc.toISOString().split('T')[0] // Extract date-only part (YYYY-MM-DD)
+      : undefined,
     closeDate: opp.closeDate
       ? opp.closeDate.toISOString().split('T')[0] // Extract date-only part (YYYY-MM-DD)
       : undefined,

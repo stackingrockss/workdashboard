@@ -54,7 +54,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     amountArr: opportunityFromDB.amountArr,
     confidenceLevel: opportunityFromDB.confidenceLevel,
     nextStep: opportunityFromDB.nextStep || undefined,
-    cbc: opportunityFromDB.cbc || undefined,
+    cbc: opportunityFromDB.cbc?.toISOString() || undefined,
     closeDate: opportunityFromDB.closeDate?.toISOString() || undefined,
     quarter: opportunityFromDB.quarter || undefined,
     stage: opportunityFromDB.stage,

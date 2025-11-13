@@ -135,14 +135,20 @@ export async function PATCH(
     if (data.amountArr !== undefined) updateData.amountArr = data.amountArr;
     if (data.confidenceLevel !== undefined) updateData.confidenceLevel = data.confidenceLevel;
     if (data.nextStep !== undefined) updateData.nextStep = data.nextStep;
+    if (data.cbc !== undefined) {
+      // Convert cbc date string to Date object for Prisma
+      const cbcDateObj = data.cbc ? parseISODateSafe(data.cbc) : null;
+      updateData.cbc = cbcDateObj;
+    }
     if (data.closeDate !== undefined) {
-      updateData.closeDate = data.closeDate || null;
+      // Convert closeDate string to Date object for Prisma
+      const closeDateObj = data.closeDate ? parseISODateSafe(data.closeDate) : null;
+      updateData.closeDate = closeDateObj;
 
       // Recalculate quarter when close date changes
       if (data.closeDate) {
         const fiscalYearStartMonth = user.organization?.fiscalYearStartMonth ?? 1;
-        const closeDate = parseISODateSafe(data.closeDate);
-        const newQuarter = getQuarterFromDate(closeDate, fiscalYearStartMonth);
+        const newQuarter = getQuarterFromDate(closeDateObj!, fiscalYearStartMonth);
         updateData.quarter = newQuarter;
 
         // Auto-assign columnId based on new quarter

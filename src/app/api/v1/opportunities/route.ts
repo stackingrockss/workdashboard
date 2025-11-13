@@ -131,13 +131,26 @@ export async function POST(req: NextRequest) {
       finalOwnerId = data.ownerId;
     }
 
+    // Convert closeDate string to Date object for Prisma
+    let closeDateObj: Date | undefined = undefined;
+    if (data.closeDate) {
+      closeDateObj = parseISODateSafe(data.closeDate);
+    }
+
+    // Convert cbc date string to Date object for Prisma
+    let cbcDateObj: Date | undefined = undefined;
+    if (data.cbc) {
+      cbcDateObj = parseISODateSafe(data.cbc);
+    }
+
     const createData = {
       name: data.name,
       accountName: data.account ?? undefined,
       amountArr: data.amountArr ?? 0, // Default to 0 if not provided
       confidenceLevel: data.confidenceLevel ?? 3, // Default to 3 (medium) if not provided
       nextStep: data.nextStep ?? undefined,
-      closeDate: data.closeDate ?? undefined,
+      cbc: cbcDateObj,
+      closeDate: closeDateObj,
       quarter: quarter ?? undefined,
       columnId: columnId ?? undefined,
       stage: data.stage ?? "discovery", // Default to discovery if not provided

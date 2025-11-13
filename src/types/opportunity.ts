@@ -81,7 +81,7 @@ export interface Opportunity {
   amountArr: number; // annual recurring revenue forecast
   confidenceLevel: number; // 1-5 scale (replaces probability)
   nextStep?: string;
-  cbc?: string | null; // Call Between Call action items
+  cbc?: string | null; // Call Between Call date (ISO date string)
   closeDate?: string; // ISO date string
   quarter?: string; // e.g., "Q1 2025", "Q2 2025"
   stage: OpportunityStage;

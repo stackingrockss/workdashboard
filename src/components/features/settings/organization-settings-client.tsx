@@ -89,6 +89,11 @@ export function OrganizationSettingsClient() {
 
   useEffect(() => {
     if (organization) {
+      console.log("[OrganizationSettings] Setting form values:", {
+        name: organization.name,
+        domain: organization.domain,
+        fiscalYearStartMonth: organization.fiscalYearStartMonth,
+      });
       orgForm.reset({
         name: organization.name,
         domain: organization.domain,
@@ -122,6 +127,11 @@ export function OrganizationSettingsClient() {
       const orgData = await orgRes.json();
       const settingsData = await settingsRes.json();
 
+      console.log("[OrganizationSettings] Fetched data:", {
+        organization: orgData.organization,
+        fiscalYearStartMonth: orgData.organization?.fiscalYearStartMonth,
+      });
+
       setOrganization(orgData.organization);
       setSettings(settingsData.settings);
     } catch (error) {
@@ -136,6 +146,8 @@ export function OrganizationSettingsClient() {
     try {
       setSaving(true);
 
+      console.log("[OrganizationSettings] Submitting organization update:", data);
+
       const res = await fetch("/api/v1/organization", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -146,6 +158,9 @@ export function OrganizationSettingsClient() {
         const error = await res.json();
         throw new Error(error.error || "Failed to update organization");
       }
+
+      const result = await res.json();
+      console.log("[OrganizationSettings] Update successful:", result);
 
       toast.success("Organization updated successfully!");
       fetchData();
@@ -282,14 +297,19 @@ export function OrganizationSettingsClient() {
             <div className="space-y-2">
               <Label htmlFor="fiscalYearStartMonth">Fiscal Year Start Month</Label>
               <Select
-                value={orgForm.watch("fiscalYearStartMonth")?.toString()}
+                value={orgForm.watch("fiscalYearStartMonth")?.toString() || "1"}
                 onValueChange={(value) =>
-                  orgForm.setValue("fiscalYearStartMonth", parseInt(value))
+                  orgForm.setValue("fiscalYearStartMonth", parseInt(value), {
+                    shouldValidate: true,
+                    shouldDirty: true,
+                  })
                 }
                 disabled={saving}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Select month">
+                    {months.find((m) => m.value === orgForm.watch("fiscalYearStartMonth"))?.label || "January"}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {months.map((month) => (
