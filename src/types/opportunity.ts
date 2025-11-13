@@ -59,6 +59,8 @@ export type PlatformType = "oem" | "api" | "isv";
 
 export type AccountResearchStatus = "generating" | "completed" | "failed";
 
+export type ConsolidationStatus = "idle" | "processing" | "completed" | "failed";
+
 export interface OpportunityOwner {
   id: string;
   name: string;
@@ -107,6 +109,7 @@ export interface Opportunity {
   consolidatedRiskAssessment?: RiskAssessment | null;
   lastConsolidatedAt?: string | null;
   consolidationCallCount?: number | null;
+  consolidationStatus?: ConsolidationStatus | null;
   owner: OpportunityOwner;
   granolaNotes?: Array<{
     id: string;

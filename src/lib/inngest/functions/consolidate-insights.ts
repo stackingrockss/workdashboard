@@ -21,6 +21,14 @@ export const consolidateInsightsJob = inngest.createFunction(
   async ({ event, step }) => {
     const { opportunityId } = event.data;
 
+    // Step 0: Set status to processing
+    await step.run("set-processing-status", async () => {
+      return await prisma.opportunity.update({
+        where: { id: opportunityId },
+        data: { consolidationStatus: "processing" },
+      });
+    });
+
     // Step 1: Fetch all parsed calls for the opportunity
     const calls = await step.run("fetch-parsed-calls", async () => {
       const parsedCalls = await prisma.gongCall.findMany({
@@ -46,6 +54,13 @@ export const consolidateInsightsJob = inngest.createFunction(
 
     // Check if we have at least 2 calls to consolidate
     if (calls.length < 2) {
+      await step.run("set-idle-status", async () => {
+        return await prisma.opportunity.update({
+          where: { id: opportunityId },
+          data: { consolidationStatus: "idle" },
+        });
+      });
+
       return {
         success: false,
         message: `Consolidation requires at least 2 parsed calls. Found: ${calls.length}`,
@@ -82,6 +97,13 @@ export const consolidateInsightsJob = inngest.createFunction(
 
     // Step 4: Handle consolidation result
     if (!consolidationResult.success || !consolidationResult.data) {
+      await step.run("set-failed-status", async () => {
+        return await prisma.opportunity.update({
+          where: { id: opportunityId },
+          data: { consolidationStatus: "failed" },
+        });
+      });
+
       await step.run("log-consolidation-error", async () => {
         console.error(
           `Consolidation failed for opportunity ${opportunityId}:`,
@@ -113,6 +135,7 @@ export const consolidateInsightsJob = inngest.createFunction(
             ),
             lastConsolidatedAt: new Date(),
             consolidationCallCount: calls.length,
+            consolidationStatus: "completed",
           },
           select: {
             id: true,
@@ -121,6 +144,7 @@ export const consolidateInsightsJob = inngest.createFunction(
             consolidatedRiskAssessment: true,
             lastConsolidatedAt: true,
             consolidationCallCount: true,
+            consolidationStatus: true,
           },
         });
       }

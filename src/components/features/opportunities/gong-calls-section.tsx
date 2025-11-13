@@ -31,6 +31,7 @@ import { GongCallInsightsDialog } from "./gong-call-insights-dialog";
 import { ConsolidatedInsightsCard } from "./consolidated-insights-card";
 import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 import type { RiskAssessment } from "@/types/gong-call";
+import type { ConsolidationStatus } from "@/types/opportunity";
 
 interface GongCallsSectionProps {
   opportunityId: string;
@@ -41,6 +42,7 @@ interface GongCallsSectionProps {
   consolidatedRiskAssessment?: RiskAssessment | null;
   lastConsolidatedAt?: string | null;
   consolidationCallCount?: number | null;
+  consolidationStatus?: ConsolidationStatus | null;
 }
 
 export function GongCallsSection({
@@ -51,6 +53,7 @@ export function GongCallsSection({
   consolidatedRiskAssessment,
   lastConsolidatedAt,
   consolidationCallCount,
+  consolidationStatus,
 }: GongCallsSectionProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,6 +81,32 @@ export function GongCallsSection({
 
     return () => clearInterval(interval);
   }, [calls, router]);
+
+  // Auto-refresh when consolidation is "processing"
+  useEffect(() => {
+    if (consolidationStatus !== "processing") return;
+
+    // Poll every 3 seconds to check for completion
+    const interval = setInterval(() => {
+      router.refresh();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [consolidationStatus, router]);
+
+  // Reset consolidating state when status changes from processing
+  useEffect(() => {
+    if (consolidationStatus !== "processing" && isConsolidating) {
+      setIsConsolidating(false);
+
+      // Show success/failure toast based on final status
+      if (consolidationStatus === "completed") {
+        toast.success("Consolidation completed successfully!");
+      } else if (consolidationStatus === "failed") {
+        toast.error("Consolidation failed. Please try again.");
+      }
+    }
+  }, [consolidationStatus, isConsolidating]);
 
   // Show completion toast when a call finishes parsing
   useEffect(() => {
@@ -173,12 +202,10 @@ export function GongCallsSection({
         throw new Error(error.error || "Failed to trigger consolidation");
       }
 
-      toast.success("Consolidation started! Refreshing in a moment...");
+      toast.success("Consolidation started! Processing in background...");
 
-      // Wait a few seconds for Inngest job to complete, then refresh
-      setTimeout(() => {
-        router.refresh();
-      }, 5000);
+      // Immediately refresh to get the "processing" status
+      router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to trigger consolidation");
       setIsConsolidating(false);
@@ -190,6 +217,9 @@ export function GongCallsSection({
     (call) => call.parsingStatus === "completed" && call.parsedAt
   ).length;
 
+  // Check if consolidation is currently processing
+  const isProcessing = consolidationStatus === "processing";
+
   // Check if we should show consolidated insights
   const showConsolidated =
     consolidatedPainPoints &&
@@ -200,7 +230,7 @@ export function GongCallsSection({
     consolidationCallCount >= 2;
 
   // Check if consolidation should be available but hasn't run
-  const shouldConsolidate = parsedCallCount >= 2 && !showConsolidated;
+  const shouldConsolidate = parsedCallCount >= 2 && !showConsolidated && !isProcessing;
 
   return (
     <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3">
@@ -244,6 +274,26 @@ export function GongCallsSection({
                 <>Generate Summary</>
               )}
             </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Consolidation Processing Skeleton */}
+      {isProcessing && (
+        <div className="mb-6 p-6 border-2 border-blue-500 bg-blue-50 dark:bg-blue-950 rounded-lg animate-pulse">
+          <div className="flex items-center gap-3 mb-4">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <h3 className="font-semibold text-blue-900 dark:text-blue-100">
+              Consolidating Insights...
+            </h3>
+          </div>
+          <p className="text-sm text-blue-700 dark:text-blue-300 mb-4">
+            Analyzing {parsedCallCount} calls and generating consolidated summary. This may take a moment...
+          </p>
+          <div className="space-y-3">
+            <div className="h-4 bg-blue-200 dark:bg-blue-900 rounded w-3/4"></div>
+            <div className="h-4 bg-blue-200 dark:bg-blue-900 rounded w-full"></div>
+            <div className="h-4 bg-blue-200 dark:bg-blue-900 rounded w-5/6"></div>
           </div>
         </div>
       )}

@@ -30,7 +30,7 @@ export async function GET(
 
     // Get user's organization
     const dbUser = await prisma.user.findUnique({
-      where: { id: user.id },
+      where: { supabaseId: user.id },
       select: { organizationId: true },
     });
 

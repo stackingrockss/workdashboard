@@ -65,9 +65,9 @@ export async function GET(req: NextRequest) {
       ? new Date(filters.endDate)
       : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
-    // Fetch events from Google Calendar
+    // Fetch events from Google Calendar (using database user ID, not Supabase ID)
     const result = await googleCalendarClient.listEvents(
-      user.id,
+      user.id, // This is the database user ID from line 27
       startDate,
       endDate,
       {

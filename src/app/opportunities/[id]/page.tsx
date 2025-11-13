@@ -78,6 +78,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     consolidatedRiskAssessment: opportunityFromDB.consolidatedRiskAssessment ? (opportunityFromDB.consolidatedRiskAssessment as RiskAssessment) : undefined,
     lastConsolidatedAt: opportunityFromDB.lastConsolidatedAt?.toISOString() || undefined,
     consolidationCallCount: opportunityFromDB.consolidationCallCount || undefined,
+    consolidationStatus: opportunityFromDB.consolidationStatus || undefined,
     owner: {
       id: opportunityFromDB.owner.id,
       name: opportunityFromDB.owner.name || opportunityFromDB.owner.email || "Unknown",

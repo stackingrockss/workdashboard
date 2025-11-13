@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { createClient } from '@/lib/supabase/server';
+import { prisma } from '@/lib/db';
 
 /**
  * GET /api/v1/integrations/google/authorize
@@ -16,6 +17,15 @@ export async function GET() {
 
     if (!supabaseUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Find user in database
+    const user = await prisma.user.findUnique({
+      where: { supabaseId: supabaseUser.id },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     // Verify environment variables
@@ -46,7 +56,7 @@ export async function GET() {
         'https://www.googleapis.com/auth/calendar.events', // Read + write calendar events
         'https://www.googleapis.com/auth/userinfo.email', // Get user email
       ],
-      state: supabaseUser.id, // Pass user ID for verification in callback
+      state: user.id, // Pass database user ID for verification in callback
     });
 
     // Redirect to Google OAuth consent screen

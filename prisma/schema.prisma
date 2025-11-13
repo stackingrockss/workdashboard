@@ -204,6 +204,7 @@ model Opportunity {
   consolidatedRiskAssessment Json?
   consolidationCallCount     Int?
   lastConsolidatedAt         DateTime?
+  consolidationStatus        ConsolidationStatus? @default(idle)
   cbc                        String?
   calendarEvents             CalendarEvent[]
   contacts                   Contact[]
@@ -420,6 +421,15 @@ enum AccountResearchStatus {
 enum ParsingStatus {
   pending
   parsing
+  completed
+  failed
+
+  @@schema("opportunity_tracker")
+}
+
+enum ConsolidationStatus {
+  idle
+  processing
   completed
   failed
 

@@ -555,6 +555,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
               consolidatedRiskAssessment={opportunity.consolidatedRiskAssessment}
               lastConsolidatedAt={opportunity.lastConsolidatedAt}
               consolidationCallCount={opportunity.consolidationCallCount}
+              consolidationStatus={opportunity.consolidationStatus}
             />
             <GoogleNotesSection
               opportunityId={opportunity.id}

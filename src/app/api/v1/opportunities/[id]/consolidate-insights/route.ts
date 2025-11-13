@@ -49,7 +49,13 @@ export async function POST(
       );
     }
 
-    // Step 3: Trigger Inngest consolidation job
+    // Step 3: Set status to processing before triggering job
+    await prisma.opportunity.update({
+      where: { id: opportunityId },
+      data: { consolidationStatus: "processing" },
+    });
+
+    // Step 4: Trigger Inngest consolidation job
     await inngest.send({
       name: "gong/insights.consolidate",
       data: {
@@ -62,6 +68,7 @@ export async function POST(
         message: "Consolidation job triggered successfully",
         opportunityId,
         parsedCallCount,
+        consolidationStatus: "processing",
       },
       { status: 202 } // 202 Accepted - job is processing in background
     );
