@@ -46,7 +46,7 @@ export function ConvertToOpportunityDialog({
     confidenceLevel: string;
     closeDate: string;
     quarter: string;
-    forecastCategory: "pipeline" | "bestCase" | "forecast";
+    forecastCategory: "pipeline" | "bestCase" | "commit" | "closedWon" | "closedLost";
     nextStep: string;
   }>({
     name: `${accountName} - Opportunity`,
@@ -206,7 +206,7 @@ export function ConvertToOpportunityDialog({
             <Label htmlFor="forecastCategory">Forecast Category</Label>
             <Select
               value={formData.forecastCategory}
-              onValueChange={(value: "pipeline" | "bestCase" | "forecast") => setFormData({ ...formData, forecastCategory: value })}
+              onValueChange={(value: "pipeline" | "bestCase" | "commit" | "closedWon" | "closedLost") => setFormData({ ...formData, forecastCategory: value })}
             >
               <SelectTrigger id="forecastCategory">
                 <SelectValue />
@@ -214,7 +214,9 @@ export function ConvertToOpportunityDialog({
               <SelectContent>
                 <SelectItem value="pipeline">Pipeline</SelectItem>
                 <SelectItem value="bestCase">Best Case</SelectItem>
-                <SelectItem value="forecast">Forecast</SelectItem>
+                <SelectItem value="commit">Commit</SelectItem>
+                <SelectItem value="closedWon">Closed Won</SelectItem>
+                <SelectItem value="closedLost">Closed Lost</SelectItem>
               </SelectContent>
             </Select>
           </div>

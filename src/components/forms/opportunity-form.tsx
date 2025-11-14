@@ -39,7 +39,9 @@ const stages: { value: OpportunityStage; label: string }[] = [
 const forecastCategories = [
   { value: "pipeline", label: "Pipeline" },
   { value: "bestCase", label: "Best Case" },
-  { value: "forecast", label: "Forecast (Commit)" },
+  { value: "commit", label: "Commit" },
+  { value: "closedWon", label: "Closed Won" },
+  { value: "closedLost", label: "Closed Lost" },
 ];
 
 export function OpportunityForm({
