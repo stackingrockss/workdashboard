@@ -28,7 +28,6 @@ import { useRouter } from "next/navigation";
 import { formatDateShort } from "@/lib/format";
 import { ParseGongTranscriptDialog } from "./parse-gong-transcript-dialog";
 import { GongCallInsightsDialog } from "./gong-call-insights-dialog";
-import { ConsolidatedInsightsCard } from "./consolidated-insights-card";
 import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 import type { RiskAssessment } from "@/types/gong-call";
 import type { ConsolidationStatus } from "@/types/opportunity";
@@ -295,30 +294,6 @@ export function GongCallsSection({
             <div className="h-4 bg-blue-200 dark:bg-blue-900 rounded w-full"></div>
             <div className="h-4 bg-blue-200 dark:bg-blue-900 rounded w-5/6"></div>
           </div>
-        </div>
-      )}
-
-      {/* Consolidated Insights Card (shown when 2+ calls parsed) */}
-      {showConsolidated && (
-        <div className="mb-6">
-          <ConsolidatedInsightsCard
-            opportunityId={opportunityId}
-            consolidatedPainPoints={consolidatedPainPoints}
-            consolidatedGoals={consolidatedGoals}
-            consolidatedRiskAssessment={consolidatedRiskAssessment}
-            lastConsolidatedAt={lastConsolidatedAt}
-            consolidationCallCount={consolidationCallCount}
-            onReconsolidate={() => router.refresh()}
-          />
-        </div>
-      )}
-
-      {/* Individual Calls Section */}
-      {showConsolidated && (
-        <div className="mb-3">
-          <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">
-            Individual Calls
-          </h4>
         </div>
       )}
 

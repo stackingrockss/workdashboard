@@ -37,6 +37,7 @@ import { DecisionMakerSection } from "@/components/opportunity/DecisionMakerSect
 import { Contact } from "@/types/contact";
 import { RelatedEventsSection } from "@/components/calendar/related-events-section";
 import { TimelineSection } from "./timeline/timeline-section";
+import { ConsolidatedInsightsCard } from "./consolidated-insights-card";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -498,6 +499,25 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
             />
 
             <Separator className="my-6" />
+
+            {/* Consolidated Insights (shown when 2+ calls parsed) */}
+            {opportunity.consolidatedPainPoints &&
+             opportunity.consolidatedGoals &&
+             opportunity.consolidatedRiskAssessment &&
+             opportunity.lastConsolidatedAt &&
+             opportunity.consolidationCallCount && (
+              <div className="mb-6">
+                <ConsolidatedInsightsCard
+                  opportunityId={opportunity.id}
+                  consolidatedPainPoints={opportunity.consolidatedPainPoints}
+                  consolidatedGoals={opportunity.consolidatedGoals}
+                  consolidatedRiskAssessment={opportunity.consolidatedRiskAssessment}
+                  lastConsolidatedAt={opportunity.lastConsolidatedAt}
+                  consolidationCallCount={opportunity.consolidationCallCount}
+                  onReconsolidate={() => router.refresh()}
+                />
+              </div>
+            )}
 
             {/* Call Insights - Auto-generated from Gong transcripts */}
             <div className="space-y-4">
