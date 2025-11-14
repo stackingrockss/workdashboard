@@ -198,9 +198,19 @@ export function UpcomingMeetingsWidget() {
             </Link>
           </div>
           <CardDescription>
-            You have no external meetings in the next 7 days
+            You have no external meetings in the next 7 days.
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            External meetings are detected by comparing attendee email domains with your organization domain.
+            Make sure your organization domain is configured in{' '}
+            <Link href="/settings/organization" className="text-primary hover:underline">
+              Organization Settings
+            </Link>
+            .
+          </p>
+        </CardContent>
       </Card>
     );
   }

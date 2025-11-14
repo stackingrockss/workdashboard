@@ -24,10 +24,28 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertTriangle } from "lucide-react";
 
 const organizationSchema = z.object({
   name: z.string().min(1, "Organization name is required"),
-  domain: z.string().optional().nullable(),
+  domain: z
+    .string()
+    .min(1, "Domain is required for external meeting detection")
+    .refine(
+      (val) => {
+        // Basic domain validation: no http://, no paths, no @ symbols
+        if (!val) return false;
+        if (val.includes('http://') || val.includes('https://')) return false;
+        if (val.includes('/')) return false;
+        if (val.includes('@')) return false;
+        // Must have at least one dot and no spaces
+        return val.includes('.') && !val.includes(' ');
+      },
+      {
+        message: "Enter a valid domain (e.g., company.com, not https://company.com)",
+      }
+    ),
   fiscalYearStartMonth: z.number().min(1).max(12),
 });
 
@@ -96,7 +114,7 @@ export function OrganizationSettingsClient() {
       });
       orgForm.reset({
         name: organization.name,
-        domain: organization.domain,
+        domain: organization.domain || '',
         fiscalYearStartMonth: organization.fiscalYearStartMonth,
       });
     }
@@ -258,6 +276,17 @@ export function OrganizationSettingsClient() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Warning banner if domain is not set */}
+          {!organization?.domain && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Organization Domain Required</AlertTitle>
+              <AlertDescription>
+                Please configure your organization domain below to enable external meeting detection on the dashboard. Without a domain, external meetings with customers and prospects will not appear.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <form
             onSubmit={orgForm.handleSubmit(onSubmitOrganization)}
             className="space-y-4"
@@ -277,15 +306,17 @@ export function OrganizationSettingsClient() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="domain">Domain (optional)</Label>
+              <Label htmlFor="domain">
+                Domain <span className="text-destructive">*</span>
+              </Label>
               <Input
                 id="domain"
-                placeholder="company.com"
+                placeholder="verifiable.com"
                 {...orgForm.register("domain")}
                 disabled={saving}
               />
               <p className="text-sm text-muted-foreground">
-                Used for domain-based auto-join when enabled
+                Your organization&apos;s email domain (e.g., verifiable.com). Required for external meeting detection and domain-based auto-join.
               </p>
               {orgForm.formState.errors.domain && (
                 <p className="text-sm text-destructive">
