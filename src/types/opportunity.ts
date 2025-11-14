@@ -28,11 +28,11 @@ export function getDefaultForecastCategory(stage: OpportunityStage): ForecastCat
   const forecastCategoryMap: Record<OpportunityStage, ForecastCategory> = {
     discovery: "pipeline",
     demo: "pipeline",
-    validateSolution: "pipeline",
-    decisionMakerApproval: "bestCase",
-    contracting: "bestCase",
-    closedWon: "forecast",
-    closedLost: "pipeline",
+    validateSolution: "bestCase",
+    decisionMakerApproval: "commit",
+    contracting: "commit",
+    closedWon: "closedWon",
+    closedLost: "closedLost",
   };
   return forecastCategoryMap[stage];
 }
@@ -51,7 +51,19 @@ export function getStageLabel(stage: OpportunityStage): string {
   return labelMap[stage];
 }
 
-export type ForecastCategory = "pipeline" | "bestCase" | "forecast";
+export type ForecastCategory = "pipeline" | "bestCase" | "commit" | "closedWon" | "closedLost";
+
+// Helper function to get display label for forecast category
+export function getForecastCategoryLabel(category: ForecastCategory): string {
+  const labelMap: Record<ForecastCategory, string> = {
+    pipeline: "Pipeline",
+    bestCase: "Best Case",
+    commit: "Commit",
+    closedWon: "Closed Won",
+    closedLost: "Closed Lost",
+  };
+  return labelMap[category];
+}
 
 export type ReviewStatus = "not_started" | "in_progress" | "complete" | "not_applicable";
 

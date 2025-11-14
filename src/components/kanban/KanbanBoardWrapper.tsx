@@ -25,11 +25,14 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Filter, Columns } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Filter, Columns, LayoutGrid, Table } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { ViewSelector } from "./ViewSelector";
 import { WelcomeViewDialog } from "./WelcomeViewDialog";
 import { ManageViewsDialog } from "./ManageViewsDialog";
+import { CurrentQuarterView } from "@/components/opportunities/CurrentQuarterView";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { ColumnForm } from "@/components/forms/column-form";
 import { Opportunity, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory } from "@/types/opportunity";
@@ -68,6 +71,7 @@ export function KanbanBoardWrapper({
   const [isManageViewsDialogOpen, setIsManageViewsDialogOpen] = useState(false);
   const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"board" | "current-quarter">("board");
 
   // Local state for views and active view (for optimistic updates)
   const [views, setViews] = useState<SerializedKanbanView[]>(initialViews);
@@ -128,6 +132,28 @@ export function KanbanBoardWrapper({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Run only once on mount, isNewUser is stable from server
+
+  // Persist view mode preference
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedViewMode = localStorage.getItem("opportunities-view-mode");
+      if (savedViewMode === "board" || savedViewMode === "current-quarter") {
+        setViewMode(savedViewMode);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("opportunities-view-mode", viewMode);
+    }
+  }, [viewMode]);
+
+  // Calculate current quarter opportunities count
+  const currentQuarterCount = useMemo(() => {
+    const currentQuarter = getQuarterFromDate(new Date(), fiscalYearStartMonth);
+    return localOpportunities.filter(opp => opp.quarter === currentQuarter).length;
+  }, [localOpportunities, fiscalYearStartMonth]);
 
   // Get display columns based on active view
   const displayColumns = useMemo(() => {
@@ -310,8 +336,10 @@ export function KanbanBoardWrapper({
     // Optimistic update: update local state immediately
     const previousOpportunities = [...localOpportunities];
 
-    // Determine if this is a quarterly view update (has closeDate) or custom view update (has columnId)
+    // Determine which type of update this is based on column ID prefix
     const isQuarterlyUpdate = newCloseDate !== undefined;
+    const isForecastUpdate = newColumnId.startsWith("virtual-forecast-");
+    const isStageUpdate = newColumnId.startsWith("virtual-stage-");
 
     if (isQuarterlyUpdate) {
       // Quarterly mode: Update closeDate and recalculate quarter
@@ -348,6 +376,68 @@ export function KanbanBoardWrapper({
         // Rollback on error
         setLocalOpportunities(previousOpportunities);
         toast.error(error instanceof Error ? error.message : "Failed to update close date");
+        throw error;
+      }
+    } else if (isForecastUpdate) {
+      // Forecast Categories mode: Update forecastCategory
+      const { columnIdToForecastCategory } = await import("@/lib/utils/forecast-view");
+      const newForecastCategory = columnIdToForecastCategory(newColumnId);
+
+      if (!newForecastCategory) {
+        toast.error("Invalid forecast category");
+        return;
+      }
+
+      setLocalOpportunities(prev =>
+        prev.map(opp =>
+          opp.id === opportunityId
+            ? { ...opp, forecastCategory: newForecastCategory }
+            : opp
+        )
+      );
+
+      try {
+        // Update on server in background
+        await updateOpportunity(opportunityId, { forecastCategory: newForecastCategory });
+        const { getForecastCategoryLabel } = await import("@/types/opportunity");
+        toast.success(`Moved to ${getForecastCategoryLabel(newForecastCategory)}`);
+        // Refresh in background to sync with server (non-blocking)
+        router.refresh();
+      } catch (error) {
+        // Rollback on error
+        setLocalOpportunities(previousOpportunities);
+        toast.error(error instanceof Error ? error.message : "Failed to update forecast category");
+        throw error;
+      }
+    } else if (isStageUpdate) {
+      // Sales Stages mode: Update stage
+      const { columnIdToStage } = await import("@/lib/utils/stages-view");
+      const newStage = columnIdToStage(newColumnId);
+
+      if (!newStage) {
+        toast.error("Invalid stage");
+        return;
+      }
+
+      setLocalOpportunities(prev =>
+        prev.map(opp =>
+          opp.id === opportunityId
+            ? { ...opp, stage: newStage }
+            : opp
+        )
+      );
+
+      try {
+        // Update on server in background
+        await updateOpportunity(opportunityId, { stage: newStage });
+        const { getStageLabel } = await import("@/types/opportunity");
+        toast.success(`Moved to ${getStageLabel(newStage)}`);
+        // Refresh in background to sync with server (non-blocking)
+        router.refresh();
+      } catch (error) {
+        // Rollback on error
+        setLocalOpportunities(previousOpportunities);
+        toast.error(error instanceof Error ? error.message : "Failed to update stage");
         throw error;
       }
     } else {
@@ -392,6 +482,46 @@ export function KanbanBoardWrapper({
 
   const handleViewsChanged = () => {
     router.refresh();
+  };
+
+  const handleOpportunityUpdate = async (id: string, updates: Partial<Opportunity>) => {
+    const previousOpportunities = localOpportunities;
+
+    // Optimistic update
+    setLocalOpportunities(prev =>
+      prev.map(opp => {
+        if (opp.id === id) {
+          const updated = { ...opp, ...updates };
+          // Recalculate quarter if closeDate changed
+          if (updates.closeDate !== undefined) {
+            updated.quarter = updates.closeDate
+              ? getQuarterFromDate(new Date(updates.closeDate), fiscalYearStartMonth)
+              : undefined;
+          }
+          return updated;
+        }
+        return opp;
+      })
+    );
+
+    try {
+      // Transform updates to match API expectations
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const apiUpdates: any = { ...updates };
+      // Remove account object if present (API expects account string, not object)
+      if ('account' in apiUpdates && typeof apiUpdates.account === 'object') {
+        delete apiUpdates.account;
+      }
+
+      await updateOpportunity(id, apiUpdates);
+      toast.success("Opportunity updated");
+      router.refresh();
+    } catch (error) {
+      // Rollback on error
+      setLocalOpportunities(previousOpportunities);
+      toast.error(error instanceof Error ? error.message : "Failed to update opportunity");
+      throw error;
+    }
   };
 
   return (
@@ -451,14 +581,42 @@ export function KanbanBoardWrapper({
 
       <Separator />
 
-      <KanbanBoard
-        opportunities={filteredOpportunities}
-        columns={filteredColumns}
-        onStageChange={handleStageChange}
-        onColumnChange={handleColumnChange}
-        isVirtualMode={isReadOnlyView}
-        fiscalYearStartMonth={fiscalYearStartMonth}
-      />
+      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "board" | "current-quarter")}>
+        <TabsList className="grid w-full max-w-[400px] grid-cols-2">
+          <TabsTrigger value="board" className="flex items-center gap-2">
+            <LayoutGrid className="h-4 w-4" />
+            Board
+          </TabsTrigger>
+          <TabsTrigger value="current-quarter" className="flex items-center gap-2">
+            <Table className="h-4 w-4" />
+            Current Quarter
+            {currentQuarterCount > 0 && (
+              <Badge variant="secondary" className="ml-1">
+                {currentQuarterCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="board" className="mt-4">
+          <KanbanBoard
+            opportunities={filteredOpportunities}
+            columns={filteredColumns}
+            onStageChange={handleStageChange}
+            onColumnChange={handleColumnChange}
+            isVirtualMode={isReadOnlyView}
+            fiscalYearStartMonth={fiscalYearStartMonth}
+          />
+        </TabsContent>
+
+        <TabsContent value="current-quarter" className="mt-4">
+          <CurrentQuarterView
+            opportunities={localOpportunities}
+            fiscalYearStartMonth={fiscalYearStartMonth}
+            onOpportunityUpdate={handleOpportunityUpdate}
+          />
+        </TabsContent>
+      </Tabs>
 
       {/* Create Opportunity Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>

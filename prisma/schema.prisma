@@ -350,7 +350,9 @@ enum ContactSentiment {
 enum ForecastCategory {
   pipeline
   bestCase
-  forecast
+  commit
+  closedWon
+  closedLost
 
   @@schema("opportunity_tracker")
 }

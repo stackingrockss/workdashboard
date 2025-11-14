@@ -8,6 +8,8 @@ import { SerializedKanbanColumn } from "@/types/view";
 import { KanbanColumn } from "./KanbanColumn";
 import { OpportunityCard } from "./OpportunityCard";
 import { groupOpportunitiesByQuarter, calculateCloseDateFromVirtualColumn } from "@/lib/utils/quarterly-view";
+import { groupOpportunitiesByForecast, columnIdToForecastCategory } from "@/lib/utils/forecast-view";
+import { groupOpportunitiesByStage, columnIdToStage } from "@/lib/utils/stages-view";
 
 export interface KanbanBoardProps {
   opportunities: Opportunity[];
@@ -35,11 +37,22 @@ export function KanbanBoard({
     })
   );
 
-  // Group opportunities by columnId (custom mode) or by quarter (virtual mode)
+  // Group opportunities by columnId (custom mode) or by quarter/forecast/stage (virtual mode)
   const grouped = useMemo(() => {
-    if (isVirtualMode) {
-      // Virtual mode: group by calculated quarter from close date
-      return groupOpportunitiesByQuarter(opportunities, fiscalYearStartMonth);
+    if (isVirtualMode && columns.length > 0) {
+      // Determine which virtual mode we're in based on column ID prefix
+      const firstColumnId = columns[0].id;
+
+      if (firstColumnId.startsWith("virtual-Q")) {
+        // Quarterly view: group by calculated quarter from close date
+        return groupOpportunitiesByQuarter(opportunities, fiscalYearStartMonth);
+      } else if (firstColumnId.startsWith("virtual-forecast-")) {
+        // Forecast Categories view: group by forecast category
+        return groupOpportunitiesByForecast(opportunities);
+      } else if (firstColumnId.startsWith("virtual-stage-")) {
+        // Sales Stages view: group by opportunity stage
+        return groupOpportunitiesByStage(opportunities);
+      }
     }
 
     // Custom mode: group by columnId
@@ -90,16 +103,43 @@ export function KanbanBoard({
     if (!targetColumn) return; // Invalid drop target
 
     if (isVirtualMode) {
-      // Quarterly mode: Calculate new close date from virtual column
-      const newCloseDate = calculateCloseDateFromVirtualColumn(newColumnId, fiscalYearStartMonth);
+      // Determine which virtual mode we're in
+      if (newColumnId.startsWith("virtual-Q")) {
+        // Quarterly mode: Calculate new close date from virtual column
+        const newCloseDate = calculateCloseDateFromVirtualColumn(newColumnId, fiscalYearStartMonth);
 
-      // Check if the opportunity is already in this quarter
-      const currentCloseDate = opportunity.closeDate ? new Date(opportunity.closeDate).toISOString() : null;
-      if (currentCloseDate === newCloseDate) return; // No change needed
+        // Check if the opportunity is already in this quarter
+        const currentCloseDate = opportunity.closeDate ? new Date(opportunity.closeDate).toISOString() : null;
+        if (currentCloseDate === newCloseDate) return; // No change needed
 
-      // Update close date (which will automatically update the quarter)
-      if (onColumnChange) {
-        await onColumnChange(opportunityId, newColumnId, newCloseDate);
+        // Update close date (which will automatically update the quarter)
+        if (onColumnChange) {
+          await onColumnChange(opportunityId, newColumnId, newCloseDate);
+        }
+      } else if (newColumnId.startsWith("virtual-forecast-")) {
+        // Forecast Categories mode: Update forecast category
+        const newForecastCategory = columnIdToForecastCategory(newColumnId);
+        if (!newForecastCategory) return;
+
+        // Check if already in this category
+        if (opportunity.forecastCategory === newForecastCategory) return;
+
+        // Update forecast category via API
+        if (onColumnChange) {
+          await onColumnChange(opportunityId, newColumnId);
+        }
+      } else if (newColumnId.startsWith("virtual-stage-")) {
+        // Sales Stages mode: Update opportunity stage
+        const newStage = columnIdToStage(newColumnId);
+        if (!newStage) return;
+
+        // Check if already in this stage
+        if (opportunity.stage === newStage) return;
+
+        // Update stage via API
+        if (onColumnChange) {
+          await onColumnChange(opportunityId, newColumnId);
+        }
       }
     } else {
       // Custom mode: Update columnId directly

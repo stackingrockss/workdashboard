@@ -18,7 +18,7 @@ const convertToOpportunitySchema = z.object({
   ]),
   closeDate: z.string().min(1).optional().nullable().transform(val => val === "" ? null : val),
   quarter: z.string().optional().nullable().transform(val => val === "" ? null : val),
-  forecastCategory: z.enum(["pipeline", "bestCase", "forecast"]).optional().nullable(),
+  forecastCategory: z.enum(["pipeline", "bestCase", "commit", "closedWon", "closedLost"]).optional().nullable(),
   nextStep: z.string().optional().nullable().transform(val => val === "" ? null : val),
 });
 

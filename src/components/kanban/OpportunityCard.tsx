@@ -129,7 +129,7 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
               </Badge>
               {opportunity.forecastCategory && (
                 <Badge
-                  variant={opportunity.forecastCategory === "forecast" ? "default" : "outline"}
+                  variant={opportunity.forecastCategory === "commit" ? "default" : "outline"}
                   className="text-center text-[10px]"
                 >
                   {FORECAST_LABELS[opportunity.forecastCategory]}

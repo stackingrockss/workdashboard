@@ -53,7 +53,9 @@ export const AI_MODELS = {
 export const FORECAST_LABELS = {
   pipeline: "Pipeline",
   bestCase: "Best Case",
-  forecast: "Commit",
+  commit: "Commit",
+  closedWon: "Closed Won",
+  closedLost: "Closed Lost",
 } as const;
 
 export type ForecastCategory = keyof typeof FORECAST_LABELS;
