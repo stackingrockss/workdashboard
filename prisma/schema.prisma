@@ -9,22 +9,26 @@ datasource db {
 }
 
 model Account {
-  id             String          @id @default(cuid())
-  name           String
-  industry       String?
-  priority       String          @default("medium")
-  health         String          @default("good")
-  notes          String?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  ownerId        String?
-  organizationId String
-  website        String?
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner          User?           @relation("AccountOwner", fields: [ownerId], references: [id])
-  calendarEvents CalendarEvent[]
-  contacts       Contact[]
-  opportunities  Opportunity[]
+  id                  String                   @id @default(cuid())
+  name                String
+  industry            String?
+  priority            String                   @default("medium")
+  health              String                   @default("good")
+  notes               String?
+  createdAt           DateTime                 @default(now())
+  updatedAt           DateTime                 @updatedAt
+  ownerId             String?
+  organizationId      String
+  website             String?
+  ticker              String?
+  organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner               User?                    @relation("AccountOwner", fields: [ownerId], references: [id])
+  calendarEvents      CalendarEvent[]
+  chatMessages        ChatMessage[]
+  contacts            Contact[]
+  earningsTranscripts EarningsCallTranscript[]
+  opportunities       Opportunity[]
+  secFilings          SecFiling[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
@@ -167,15 +171,15 @@ model KanbanView {
 }
 
 model Opportunity {
-  id                         String                 @id @default(cuid())
+  id                         String                   @id @default(cuid())
   name                       String
   amountArr                  Int
   nextStep                   String?
   closeDate                  DateTime?
   stage                      OpportunityStage
   ownerId                    String
-  createdAt                  DateTime               @default(now())
-  updatedAt                  DateTime               @updatedAt
+  createdAt                  DateTime                 @default(now())
+  updatedAt                  DateTime                 @updatedAt
   accountId                  String?
   accountName                String?
   quarter                    String?
@@ -184,36 +188,38 @@ model Opportunity {
   riskNotes                  String?
   columnId                   String?
   accountResearch            String?
-  confidenceLevel            Int                    @default(3)
+  confidenceLevel            Int                      @default(3)
   decisionMakers             String?
   competition                String?
-  legalReviewStatus          ReviewStatus?          @default(not_started)
-  securityReviewStatus       ReviewStatus?          @default(not_started)
+  legalReviewStatus          ReviewStatus?            @default(not_started)
+  securityReviewStatus       ReviewStatus?            @default(not_started)
   platformType               PlatformType?
-  businessCaseStatus         ReviewStatus?          @default(not_started)
+  businessCaseStatus         ReviewStatus?            @default(not_started)
   organizationId             String
-  pinnedToWhiteboard         Boolean                @default(false)
+  pinnedToWhiteboard         Boolean                  @default(false)
   accountResearchStatus      AccountResearchStatus?
   accountResearchGeneratedAt DateTime?
   goalsHistory               String?
   nextStepsHistory           String?
   painPointsHistory          String?
-  parsedGongCallIds          String[]               @default([])
+  parsedGongCallIds          String[]                 @default([])
   consolidatedGoals          Json?
   consolidatedPainPoints     Json?
   consolidatedRiskAssessment Json?
   consolidationCallCount     Int?
   lastConsolidatedAt         DateTime?
-  consolidationStatus        ConsolidationStatus? @default(idle)
+  consolidationStatus        ConsolidationStatus?     @default(idle)
   cbc                        DateTime?
   calendarEvents             CalendarEvent[]
+  chatMessages               ChatMessage[]
   contacts                   Contact[]
+  earningsTranscripts        EarningsCallTranscript[]
   gongCalls                  GongCall[]
   googleNotes                GoogleNote[]
   granolaNotes               GranolaNote[]
-  account                    Account?               @relation(fields: [accountId], references: [id])
-  organization               Organization           @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  owner                      User                   @relation(fields: [ownerId], references: [id])
+  account                    Account?                 @relation(fields: [accountId], references: [id])
+  organization               Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  owner                      User                     @relation(fields: [ownerId], references: [id])
 
   @@index([organizationId])
   @@index([ownerId])
@@ -225,18 +231,20 @@ model Opportunity {
 }
 
 model Organization {
-  id                   String                @id @default(cuid())
+  id                   String                   @id @default(cuid())
   name                 String
-  domain               String?               @unique
+  domain               String?                  @unique
   logo                 String?
-  fiscalYearStartMonth Int                   @default(1)
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  fiscalYearStartMonth Int                      @default(1)
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
   accounts             Account[]
+  earningsTranscripts  EarningsCallTranscript[]
   invitations          Invitation[]
   kanbanViews          KanbanView[]
   opportunities        Opportunity[]
   settings             OrganizationSettings?
+  secFilings           SecFiling[]
   users                User[]
 
   @@schema("opportunity_tracker")
@@ -268,6 +276,7 @@ model User {
   role           UserRole        @default(REP)
   ownedAccounts  Account[]       @relation("AccountOwner")
   calendarEvents CalendarEvent[]
+  chatMessages   ChatMessage[]
   invitations    Invitation[]
   kanbanViews    KanbanView[]
   oauthTokens    OAuthToken[]
@@ -324,6 +333,94 @@ model CalendarEvent {
   @@index([userId, startTime])
   @@index([opportunityId])
   @@index([accountId])
+  @@schema("opportunity_tracker")
+}
+
+model SecFiling {
+  id                   String                  @id @default(cuid())
+  accountId            String
+  filingType           String
+  filingDate           DateTime
+  fiscalYear           Int?
+  fiscalPeriod         String?
+  accessionNumber      String
+  filingUrl            String
+  cik                  String
+  processingStatus     FilingProcessingStatus? @default(pending)
+  processedAt          DateTime?
+  processingError      String?
+  businessOverview     String?
+  riskFactors          Json?
+  financialHighlights  Json?
+  strategicInitiatives String?
+  aiSummary            String?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  organizationId       String
+  account              Account                 @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  organization         Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, accessionNumber])
+  @@index([organizationId])
+  @@index([accountId])
+  @@index([processingStatus])
+  @@index([filingDate])
+  @@schema("opportunity_tracker")
+}
+
+model EarningsCallTranscript {
+  id                   String                      @id @default(cuid())
+  accountId            String
+  opportunityId        String?
+  quarter              String
+  fiscalYear           Int
+  callDate             DateTime
+  title                String
+  source               String
+  sourceUrl            String?
+  transcriptText       String?
+  processingStatus     TranscriptProcessingStatus? @default(pending)
+  processedAt          DateTime?
+  processingError      String?
+  keyQuotes            Json?
+  revenueGuidance      Json?
+  productAnnouncements Json?
+  competitiveLandscape String?
+  executiveSentiment   String?
+  aiSummary            String?
+  createdAt            DateTime                    @default(now())
+  updatedAt            DateTime                    @updatedAt
+  organizationId       String
+  account              Account                     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  opportunity          Opportunity?                @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  organization         Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, fiscalYear, quarter])
+  @@index([organizationId])
+  @@index([accountId])
+  @@index([opportunityId])
+  @@index([processingStatus])
+  @@index([callDate])
+  @@schema("opportunity_tracker")
+}
+
+model ChatMessage {
+  id            String       @id @default(cuid())
+  opportunityId String?
+  accountId     String?
+  userId        String
+  role          String
+  content       String
+  contextSize   Int?
+  createdAt     DateTime     @default(now())
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  account       Account?     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId])
+  @@index([accountId])
+  @@index([userId])
+  @@index([createdAt])
   @@schema("opportunity_tracker")
 }
 
@@ -431,6 +528,24 @@ enum ParsingStatus {
 
 enum ConsolidationStatus {
   idle
+  processing
+  completed
+  failed
+
+  @@schema("opportunity_tracker")
+}
+
+enum FilingProcessingStatus {
+  pending
+  processing
+  completed
+  failed
+
+  @@schema("opportunity_tracker")
+}
+
+enum TranscriptProcessingStatus {
+  pending
   processing
   completed
   failed

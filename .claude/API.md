@@ -1040,6 +1040,78 @@ export async function GET(req: NextRequest) {
 
 ---
 
+## 💬 AI Chat Endpoints
+
+### `POST /api/v1/opportunities/[id]/chat`
+**Purpose**: Stream AI chat responses about a specific opportunity
+
+**Request**:
+```json
+{
+  "message": "What are the main risks for this deal?",
+  "history": [
+    {
+      "role": "user",
+      "content": "Tell me about this opportunity"
+    },
+    {
+      "role": "assistant",
+      "content": "This is a $50K ARR opportunity..."
+    }
+  ]
+}
+```
+
+**Validation**:
+- `message`: Required, string, trimmed, 1-2000 characters
+- `history`: Optional, array of messages, max 10 messages
+
+**Response**: Streaming text response
+```
+Content-Type: text/plain; charset=utf-8
+Transfer-Encoding: chunked
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 9
+X-RateLimit-Reset: 1700000000000
+```
+
+**Rate Limiting**: 10 requests per minute per user
+
+**Status Codes**:
+- `200`: Success (streaming response)
+- `400`: Invalid request (message too long, invalid format)
+- `401`: Unauthorized (no auth token)
+- `404`: Opportunity not found or no access
+- `429`: Rate limit exceeded
+- `500`: Internal server error
+
+**Error Response** (for 429):
+```json
+{
+  "error": "Rate limit exceeded. Please try again in 45 seconds.",
+  "retryAfter": 45
+}
+```
+
+---
+
+### `POST /api/v1/accounts/[id]/chat`
+**Purpose**: Stream AI chat responses about a specific account
+
+**Request**: Same format as opportunity chat
+**Response**: Same format as opportunity chat
+**Rate Limiting**: 10 requests per minute per user
+**Status Codes**: Same as opportunity chat
+
+**Context Included**:
+- Account metadata (industry, health, ticker)
+- All opportunities for the account
+- Key contacts across opportunities
+- SEC filings (AI summaries)
+- Earnings transcripts (AI summaries)
+
+---
+
 ## 🔒 Security Best Practices
 
 1. **Always validate input** with Zod schemas
@@ -1049,4 +1121,4 @@ export async function GET(req: NextRequest) {
 5. **Sanitize user input** - Zod handles this automatically
 6. **Use HTTP status codes correctly** - 200, 201, 400, 401, 403, 404, 500
 7. **Log errors** but don't expose internal details to clients
-8. **Rate limit sensitive endpoints** (future: use middleware)
+8. **Rate limit sensitive endpoints** - Chat endpoints enforce 10 req/min per user

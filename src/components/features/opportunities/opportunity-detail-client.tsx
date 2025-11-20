@@ -38,6 +38,9 @@ import { Contact } from "@/types/contact";
 import { RelatedEventsSection } from "@/components/calendar/related-events-section";
 import { TimelineSection } from "./timeline/timeline-section";
 import { ConsolidatedInsightsCard } from "./consolidated-insights-card";
+import { ChatWidget } from "@/components/chat/chat-widget";
+import { SecFilingsSection } from "./sec-filings-section";
+import { EarningsTranscriptsSection } from "./earnings-transcripts-section";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -56,7 +59,9 @@ const stageOptions = [
 const forecastCategoryOptions = [
   { value: "pipeline", label: "Pipeline" },
   { value: "bestCase", label: "Best Case" },
-  { value: "forecast", label: "Forecast (Commit)" },
+  { value: "commit", label: "Commit" },
+  { value: "closedWon", label: "Closed Won" },
+  { value: "closedLost", label: "Closed Lost" },
 ];
 
 const confidenceLevelOptions = [
@@ -296,7 +301,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4" />
             Overview
@@ -308,6 +313,10 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           <TabsTrigger value="research" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             Research & Notes
+          </TabsTrigger>
+          <TabsTrigger value="account-intel" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            Account Intel
           </TabsTrigger>
           <TabsTrigger value="meetings" className="flex items-center gap-2">
             <Phone className="h-4 w-4" />
@@ -608,6 +617,58 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           />
         </TabsContent>
 
+        {/* Account Intel Tab */}
+        <TabsContent value="account-intel" className="mt-4 space-y-6">
+          {opportunity.account ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">{opportunity.account.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    SEC filings and earnings call transcripts for account-level research
+                  </p>
+                </div>
+                {opportunity.account.ticker && (
+                  <div className="text-sm text-muted-foreground">
+                    Ticker: <span className="font-mono font-semibold">{opportunity.account.ticker}</span>
+                  </div>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* SEC Filings Section */}
+              <SecFilingsSection
+                accountId={opportunity.account.id}
+                accountTicker={opportunity.account.ticker || null}
+                opportunityId={opportunity.id}
+              />
+
+              <Separator />
+
+              {/* Earnings Transcripts Section */}
+              <EarningsTranscriptsSection
+                accountId={opportunity.account.id}
+                accountTicker={opportunity.account.ticker || null}
+                opportunityId={opportunity.id}
+              />
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="text-center py-12">
+                <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Account Linked</h3>
+                <p className="text-muted-foreground mb-4">
+                  Link an account to this opportunity to view SEC filings and earnings call transcripts.
+                </p>
+                <Button onClick={() => setIsEditDialogOpen(true)}>
+                  Link Account
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
         {/* Contacts Tab */}
         <TabsContent value="contacts" className="mt-4">
           <OrgChartSection opportunityId={opportunity.id} />
@@ -679,6 +740,13 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* AI Chat Widget */}
+      <ChatWidget
+        entityType="opportunity"
+        entityId={opportunity.id}
+        entityName={opportunity.name}
+      />
     </div>
   );
 }

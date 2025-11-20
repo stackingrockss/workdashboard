@@ -46,3 +46,7 @@ next-env.d.ts
 # development scripts (root directory - should be in /scripts instead)
 /check-call-data.ts
 /run-risk-analysis.ts
+
+# temporary files
+temp_*.sql
+*.tmp

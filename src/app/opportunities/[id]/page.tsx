@@ -50,6 +50,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     account: opportunityFromDB.account ? {
       id: opportunityFromDB.account.id,
       name: opportunityFromDB.account.name,
+      ticker: opportunityFromDB.account.ticker || undefined,
     } : undefined,
     amountArr: opportunityFromDB.amountArr,
     confidenceLevel: opportunityFromDB.confidenceLevel,

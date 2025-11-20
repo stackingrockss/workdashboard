@@ -7,6 +7,8 @@ import { parseGongTranscriptJob } from "@/lib/inngest/functions/parse-gong-trans
 import { analyzeCallRiskJob } from "@/lib/inngest/functions/analyze-call-risk";
 import { consolidateInsightsJob } from "@/lib/inngest/functions/consolidate-insights";
 import { syncAllCalendarEventsJob } from "@/lib/inngest/functions/sync-calendar-events";
+import { processSecFilingJob } from "@/lib/inngest/functions/process-sec-filing";
+import { processEarningsTranscriptJob } from "@/lib/inngest/functions/process-earnings-transcript";
 
 // Increase timeout for long-running AI jobs
 // Vercel Pro: 300s (5 min), Hobby: 60s max
@@ -22,8 +24,9 @@ export const { GET, POST, PUT } = serve({
     parseGongTranscriptJob,
     analyzeCallRiskJob,
     consolidateInsightsJob,
-    syncAllCalendarEventsJob, // Phase 3A: Background calendar sync
-    // Add more job functions here as needed
+    syncAllCalendarEventsJob,
+    processSecFilingJob, // SEC EDGAR 10-K filing processing
+    processEarningsTranscriptJob, // Earnings call transcript processing
   ],
   signingKey: process.env.INNGEST_SIGNING_KEY,
 });

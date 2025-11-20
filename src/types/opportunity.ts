@@ -89,6 +89,7 @@ export interface Opportunity {
     id: string;
     name: string;
     website?: string;
+    ticker?: string;
   };
   amountArr: number; // annual recurring revenue forecast
   confidenceLevel: number; // 1-5 scale (replaces probability)
