@@ -50,10 +50,10 @@ export async function GET(
     });
 
     return NextResponse.json({ filings });
-  } catch (error) {
-    console.error("Error fetching SEC filings:", error);
+  } catch (err) {
+    console.error("Error fetching SEC filings:", err);
 
-    if (error instanceof Error && error.message === "Unauthorized") {
+    if (err instanceof Error && err.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -104,7 +104,7 @@ export async function POST(
     let cik: string;
     try {
       cik = await getCikFromTicker(account.ticker);
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         {
           error: `Failed to find company with ticker "${account.ticker}" in SEC database`,
@@ -117,7 +117,7 @@ export async function POST(
     let filings;
     try {
       filings = await getCompanyFilings(cik, validatedData.filingType);
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: "Failed to fetch filings from SEC EDGAR" },
         { status: 500 }
@@ -193,16 +193,16 @@ export async function POST(
     });
 
     return NextResponse.json({ filing }, { status: 201 });
-  } catch (error) {
-    console.error("Error creating SEC filing:", error);
+  } catch (err) {
+    console.error("Error creating SEC filing:", err);
 
-    if (error instanceof Error && error.message === "Unauthorized") {
+    if (err instanceof Error && err.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (error instanceof Error && error.name === "ZodError") {
+    if (err instanceof Error && err.name === "ZodError") {
       return NextResponse.json(
-        { error: "Invalid input data", details: error },
+        { error: "Invalid input data", details: err },
         { status: 400 }
       );
     }

@@ -90,7 +90,7 @@ Return your analysis as JSON.`;
 
   try {
     return JSON.parse(jsonText);
-  } catch (error) {
+  } catch {
     console.error("Failed to parse Gemini response:", jsonText);
     throw new Error("Failed to parse AI response as JSON");
   }

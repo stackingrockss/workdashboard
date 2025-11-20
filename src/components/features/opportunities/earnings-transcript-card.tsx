@@ -53,7 +53,7 @@ export function EarningsTranscriptCard({
     try {
       await navigator.clipboard.writeText(text);
       toast.success(`${label} copied to clipboard`);
-    } catch (error) {
+    } catch {
       toast.error("Failed to copy to clipboard");
     }
   };
@@ -99,8 +99,8 @@ ${transcript.competitiveLandscape}
       if (!response.ok) throw new Error("Failed to update opportunity");
 
       toast.success("Transcript summary copied to Account Research!");
-    } catch (error) {
-      console.error("Error copying to research:", error);
+    } catch {
+      console.error("Error copying to research");
       toast.error("Failed to copy to research");
     } finally {
       setIsCopying(false);

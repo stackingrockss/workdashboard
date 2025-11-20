@@ -50,7 +50,7 @@ export function SecFilingCard({
     try {
       await navigator.clipboard.writeText(text);
       toast.success(`${label} copied to clipboard`);
-    } catch (error) {
+    } catch {
       toast.error("Failed to copy to clipboard");
     }
   };
@@ -85,8 +85,8 @@ ${filing.strategicInitiatives || ""}
       if (!response.ok) throw new Error("Failed to update opportunity");
 
       toast.success("Filing summary copied to Account Research field!");
-    } catch (error) {
-      console.error("Error copying to research:", error);
+    } catch {
+      console.error("Error copying to research");
       toast.error("Failed to copy to research");
     } finally {
       setIsCopying(false);
