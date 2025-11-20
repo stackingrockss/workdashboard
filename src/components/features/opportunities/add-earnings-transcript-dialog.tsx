@@ -56,12 +56,12 @@ export function AddEarningsTranscriptDialog({
     setValue,
     watch,
     reset,
-  } = useForm<EarningsTranscriptCreateInput>({
+  } = useForm({
     resolver: zodResolver(earningsTranscriptCreateSchema),
     defaultValues: {
-      quarter: "Q4",
+      quarter: "Q4" as const,
       fiscalYear: new Date().getFullYear(),
-      source: "manual",
+      source: "manual" as const,
     },
   });
 
@@ -235,44 +235,43 @@ export function AddEarningsTranscriptDialog({
             )}
           </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="linkToOpportunity"
-                checked={linkToOpportunity}
-                onCheckedChange={(checked) =>
-                  setLinkToOpportunity(checked === true)
-                }
-              />
-              <label
-                htmlFor="linkToOpportunity"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Link to this opportunity
-              </label>
-            </div>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="linkToOpportunity"
+              checked={linkToOpportunity}
+              onCheckedChange={(checked) =>
+                setLinkToOpportunity(checked === true)
+              }
+            />
+            <label
+              htmlFor="linkToOpportunity"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Link to this opportunity
+            </label>
+          </div>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Adding...
-                  </>
-                ) : (
-                  "Add Transcript"
-                )}
-              </Button>
-            </div>
-          </form>
-        </Form>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Transcript"
+              )}
+            </Button>
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

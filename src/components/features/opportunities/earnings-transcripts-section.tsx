@@ -10,9 +10,8 @@
  * - Can link transcripts to specific opportunities
  */
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, TrendingUp, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -61,12 +60,34 @@ export function EarningsTranscriptsSection({
   const [transcripts, setTranscripts] = useState<EarningsTranscript[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const router = useRouter();
+
+  const fetchTranscripts = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/v1/accounts/${accountId}/earnings-transcripts`
+      );
+      if (!response.ok) throw new Error("Failed to fetch transcripts");
+
+      const data = await response.json();
+      // Sort: linked to this opportunity first, then by date
+      const sorted = (data.transcripts || []).sort((a: EarningsTranscript, b: EarningsTranscript) => {
+        if (a.opportunityId === opportunityId && b.opportunityId !== opportunityId) return -1;
+        if (a.opportunityId !== opportunityId && b.opportunityId === opportunityId) return 1;
+        return new Date(b.callDate).getTime() - new Date(a.callDate).getTime();
+      });
+      setTranscripts(sorted);
+    } catch (error) {
+      console.error("Error fetching earnings transcripts:", error);
+      toast.error("Failed to load earnings transcripts");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [accountId, opportunityId]);
 
   // Fetch transcripts on mount
   useEffect(() => {
     fetchTranscripts();
-  }, [accountId]);
+  }, [fetchTranscripts]);
 
   // Auto-refresh when transcripts are processing
   useEffect(() => {
@@ -81,7 +102,7 @@ export function EarningsTranscriptsSection({
     }, 3000); // Poll every 3 seconds
 
     return () => clearInterval(interval);
-  }, [transcripts]);
+  }, [transcripts, fetchTranscripts]);
 
   // Show toast when transcript completes
   useEffect(() => {
@@ -104,29 +125,6 @@ export function EarningsTranscriptsSection({
       }
     });
   }, [transcripts]);
-
-  const fetchTranscripts = async () => {
-    try {
-      const response = await fetch(
-        `/api/v1/accounts/${accountId}/earnings-transcripts`
-      );
-      if (!response.ok) throw new Error("Failed to fetch transcripts");
-
-      const data = await response.json();
-      // Sort: linked to this opportunity first, then by date
-      const sorted = (data.transcripts || []).sort((a: EarningsTranscript, b: EarningsTranscript) => {
-        if (a.opportunityId === opportunityId && b.opportunityId !== opportunityId) return -1;
-        if (a.opportunityId !== opportunityId && b.opportunityId === opportunityId) return 1;
-        return new Date(b.callDate).getTime() - new Date(a.callDate).getTime();
-      });
-      setTranscripts(sorted);
-    } catch (error) {
-      console.error("Error fetching earnings transcripts:", error);
-      toast.error("Failed to load earnings transcripts");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleTranscriptAdded = () => {
     setIsAddDialogOpen(false);

@@ -15,9 +15,8 @@
  * - Polls every 3s for status updates
  */
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, FileText, Loader2 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Plus, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -60,12 +59,26 @@ export function SecFilingsSection({
   const [filings, setFilings] = useState<SecFiling[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const router = useRouter();
+
+  const fetchFilings = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/v1/accounts/${accountId}/sec-filings`);
+      if (!response.ok) throw new Error("Failed to fetch filings");
+
+      const data = await response.json();
+      setFilings(data.filings || []);
+    } catch (error) {
+      console.error("Error fetching SEC filings:", error);
+      toast.error("Failed to load SEC filings");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [accountId]);
 
   // Fetch filings on mount
   useEffect(() => {
     fetchFilings();
-  }, [accountId]);
+  }, [fetchFilings]);
 
   // Auto-refresh when filings are processing
   useEffect(() => {
@@ -80,7 +93,7 @@ export function SecFilingsSection({
     }, 3000); // Poll every 3 seconds
 
     return () => clearInterval(interval);
-  }, [filings]);
+  }, [filings, fetchFilings]);
 
   // Show toast when filing completes
   useEffect(() => {
@@ -103,21 +116,6 @@ export function SecFilingsSection({
       }
     });
   }, [filings]);
-
-  const fetchFilings = async () => {
-    try {
-      const response = await fetch(`/api/v1/accounts/${accountId}/sec-filings`);
-      if (!response.ok) throw new Error("Failed to fetch filings");
-
-      const data = await response.json();
-      setFilings(data.filings || []);
-    } catch (error) {
-      console.error("Error fetching SEC filings:", error);
-      toast.error("Failed to load SEC filings");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleFilingAdded = () => {
     setIsAddDialogOpen(false);

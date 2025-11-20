@@ -128,7 +128,7 @@ export async function buildOpportunityContext(
     `- **Stage**: ${formatStage(opportunity.stage)}`,
     `- **Confidence Level**: ${opportunity.confidenceLevel}/5`,
     `- **Forecast Category**: ${opportunity.forecastCategory ? formatForecastCategory(opportunity.forecastCategory) : "Not set"}`,
-    `- **Close Date**: ${opportunity.closeDate ? formatDateShort(opportunity.closeDate) : "Not set"}`,
+    `- **Close Date**: ${opportunity.closeDate ? formatDateShort(opportunity.closeDate.toISOString()) : "Not set"}`,
     `- **Owner**: ${opportunity.owner.name || opportunity.owner.email}`,
     `- **Next Step**: ${opportunity.nextStep || "No next step defined"}`,
     ``
@@ -243,7 +243,7 @@ export async function buildOpportunityContext(
 
     opportunity.gongCalls.forEach((call, index) => {
       sections.push(
-        `### Call ${index + 1}: ${call.title} (${formatDateShort(call.meetingDate)})`,
+        `### Call ${index + 1}: ${call.title} (${formatDateShort(call.meetingDate.toISOString())})`,
         ``
       );
 
@@ -267,7 +267,7 @@ export async function buildOpportunityContext(
 
     opportunity.earningsTranscripts.forEach((transcript) => {
       sections.push(
-        `### ${transcript.quarter} ${transcript.fiscalYear} (${formatDateShort(transcript.callDate)})`,
+        `### ${transcript.quarter} ${transcript.fiscalYear} (${formatDateShort(transcript.callDate.toISOString())})`,
         ``
       );
 
@@ -292,7 +292,7 @@ export async function buildOpportunityContext(
       ``,
       ...opportunity.calendarEvents.map(
         (event) =>
-          `- ${event.summary} (${formatDateShort(event.startTime)}) - ${event.attendees.length} attendees`
+          `- ${event.summary} (${formatDateShort(event.startTime.toISOString())}) - ${event.attendees.length} attendees`
       ),
       ``
     );
@@ -462,7 +462,7 @@ export async function buildAccountContext(
         ``,
         ...activeOpps.map(
           (opp) =>
-            `- **${opp.name}**: ${formatCurrencyCompact(opp.amountArr)} ARR, ${formatStage(opp.stage)}, Confidence ${opp.confidenceLevel}/5${opp.closeDate ? `, Close: ${formatDateShort(opp.closeDate)}` : ""}`
+            `- **${opp.name}**: ${formatCurrencyCompact(opp.amountArr)} ARR, ${formatStage(opp.stage)}, Confidence ${opp.confidenceLevel}/5${opp.closeDate ? `, Close: ${formatDateShort(opp.closeDate.toISOString())}` : ""}`
         ),
         ``
       );
@@ -532,7 +532,7 @@ export async function buildAccountContext(
 
     account.secFilings.forEach((filing) => {
       sections.push(
-        `### ${filing.filingType} (${formatDateShort(filing.filingDate)})${filing.fiscalYear ? ` - FY ${filing.fiscalYear}` : ""}`,
+        `### ${filing.filingType} (${formatDateShort(filing.filingDate.toISOString())})${filing.fiscalYear ? ` - FY ${filing.fiscalYear}` : ""}`,
         ``
       );
 
@@ -556,7 +556,7 @@ export async function buildAccountContext(
 
     account.earningsTranscripts.forEach((transcript) => {
       sections.push(
-        `### ${transcript.quarter} ${transcript.fiscalYear} (${formatDateShort(transcript.callDate)})`,
+        `### ${transcript.quarter} ${transcript.fiscalYear} (${formatDateShort(transcript.callDate.toISOString())})`,
         ``
       );
 
