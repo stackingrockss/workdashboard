@@ -128,7 +128,8 @@ export class GoogleCalendarClient {
           const isExternal = this.isExternalEvent(
             attendeeEmails as string[],
             organizationDomain,
-            userEmail
+            userEmail,
+            event.summary
           );
 
           // Extract meeting URL from various sources
@@ -257,7 +258,8 @@ export class GoogleCalendarClient {
       const isExternal = this.isExternalEvent(
         attendeeEmails as string[],
         organizationDomain,
-        userEmail
+        userEmail,
+        event.summary
       );
 
       const meetingUrl =
@@ -353,7 +355,8 @@ export class GoogleCalendarClient {
       const isExternal = this.isExternalEvent(
         attendeeEmails as string[],
         organizationDomain,
-        userEmail
+        userEmail,
+        event.summary
       );
 
       const meetingUrl =
@@ -459,7 +462,8 @@ export class GoogleCalendarClient {
       const isExternal = this.isExternalEvent(
         attendeeEmails as string[],
         organizationDomain,
-        userEmail
+        userEmail,
+        event.summary
       );
 
       const meetingUrl =
@@ -527,9 +531,17 @@ export class GoogleCalendarClient {
   private isExternalEvent(
     attendees: string[],
     organizationDomain: string,
-    currentUserEmail?: string
+    currentUserEmail?: string,
+    eventSummary?: string
   ): boolean {
-    if (!organizationDomain || attendees.length === 0) {
+    // Early validation checks
+    if (!organizationDomain) {
+      console.warn('[Calendar] isExternalEvent: Organization domain not set - marking as internal');
+      return false;
+    }
+
+    if (attendees.length === 0) {
+      console.log('[Calendar] isExternalEvent: No attendees - marking as internal');
       return false;
     }
 
@@ -543,11 +555,12 @@ export class GoogleCalendarClient {
 
     // If only the user is in the meeting (no other attendees), it's not external
     if (otherAttendees.length === 0) {
+      console.log(`[Calendar] isExternalEvent: "${eventSummary}" - Only user in meeting - marking as internal`);
       return false;
     }
 
     // Check if any other attendee has a different domain
-    return otherAttendees.some((email) => {
+    const externalAttendees = otherAttendees.filter((email) => {
       const emailDomain = email.split('@')[1]?.toLowerCase();
       if (!emailDomain) {
         return false;
@@ -555,8 +568,23 @@ export class GoogleCalendarClient {
 
       // Exact match or subdomain match
       // e.g., "acme.com" matches "acme.com" and "us.acme.com" but not "acme.company.com"
-      return emailDomain !== orgDomain && !emailDomain.endsWith(`.${orgDomain}`);
+      const isExternal = emailDomain !== orgDomain && !emailDomain.endsWith(`.${orgDomain}`);
+
+      if (isExternal) {
+        console.log(`[Calendar] isExternalEvent: "${eventSummary}" - Found external domain: ${emailDomain} (org: ${orgDomain})`);
+      }
+
+      return isExternal;
     });
+
+    const isExternal = externalAttendees.length > 0;
+
+    if (!isExternal) {
+      const domains = otherAttendees.map(email => email.split('@')[1]).join(', ');
+      console.log(`[Calendar] isExternalEvent: "${eventSummary}" - All internal domains: ${domains} (org: ${orgDomain})`);
+    }
+
+    return isExternal;
   }
 }
 

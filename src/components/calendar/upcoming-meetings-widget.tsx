@@ -26,6 +26,13 @@ export function UpcomingMeetingsWidget() {
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [notConnected, setNotConnected] = useState(false);
   const [domainNotSet, setDomainNotSet] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<{
+    orgDomain: string | null;
+    totalEvents: number;
+    externalCount: number;
+    internalCount: number;
+  } | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
 
   useEffect(() => {
     loadUpcomingMeetings();
@@ -40,9 +47,13 @@ export function UpcomingMeetingsWidget() {
     try {
       // First, check if organization domain is set
       const orgResponse = await fetch('/api/v1/organization');
+      let orgDomain: string | null = null;
+
       if (orgResponse.ok) {
         const orgData = await orgResponse.json();
-        if (!orgData.organization?.domain) {
+        orgDomain = orgData.organization?.domain || null;
+
+        if (!orgDomain) {
           setDomainNotSet(true);
           return;
         }
@@ -52,6 +63,7 @@ export function UpcomingMeetingsWidget() {
       const startDate = new Date();
       const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
+      // Fetch external meetings
       const response = await fetch(
         `/api/v1/integrations/google/calendar/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&externalOnly=true`
       );
@@ -69,6 +81,40 @@ export function UpcomingMeetingsWidget() {
       }
 
       const data = await response.json();
+
+      // For debug mode: also fetch ALL events to compare
+      const allEventsResponse = await fetch(
+        `/api/v1/integrations/google/calendar/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&externalOnly=false`
+      );
+
+      let internalCount = 0;
+      if (allEventsResponse.ok) {
+        const allData = await allEventsResponse.json();
+        const totalEvents = allData.events.length;
+        const externalCount = data.events.length;
+        internalCount = totalEvents - externalCount;
+
+        setDebugInfo({
+          orgDomain,
+          totalEvents,
+          externalCount,
+          internalCount,
+        });
+
+        // Log detailed info for debugging
+        console.log('[Calendar Widget] Debug Info:', {
+          orgDomain,
+          totalEvents,
+          externalCount,
+          internalCount,
+          externalEvents: data.events.map((e: CalendarEvent) => ({
+            summary: e.summary,
+            attendees: e.attendees,
+            isExternal: e.isExternal,
+          })),
+        });
+      }
+
       // Take only the first 5 upcoming meetings
       setEvents(data.events.slice(0, 5));
     } catch (err) {
@@ -281,6 +327,51 @@ export function UpcomingMeetingsWidget() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Debug info toggle */}
+        {debugInfo && (
+          <div className="border-b pb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowDebug(!showDebug)}
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              {showDebug ? "Hide" : "Show"} Debug Info
+            </Button>
+
+            {showDebug && (
+              <div className="mt-2 p-3 bg-muted/50 rounded-md text-xs space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="font-semibold">Organization Domain:</span>
+                    <br />
+                    <code className="text-primary">{debugInfo.orgDomain || "Not set"}</code>
+                  </div>
+                  <div>
+                    <span className="font-semibold">Total Events (7 days):</span>
+                    <br />
+                    <code>{debugInfo.totalEvents}</code>
+                  </div>
+                  <div>
+                    <span className="font-semibold">External Meetings:</span>
+                    <br />
+                    <code className="text-green-600">{debugInfo.externalCount}</code>
+                  </div>
+                  <div>
+                    <span className="font-semibold">Internal Meetings:</span>
+                    <br />
+                    <code className="text-orange-600">{debugInfo.internalCount}</code>
+                  </div>
+                </div>
+                <p className="text-muted-foreground pt-2 border-t">
+                  External meetings have at least one attendee with a different email domain than <code>{debugInfo.orgDomain}</code>.
+                  Check browser console for detailed attendee information.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {Object.entries(groupedEvents).map(([dateLabel, dateEvents]) => (
           <div key={dateLabel} className="space-y-2">
             <h4 className="font-semibold text-sm text-muted-foreground">
