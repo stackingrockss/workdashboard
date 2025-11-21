@@ -217,6 +217,7 @@ model Opportunity {
   gongCalls                  GongCall[]
   googleNotes                GoogleNote[]
   granolaNotes               GranolaNote[]
+  tasks                      Task[]
   account                    Account?                 @relation(fields: [accountId], references: [id])
   organization               Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner                      User                     @relation(fields: [ownerId], references: [id])
@@ -246,6 +247,8 @@ model Organization {
   settings             OrganizationSettings?
   secFilings           SecFiling[]
   users                User[]
+  comments             Comment[]
+  commentMentions      CommentMention[]
 
   @@schema("opportunity_tracker")
 }
@@ -265,25 +268,32 @@ model OrganizationSettings {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  name           String?
-  avatarUrl      String?
-  createdAt      DateTime        @default(now())
-  supabaseId     String?         @unique
-  managerId      String?
-  organizationId String?
-  role           UserRole        @default(REP)
-  ownedAccounts  Account[]       @relation("AccountOwner")
-  calendarEvents CalendarEvent[]
-  chatMessages   ChatMessage[]
-  invitations    Invitation[]
-  kanbanViews    KanbanView[]
-  oauthTokens    OAuthToken[]
-  opportunities  Opportunity[]
-  manager        User?           @relation("ManagerReps", fields: [managerId], references: [id])
-  directReports  User[]          @relation("ManagerReps")
-  organization   Organization?   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id               String             @id @default(cuid())
+  email            String             @unique
+  name             String?
+  avatarUrl        String?
+  createdAt        DateTime           @default(now())
+  supabaseId       String?            @unique
+  managerId        String?
+  organizationId   String?
+  role             UserRole           @default(REP)
+  annualQuota      Int?
+  ownedAccounts    Account[]          @relation("AccountOwner")
+  calendarEvents   CalendarEvent[]
+  chatMessages     ChatMessage[]
+  invitations      Invitation[]
+  kanbanViews      KanbanView[]
+  oauthTokens      OAuthToken[]
+  opportunities    Opportunity[]
+  taskLists        TaskList[]
+  tasks            Task[]
+  manager          User?              @relation("ManagerReps", fields: [managerId], references: [id])
+  directReports    User[]             @relation("ManagerReps")
+  organization     Organization?      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  authoredComments Comment[]          @relation("AuthoredComments")
+  resolvedComments Comment[]          @relation("ResolvedComments")
+  mentions         CommentMention[]   @relation("UserMentions")
+  reactions        CommentReaction[]  @relation("UserReactions")
 
   @@index([organizationId])
   @@index([managerId])
@@ -333,6 +343,46 @@ model CalendarEvent {
   @@index([userId, startTime])
   @@index([opportunityId])
   @@index([accountId])
+  @@schema("opportunity_tracker")
+}
+
+model TaskList {
+  id           String   @id @default(cuid())
+  userId       String
+  googleListId String
+  title        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks        Task[]
+
+  @@unique([userId, googleListId])
+  @@index([userId])
+  @@schema("opportunity_tracker")
+}
+
+model Task {
+  id            String       @id @default(cuid())
+  userId        String
+  taskListId    String
+  googleTaskId  String
+  title         String
+  notes         String?
+  due           DateTime?
+  status        TaskStatus   @default(needsAction)
+  position      String
+  opportunityId String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  completedAt   DateTime?
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskList      TaskList     @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, googleTaskId])
+  @@index([userId, status])
+  @@index([opportunityId])
+  @@index([taskListId])
   @@schema("opportunity_tracker")
 }
 
@@ -421,6 +471,84 @@ model ChatMessage {
   @@index([accountId])
   @@index([userId])
   @@index([createdAt])
+  @@schema("opportunity_tracker")
+}
+
+model Comment {
+  id             String             @id @default(cuid())
+  content        String             // Comment text (supports markdown)
+  authorId       String
+  organizationId String
+  // Polymorphic entity reference (can attach to any entity)
+  entityType     String             // "opportunity", "account", "contact", etc.
+  entityId       String
+  pageContext    String?            // URL path for context (e.g., "/opportunities/abc123")
+  // Text selection anchoring (Google Docs-style)
+  selectionType  String?            // "text" | "element" | null (null = general comment)
+  anchorSelector String?            // CSS selector for start element
+  anchorOffset   Int?               // Character offset in start element
+  focusSelector  String?            // CSS selector for end element
+  focusOffset    Int?               // Character offset in end element
+  selectedText   String?            // Snapshot of highlighted text
+  // Status
+  isResolved     Boolean            @default(false)
+  resolvedAt     DateTime?
+  resolvedById   String?
+  // Threading (flat replies - one level only)
+  parentId       String?
+  // Metadata
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  editedAt       DateTime?          // Track when last edited
+  // Relations
+  author         User               @relation("AuthoredComments", fields: [authorId], references: [id])
+  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent         Comment?           @relation("CommentReplies", fields: [parentId], references: [id])
+  replies        Comment[]          @relation("CommentReplies")
+  resolvedBy     User?              @relation("ResolvedComments", fields: [resolvedById], references: [id])
+  mentions       CommentMention[]
+  reactions      CommentReaction[]
+
+  @@index([organizationId])
+  @@index([authorId])
+  @@index([entityType, entityId])
+  @@index([parentId])
+  @@index([isResolved])
+  @@index([createdAt])
+  @@schema("opportunity_tracker")
+}
+
+model CommentMention {
+  id             String       @id @default(cuid())
+  commentId      String
+  userId         String       // User who was mentioned
+  organizationId String
+  notified       Boolean      @default(false)
+  notifiedAt     DateTime?
+  createdAt      DateTime     @default(now())
+  comment        Comment      @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user           User         @relation("UserMentions", fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId])
+  @@index([commentId])
+  @@index([notified])
+  @@schema("opportunity_tracker")
+}
+
+model CommentReaction {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  emoji     String   // Store as Unicode: "👍", "❤️", "🎉"
+  createdAt DateTime @default(now())
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation("UserReactions", fields: [userId], references: [id])
+
+  @@unique([commentId, userId, emoji]) // One reaction per user per emoji
+  @@index([commentId])
+  @@index([userId])
   @@schema("opportunity_tracker")
 }
 
@@ -549,6 +677,13 @@ enum TranscriptProcessingStatus {
   processing
   completed
   failed
+
+  @@schema("opportunity_tracker")
+}
+
+enum TaskStatus {
+  needsAction
+  completed
 
   @@schema("opportunity_tracker")
 }

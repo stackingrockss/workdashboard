@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -23,10 +24,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { formatCurrencyInput, parseCurrencyInput } from "@/lib/format";
 
 const editUserSchema = z.object({
   role: z.enum(["ADMIN", "MANAGER", "REP", "VIEWER"]).optional(),
   managerId: z.string().nullable().optional(),
+  annualQuota: z.number().int().positive().nullable().optional(),
 });
 
 type EditUserFormData = z.infer<typeof editUserSchema>;
@@ -37,6 +40,7 @@ interface User {
   email: string;
   role: "ADMIN" | "MANAGER" | "REP" | "VIEWER";
   managerId: string | null;
+  annualQuota: number | null;
 }
 
 interface EditUserDialogProps {
@@ -66,18 +70,24 @@ export function EditUserDialog({
     defaultValues: {
       role: user.role,
       managerId: user.managerId,
+      annualQuota: user.annualQuota,
     },
   });
 
   const selectedRole = watch("role");
   const selectedManagerId = watch("managerId");
+  const [quotaInputValue, setQuotaInputValue] = useState(
+    user.annualQuota ? formatCurrencyInput(user.annualQuota) : ""
+  );
 
   // Reset form when user changes
   useEffect(() => {
     reset({
       role: user.role,
       managerId: user.managerId,
+      annualQuota: user.annualQuota,
     });
+    setQuotaInputValue(user.annualQuota ? formatCurrencyInput(user.annualQuota) : "");
   }, [user, reset]);
 
   // Filter potential managers (exclude self and direct reports)
@@ -95,6 +105,7 @@ export function EditUserDialog({
         body: JSON.stringify({
           ...(data.role !== user.role && { role: data.role }),
           ...(data.managerId !== user.managerId && { managerId: data.managerId }),
+          ...(data.annualQuota !== user.annualQuota && { annualQuota: data.annualQuota }),
         }),
       });
 
@@ -184,6 +195,32 @@ export function EditUserDialog({
             </Select>
             <p className="text-sm text-muted-foreground">
               Managers and admins can assign reporting relationships
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="annualQuota">Annual Quota</Label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+                $
+              </span>
+              <Input
+                id="annualQuota"
+                type="text"
+                placeholder="0"
+                value={quotaInputValue}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setQuotaInputValue(value);
+                  const parsed = parseCurrencyInput(value);
+                  setValue("annualQuota", parsed > 0 ? parsed : null);
+                }}
+                disabled={loading}
+                className="pl-7"
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Annual sales quota for tracking performance
             </p>
           </div>
 

@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { formatCurrency } from "@/lib/format";
 
 interface UserProfileSettingsProps {
   user: {
@@ -11,6 +12,7 @@ interface UserProfileSettingsProps {
     email: string;
     role: string;
     avatarUrl: string | null;
+    annualQuota: number | null;
   };
 }
 
@@ -82,6 +84,13 @@ export function UserProfileSettings({ user }: UserProfileSettingsProps) {
               <label className="text-sm font-medium">Role</label>
               <p className="text-sm text-muted-foreground">
                 {roleLabels[user.role] || user.role}
+              </p>
+            </div>
+
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Annual Quota</label>
+              <p className="text-sm text-muted-foreground">
+                {user.annualQuota ? formatCurrency(user.annualQuota) : "Not set"}
               </p>
             </div>
           </div>

@@ -60,6 +60,7 @@ export async function GET(
       avatarUrl: targetUser.avatarUrl,
       role: targetUser.role,
       managerId: targetUser.managerId,
+      annualQuota: targetUser.annualQuota,
       manager: targetUser.manager,
       directReports: targetUser.directReports,
       opportunityCount: targetUser._count.opportunities,
@@ -177,6 +178,7 @@ export async function PATCH(
           managerId: data.managerId,
         }),
         ...(data.name !== undefined && { name: data.name }),
+        ...(data.annualQuota !== undefined && { annualQuota: data.annualQuota }),
       },
       include: {
         manager: {
@@ -212,6 +214,7 @@ export async function PATCH(
       avatarUrl: updatedUser.avatarUrl,
       role: updatedUser.role,
       managerId: updatedUser.managerId,
+      annualQuota: updatedUser.annualQuota,
       manager: updatedUser.manager,
       directReports: updatedUser.directReports,
       opportunityCount: updatedUser._count.opportunities,

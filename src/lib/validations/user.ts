@@ -11,6 +11,7 @@ export const userUpdateSchema = z.object({
   avatarUrl: z.string().url('Invalid URL').nullable().optional(),
   role: userRoleSchema.optional(),
   managerId: z.string().nullable().optional(),
+  annualQuota: z.number().int().positive('Quota must be a positive number').nullable().optional(),
 });
 
 export type UserUpdateInput = z.infer<typeof userUpdateSchema>;
