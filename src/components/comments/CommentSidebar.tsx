@@ -335,7 +335,7 @@ export function CommentSidebar({ currentUser, organizationUsers }: CommentSideba
               <div className="font-medium text-xs text-muted-foreground mb-1">
                 Commenting on:
               </div>
-              <div className="italic">"{textSelection.selectedText}"</div>
+              <div className="italic">&ldquo;{textSelection.selectedText}&rdquo;</div>
               <Button
                 variant="ghost"
                 size="sm"

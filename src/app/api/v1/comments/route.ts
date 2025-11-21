@@ -35,7 +35,14 @@ export async function GET(request: NextRequest) {
     const { entityType, entityId, includeResolved, pageContext } = queryValidation.data;
 
     // Build where clause
-    const where: any = {
+    const where: {
+      organizationId: string;
+      entityType: string;
+      entityId: string;
+      parentId: null;
+      isResolved?: boolean;
+      pageContext?: string;
+    } = {
       organizationId: user.organization.id,
       entityType,
       entityId,

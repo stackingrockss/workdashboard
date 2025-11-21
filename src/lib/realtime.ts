@@ -25,7 +25,7 @@ export async function broadcastCommentEvent(
   entityId: string,
   event: {
     type: "comment:created" | "comment:updated" | "comment:deleted" | "comment:resolved" | "reaction:toggled";
-    payload: any;
+    payload: Record<string, unknown>;
   }
 ): Promise<void> {
   const supabase = createClient();
@@ -60,14 +60,14 @@ export function subscribeToComments(
   entityType: string,
   entityId: string,
   callbacks: {
-    onCommentCreated?: (comment: any) => void;
-    onCommentUpdated?: (comment: any) => void;
+    onCommentCreated?: (comment: Record<string, unknown>) => void;
+    onCommentUpdated?: (comment: Record<string, unknown>) => void;
     onCommentDeleted?: (commentId: string) => void;
     onCommentResolved?: (data: { commentId: string; isResolved: boolean }) => void;
-    onReactionToggled?: (data: { commentId: string; reaction: any; action: "added" | "removed" }) => void;
+    onReactionToggled?: (data: { commentId: string; reaction: Record<string, unknown>; action: "added" | "removed" }) => void;
     onConnected?: () => void;
     onDisconnected?: () => void;
-    onError?: (error: any) => void;
+    onError?: (error: Error) => void;
   }
 ): { channel: RealtimeChannel; unsubscribe: () => void } {
   const supabase = createClient();

@@ -232,7 +232,7 @@ export function CommentCard({
         {/* Selected text quote (if inline comment) */}
         {comment.selectedText && (
           <div className="mb-2 p-2 bg-muted/50 border-l-2 border-primary/50 rounded text-sm italic">
-            "{comment.selectedText}"
+            &ldquo;{comment.selectedText}&rdquo;
           </div>
         )}
 
