@@ -50,28 +50,30 @@ export async function POST() {
       );
     }
 
-    // 4. Define date range: 90 days past to 90 days future
+    // 4. Define date ranges: Fetch future events first (priority), then past events
     const now = new Date();
-    const startDate = new Date(now);
-    startDate.setDate(startDate.getDate() - 90);
-    const endDate = new Date(now);
-    endDate.setDate(endDate.getDate() + 90);
+    const pastStartDate = new Date(now);
+    pastStartDate.setDate(pastStartDate.getDate() - 90);
+    const futureEndDate = new Date(now);
+    futureEndDate.setDate(futureEndDate.getDate() + 90);
 
-    // 5. Fetch all events from Google Calendar API
+    console.log(`[Calendar Sync] Starting manual sync for user ${user.id}`);
+
+    // 5a. First, fetch FUTURE events (today onwards) - PRIORITY
     let allEvents: CalendarEventData[] = [];
     let pageToken: string | undefined = undefined;
     let pageCount = 0;
-    const maxPages = 10; // Safety limit: max 10 pages (500 events)
+    const maxPagesPerRange = 10; // Max 10 pages per date range
 
-    console.log(`[Calendar Sync] Starting manual sync for user ${user.id}`);
+    console.log(`[Calendar Sync] Fetching future events (${now.toISOString()} to ${futureEndDate.toISOString()})`);
 
     do {
       const response = await googleCalendarClient.listEvents(
         user.id,
-        startDate,
-        endDate,
+        now, // Start from today
+        futureEndDate,
         {
-          externalOnly: false, // Sync all events, not just external
+          externalOnly: false,
           pageToken,
           maxResults: 50,
         }
@@ -80,9 +82,41 @@ export async function POST() {
       allEvents = allEvents.concat(response.events);
       pageToken = response.nextPageToken;
       pageCount++;
-    } while (pageToken && pageCount < maxPages);
+    } while (pageToken && pageCount < maxPagesPerRange);
 
-    console.log(`[Calendar Sync] Fetched ${allEvents.length} events from Google Calendar`);
+    console.log(`[Calendar Sync] Fetched ${allEvents.length} future events`);
+
+    // 5b. Then, fetch PAST events (if we have room)
+    if (pageCount < maxPagesPerRange) {
+      pageToken = undefined;
+      const pastPageCount = 0;
+      const remainingPages = maxPagesPerRange - pageCount;
+
+      console.log(`[Calendar Sync] Fetching past events (${pastStartDate.toISOString()} to ${now.toISOString()})`);
+
+      let pastEventCount = 0;
+      do {
+        const response = await googleCalendarClient.listEvents(
+          user.id,
+          pastStartDate,
+          now,
+          {
+            externalOnly: false,
+            pageToken,
+            maxResults: 50,
+          }
+        );
+
+        allEvents = allEvents.concat(response.events);
+        pageToken = response.nextPageToken;
+        pageCount++;
+        pastEventCount += response.events.length;
+      } while (pageToken && pageCount < maxPagesPerRange);
+
+      console.log(`[Calendar Sync] Fetched ${pastEventCount} past events`);
+    }
+
+    console.log(`[Calendar Sync] Total fetched: ${allEvents.length} events from Google Calendar`);
 
     if (allEvents.length === 0) {
       return NextResponse.json({
