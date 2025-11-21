@@ -129,7 +129,7 @@ export class GoogleCalendarClient {
             attendeeEmails as string[],
             organizationDomain,
             userEmail,
-            event.summary
+            event.summary ?? undefined
           );
 
           // Extract meeting URL from various sources
@@ -259,7 +259,7 @@ export class GoogleCalendarClient {
         attendeeEmails as string[],
         organizationDomain,
         userEmail,
-        event.summary
+        event.summary ?? undefined
       );
 
       const meetingUrl =
@@ -356,7 +356,7 @@ export class GoogleCalendarClient {
         attendeeEmails as string[],
         organizationDomain,
         userEmail,
-        event.summary
+        event.summary ?? undefined
       );
 
       const meetingUrl =
@@ -463,7 +463,7 @@ export class GoogleCalendarClient {
         attendeeEmails as string[],
         organizationDomain,
         userEmail,
-        event.summary
+        event.summary ?? undefined
       );
 
       const meetingUrl =
