@@ -108,7 +108,7 @@ export async function PATCH(request: NextRequest) {
       previousDomain = currentOrg?.domain || null;
 
       // If domain is being changed, verify it's not already in use
-      if (data.domain !== null) {
+      if (data.domain !== null && data.domain !== undefined) {
         const existingOrg = await prisma.organization.findFirst({
           where: {
             domain: data.domain.toLowerCase(),
