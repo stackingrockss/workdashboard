@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { organizationUpdateSchema } from "@/lib/validations/organization";
 import { canManageOrganization } from "@/lib/permissions";
+import { recalculateExternalEventsForOrganization } from "@/lib/inngest/functions/sync-calendar-events";
 
 /**
  * GET /api/v1/organization
@@ -94,20 +95,33 @@ export async function PATCH(request: NextRequest) {
 
     const data = parsed.data;
 
-    // If domain is being changed, verify it's not already in use
-    if (data.domain !== undefined && data.domain !== null) {
-      const existingOrg = await prisma.organization.findFirst({
-        where: {
-          domain: data.domain.toLowerCase(),
-          id: { not: user.organization.id },
-        },
-      });
+    // Check if domain is being changed
+    const isDomainChanging = data.domain !== undefined;
+    let previousDomain: string | null = null;
 
-      if (existingOrg) {
-        return NextResponse.json(
-          { error: "This domain is already in use by another organization" },
-          { status: 400 }
-        );
+    if (isDomainChanging) {
+      // Get current domain before update
+      const currentOrg = await prisma.organization.findUnique({
+        where: { id: user.organization.id },
+        select: { domain: true },
+      });
+      previousDomain = currentOrg?.domain || null;
+
+      // If domain is being changed, verify it's not already in use
+      if (data.domain !== null) {
+        const existingOrg = await prisma.organization.findFirst({
+          where: {
+            domain: data.domain.toLowerCase(),
+            id: { not: user.organization.id },
+          },
+        });
+
+        if (existingOrg) {
+          return NextResponse.json(
+            { error: "This domain is already in use by another organization" },
+            { status: 400 }
+          );
+        }
       }
     }
 
@@ -128,6 +142,29 @@ export async function PATCH(request: NextRequest) {
         settings: true,
       },
     });
+
+    // If domain changed, recalculate isExternal for all calendar events
+    // Run this asynchronously in the background to avoid blocking the response
+    if (isDomainChanging && previousDomain !== updatedOrganization.domain) {
+      recalculateExternalEventsForOrganization(user.organization.id)
+        .then((result) => {
+          if (result.success) {
+            console.log(
+              `[Organization Update] Recalculated ${result.eventsUpdated} of ${result.eventsProcessed} events for org ${user.organization.id}`
+            );
+          } else {
+            console.error(
+              `[Organization Update] Failed to recalculate events: ${result.error}`
+            );
+          }
+        })
+        .catch((error) => {
+          console.error(
+            `[Organization Update] Error recalculating events:`,
+            error
+          );
+        });
+    }
 
     return NextResponse.json(
       {

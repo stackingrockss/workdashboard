@@ -16,15 +16,20 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Calendar, CheckCircle, XCircle, Loader2, RefreshCw, Unplug } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Calendar, CheckCircle, XCircle, Loader2, RefreshCw, Unplug, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { CalendarConnectionStatus } from "@/types/calendar";
+import Link from "next/link";
 
 export function IntegrationsSettingsContent() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
+  const [showDomainWarning, setShowDomainWarning] = useState(false);
+  const [orgDomain, setOrgDomain] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<CalendarConnectionStatus>({
     connected: false,
   });
@@ -50,10 +55,23 @@ export function IntegrationsSettingsContent() {
     }
   }, [searchParams]);
 
-  // Load connection status on mount
+  // Load connection status and org domain on mount
   useEffect(() => {
     checkConnectionStatus();
+    checkOrganizationDomain();
   }, []);
+
+  const checkOrganizationDomain = async () => {
+    try {
+      const response = await fetch('/api/v1/organization');
+      if (response.ok) {
+        const data = await response.json();
+        setOrgDomain(data.organization?.domain || null);
+      }
+    } catch (error) {
+      console.error('Failed to check organization domain:', error);
+    }
+  };
 
   const checkConnectionStatus = async () => {
     setLoading(true);
@@ -75,6 +93,12 @@ export function IntegrationsSettingsContent() {
   };
 
   const handleConnect = () => {
+    // Check if organization domain is set before connecting
+    if (!orgDomain) {
+      setShowDomainWarning(true);
+      return;
+    }
+
     // Redirect to OAuth authorization endpoint
     window.location.href = "/api/v1/integrations/google/authorize";
   };
@@ -100,6 +124,33 @@ export function IntegrationsSettingsContent() {
       toast.error(error instanceof Error ? error.message : "Failed to disconnect calendar");
     } finally {
       setDisconnecting(false);
+    }
+  };
+
+  const handleSyncNow = async () => {
+    setSyncing(true);
+    try {
+      const response = await fetch("/api/v1/integrations/google/calendar/sync", {
+        method: "POST",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to sync calendar");
+      }
+
+      toast.success(data.message || "Calendar synced successfully", {
+        description: `${data.stats.eventsProcessed} events processed, ${data.stats.eventsCreated} created, ${data.stats.eventsUpdated} updated`,
+      });
+
+      // Refresh connection status to show new lastSync time
+      await checkConnectionStatus();
+    } catch (error) {
+      console.error("Failed to sync calendar:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to sync calendar");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -149,6 +200,18 @@ export function IntegrationsSettingsContent() {
         <CardContent className="space-y-4">
           {!connectionStatus.connected ? (
             <>
+              {!orgDomain && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Organization domain not configured.</strong> Please set your organization domain first to enable external meeting detection.{' '}
+                    <Link href="/settings/organization" className="text-primary hover:underline font-medium">
+                      Go to Organization Settings
+                    </Link>
+                  </AlertDescription>
+                </Alert>
+              )}
+
               <div className="space-y-2">
                 <p className="text-sm font-medium">Features:</p>
                 <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
@@ -215,11 +278,21 @@ export function IntegrationsSettingsContent() {
 
               <Separator />
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                <Button
+                  variant="default"
+                  onClick={handleSyncNow}
+                  disabled={syncing || loading}
+                  className="gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+                  {syncing ? "Syncing..." : "Sync Now"}
+                </Button>
+
                 <Button
                   variant="outline"
                   onClick={checkConnectionStatus}
-                  disabled={loading}
+                  disabled={loading || syncing}
                   className="gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -229,7 +302,7 @@ export function IntegrationsSettingsContent() {
                 <Button
                   variant="destructive"
                   onClick={() => setShowDisconnectDialog(true)}
-                  disabled={disconnecting}
+                  disabled={disconnecting || syncing}
                   className="gap-2"
                 >
                   <Unplug className="h-4 w-4" />
@@ -240,6 +313,27 @@ export function IntegrationsSettingsContent() {
           )}
         </CardContent>
       </Card>
+
+      {/* Domain Warning Dialog */}
+      <AlertDialog open={showDomainWarning} onOpenChange={setShowDomainWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Organization Domain Required</AlertDialogTitle>
+            <AlertDialogDescription>
+              To enable external meeting detection, you must configure your organization domain first.
+              External meetings are detected by comparing attendee email domains with your organization domain.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continue Without Domain</AlertDialogCancel>
+            <AlertDialogAction asChild>
+              <Link href="/settings/organization">
+                Configure Domain
+              </Link>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Disconnect Confirmation Dialog */}
       <AlertDialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>

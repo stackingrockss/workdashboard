@@ -25,6 +25,7 @@ export function UpcomingMeetingsWidget() {
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [notConnected, setNotConnected] = useState(false);
+  const [domainNotSet, setDomainNotSet] = useState(false);
 
   useEffect(() => {
     loadUpcomingMeetings();
@@ -33,8 +34,20 @@ export function UpcomingMeetingsWidget() {
   const loadUpcomingMeetings = async () => {
     setLoading(true);
     setError(null);
+    setNotConnected(false);
+    setDomainNotSet(false);
 
     try {
+      // First, check if organization domain is set
+      const orgResponse = await fetch('/api/v1/organization');
+      if (orgResponse.ok) {
+        const orgData = await orgResponse.json();
+        if (!orgData.organization?.domain) {
+          setDomainNotSet(true);
+          return;
+        }
+      }
+
       // Fetch next 7 days of external meetings
       const startDate = new Date();
       const endDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -116,6 +129,40 @@ export function UpcomingMeetingsWidget() {
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (domainNotSet) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Upcoming External Meetings
+            </CardTitle>
+            <Link href="/settings/organization">
+              <Settings className="h-5 w-5 text-muted-foreground hover:text-primary transition-colors cursor-pointer" />
+            </Link>
+          </div>
+          <CardDescription>
+            View and manage your external meetings
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Organization domain not configured.</strong> External meetings are detected by comparing attendee email domains with your organization domain.
+            </AlertDescription>
+          </Alert>
+          <div className="mt-4">
+            <Link href="/settings/organization">
+              <Button className="w-full">Configure Organization Domain</Button>
+            </Link>
+          </div>
         </CardContent>
       </Card>
     );
