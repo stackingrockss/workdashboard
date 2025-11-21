@@ -545,7 +545,9 @@ export class GoogleCalendarClient {
       return false;
     }
 
-    const orgDomain = organizationDomain.toLowerCase();
+    // Normalize organization domain by removing common prefixes
+    // e.g., "www.verifiable.com" becomes "verifiable.com"
+    const orgDomain = organizationDomain.toLowerCase().replace(/^www\./, '');
 
     // Filter out current user's email to avoid false negatives
     // (user is always in their own meetings, but that doesn't make them internal)
@@ -561,10 +563,13 @@ export class GoogleCalendarClient {
 
     // Check if any other attendee has a different domain
     const externalAttendees = otherAttendees.filter((email) => {
-      const emailDomain = email.split('@')[1]?.toLowerCase();
-      if (!emailDomain) {
+      const rawEmailDomain = email.split('@')[1]?.toLowerCase();
+      if (!rawEmailDomain) {
         return false;
       }
+
+      // Normalize email domain by removing www. prefix (to match org domain normalization)
+      const emailDomain = rawEmailDomain.replace(/^www\./, '');
 
       // Exact match or subdomain match
       // e.g., "acme.com" matches "acme.com" and "us.acme.com" but not "acme.company.com"

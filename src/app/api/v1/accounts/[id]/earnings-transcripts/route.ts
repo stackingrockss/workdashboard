@@ -5,6 +5,10 @@ import { earningsTranscriptCreateSchema } from "@/lib/validations/earnings-trans
 import { inngest } from "@/lib/inngest/client";
 import { TranscriptProcessingStatus } from "@prisma/client";
 
+// Force dynamic rendering and Node.js runtime
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // GET /api/v1/accounts/[id]/earnings-transcripts - List all earnings transcripts for an account
 export async function GET(
   request: NextRequest,
@@ -61,6 +65,12 @@ export async function GET(
     return NextResponse.json({ transcripts });
   } catch (error) {
     console.error("Error fetching earnings transcripts:", error);
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      type: error?.constructor?.name,
+      accountId: (await params).id,
+    });
 
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -146,14 +156,28 @@ export async function POST(
     });
 
     // Trigger background job to fetch (if needed) and parse transcript
-    await inngest.send({
-      name: "earnings/transcript.process",
-      data: { transcriptId: transcript.id },
-    });
+    try {
+      if (!process.env.INNGEST_EVENT_KEY) {
+        console.warn("INNGEST_EVENT_KEY not configured - background job will not be triggered");
+      }
+      await inngest.send({
+        name: "earnings/transcript.process",
+        data: { transcriptId: transcript.id },
+      });
+    } catch (inngestError) {
+      console.error("Inngest trigger failed:", inngestError);
+      // Continue - transcript is created, job can be triggered manually
+    }
 
     return NextResponse.json({ transcript }, { status: 201 });
   } catch (error) {
     console.error("Error creating earnings transcript:", error);
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+      type: error?.constructor?.name,
+      accountId: (await params).id,
+    });
 
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

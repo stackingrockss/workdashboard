@@ -7,6 +7,9 @@ import { updateCalendarEventSchema } from '@/lib/validations/calendar';
 /**
  * PATCH /api/v1/integrations/google/calendar/events/[eventId]
  * Updates an existing calendar event
+ *
+ * NOTE: Calendar write access is currently disabled. This endpoint will return 403.
+ * Use Google Tasks integration for managing action items instead.
  */
 export async function PATCH(
   req: NextRequest,
@@ -32,6 +35,41 @@ export async function PATCH(
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Check if user has write scope
+    const oauthToken = await prisma.oAuthToken.findUnique({
+      where: {
+        userId_provider: {
+          userId: user.id,
+          provider: 'google',
+        },
+      },
+    });
+
+    if (!oauthToken) {
+      return NextResponse.json(
+        {
+          error: 'Calendar not connected',
+          message: 'Please connect your Google Calendar in Settings.',
+        },
+        { status: 400 }
+      );
+    }
+
+    const hasWriteAccess = oauthToken.scopes.includes(
+      'https://www.googleapis.com/auth/calendar.events'
+    );
+
+    if (!hasWriteAccess) {
+      return NextResponse.json(
+        {
+          error: 'Calendar write access disabled',
+          message:
+            'Calendar is connected in read-only mode. Please use Google Tasks to manage action items instead.',
+        },
+        { status: 403 }
+      );
     }
 
     // Parse and validate request body
@@ -112,6 +150,9 @@ export async function PATCH(
 /**
  * DELETE /api/v1/integrations/google/calendar/events/[eventId]
  * Deletes a calendar event
+ *
+ * NOTE: Calendar write access is currently disabled. This endpoint will return 403.
+ * Use Google Tasks integration for managing action items instead.
  */
 export async function DELETE(
   req: NextRequest,
@@ -137,6 +178,41 @@ export async function DELETE(
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Check if user has write scope
+    const oauthToken = await prisma.oAuthToken.findUnique({
+      where: {
+        userId_provider: {
+          userId: user.id,
+          provider: 'google',
+        },
+      },
+    });
+
+    if (!oauthToken) {
+      return NextResponse.json(
+        {
+          error: 'Calendar not connected',
+          message: 'Please connect your Google Calendar in Settings.',
+        },
+        { status: 400 }
+      );
+    }
+
+    const hasWriteAccess = oauthToken.scopes.includes(
+      'https://www.googleapis.com/auth/calendar.events'
+    );
+
+    if (!hasWriteAccess) {
+      return NextResponse.json(
+        {
+          error: 'Calendar write access disabled',
+          message:
+            'Calendar is connected in read-only mode. Please use Google Tasks to manage action items instead.',
+        },
+        { status: 403 }
+      );
     }
 
     // Parse query parameters for sendUpdates option

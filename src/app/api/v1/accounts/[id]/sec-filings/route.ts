@@ -6,6 +6,10 @@ import { getCikFromTicker, getCompanyFilings, getFilingViewerUrl } from "@/lib/i
 import { inngest } from "@/lib/inngest/client";
 import { FilingProcessingStatus } from "@prisma/client";
 
+// Force dynamic rendering and Node.js runtime for JSDOM support
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 // GET /api/v1/accounts/[id]/sec-filings - List all SEC filings for an account
 export async function GET(
   request: NextRequest,
@@ -52,6 +56,12 @@ export async function GET(
     return NextResponse.json({ filings });
   } catch (err) {
     console.error("Error fetching SEC filings:", err);
+    console.error("Error details:", {
+      message: err instanceof Error ? err.message : "Unknown error",
+      stack: err instanceof Error ? err.stack : undefined,
+      type: err?.constructor?.name,
+      accountId: (await params).id,
+    });
 
     if (err instanceof Error && err.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -187,14 +197,28 @@ export async function POST(
     });
 
     // Step 5: Trigger background job to fetch, parse, and summarize
-    await inngest.send({
-      name: "sec/filing.process",
-      data: { filingId: filing.id },
-    });
+    try {
+      if (!process.env.INNGEST_EVENT_KEY) {
+        console.warn("INNGEST_EVENT_KEY not configured - background job will not be triggered");
+      }
+      await inngest.send({
+        name: "sec/filing.process",
+        data: { filingId: filing.id },
+      });
+    } catch (inngestError) {
+      console.error("Inngest trigger failed:", inngestError);
+      // Continue - filing is created, job can be triggered manually
+    }
 
     return NextResponse.json({ filing }, { status: 201 });
   } catch (err) {
     console.error("Error creating SEC filing:", err);
+    console.error("Error details:", {
+      message: err instanceof Error ? err.message : "Unknown error",
+      stack: err instanceof Error ? err.stack : undefined,
+      type: err?.constructor?.name,
+      accountId: (await params).id,
+    });
 
     if (err instanceof Error && err.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

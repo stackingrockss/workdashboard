@@ -188,6 +188,9 @@ export async function GET(req: NextRequest) {
 /**
  * POST /api/v1/integrations/google/calendar/events
  * Creates a new calendar event
+ *
+ * NOTE: Calendar write access is currently disabled. This endpoint will return 403.
+ * Use Google Tasks integration for creating action items instead.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -209,6 +212,43 @@ export async function POST(req: NextRequest) {
 
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Check if user has write scope (calendar.events)
+    // If they only have calendar.readonly, block write operations
+    const oauthToken = await prisma.oAuthToken.findUnique({
+      where: {
+        userId_provider: {
+          userId: user.id,
+          provider: 'google',
+        },
+      },
+    });
+
+    if (!oauthToken) {
+      return NextResponse.json(
+        {
+          error: 'Calendar not connected',
+          message: 'Please connect your Google Calendar in Settings.',
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if user has write permissions
+    const hasWriteAccess = oauthToken.scopes.includes(
+      'https://www.googleapis.com/auth/calendar.events'
+    );
+
+    if (!hasWriteAccess) {
+      return NextResponse.json(
+        {
+          error: 'Calendar write access disabled',
+          message:
+            'Calendar is connected in read-only mode. Please use Google Tasks to create action items instead.',
+        },
+        { status: 403 }
+      );
     }
 
     // Parse and validate request body

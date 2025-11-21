@@ -75,7 +75,8 @@ export async function GET(req: NextRequest) {
 
     // Determine scopes
     const scopes = tokens.scope?.split(' ') || [
-      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/calendar.readonly',
+      'https://www.googleapis.com/auth/tasks',
     ];
 
     // Store or update OAuth token in database

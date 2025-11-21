@@ -48,12 +48,13 @@ export async function GET() {
       redirectUri
     );
 
-    // Generate authorization URL with calendar.events scope (read + write)
+    // Generate authorization URL with calendar.readonly and tasks scopes
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline', // Get refresh token
       prompt: 'consent', // Force consent screen to get refresh token
       scope: [
-        'https://www.googleapis.com/auth/calendar.events', // Read + write calendar events
+        'https://www.googleapis.com/auth/calendar.readonly', // Read-only calendar access
+        'https://www.googleapis.com/auth/tasks', // Full access to Google Tasks
         'https://www.googleapis.com/auth/userinfo.email', // Get user email
       ],
       state: user.id, // Pass database user ID for verification in callback

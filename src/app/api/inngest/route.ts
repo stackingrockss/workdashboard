@@ -7,6 +7,7 @@ import { parseGongTranscriptJob } from "@/lib/inngest/functions/parse-gong-trans
 import { analyzeCallRiskJob } from "@/lib/inngest/functions/analyze-call-risk";
 import { consolidateInsightsJob } from "@/lib/inngest/functions/consolidate-insights";
 import { syncAllCalendarEventsJob } from "@/lib/inngest/functions/sync-calendar-events";
+import { syncAllGoogleTasksJob } from "@/lib/inngest/functions/sync-google-tasks";
 import { processSecFilingJob } from "@/lib/inngest/functions/process-sec-filing";
 import { processEarningsTranscriptJob } from "@/lib/inngest/functions/process-earnings-transcript";
 
@@ -25,6 +26,7 @@ export const { GET, POST, PUT } = serve({
     analyzeCallRiskJob,
     consolidateInsightsJob,
     syncAllCalendarEventsJob,
+    syncAllGoogleTasksJob, // Google Tasks background sync (every 15 minutes)
     processSecFilingJob, // SEC EDGAR 10-K filing processing
     processEarningsTranscriptJob, // Earnings call transcript processing
   ],
