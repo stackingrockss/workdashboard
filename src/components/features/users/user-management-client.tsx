@@ -30,6 +30,7 @@ interface User {
   avatarUrl: string | null;
   role: "ADMIN" | "MANAGER" | "REP" | "VIEWER";
   managerId: string | null;
+  annualQuota: number | null;
   manager: {
     id: string;
     name: string;
