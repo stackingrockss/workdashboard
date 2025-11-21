@@ -129,7 +129,7 @@ export function useComments({
     fetchComments();
 
     // Subscribe to real-time updates
-    const { unsubscribe } = subscribeToComments(
+    const { unsubscribe } = subscribeToComments<Comment, Comment['reactions'][number]>(
       organizationId,
       entityType,
       entityId,
