@@ -1,9 +1,6 @@
 // src/lib/text-selection.ts
 // Utilities for handling text selection and converting to/from selectors
 
-import type { Selector } from "@apache-annotator/selector";
-import { describeTextQuote } from "@apache-annotator/dom";
-
 export interface TextSelection {
   selectionType: "text" | "element";
   anchorSelector: string;
