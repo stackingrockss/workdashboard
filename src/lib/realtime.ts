@@ -55,16 +55,16 @@ export async function broadcastCommentEvent(
 /**
  * Subscribe to comment events for a specific entity
  */
-export function subscribeToComments(
+export function subscribeToComments<TComment = Record<string, unknown>, TReaction = Record<string, unknown>>(
   organizationId: string,
   entityType: string,
   entityId: string,
   callbacks: {
-    onCommentCreated?: (comment: Record<string, unknown>) => void;
-    onCommentUpdated?: (comment: Record<string, unknown>) => void;
+    onCommentCreated?: (comment: TComment) => void;
+    onCommentUpdated?: (comment: TComment) => void;
     onCommentDeleted?: (commentId: string) => void;
     onCommentResolved?: (data: { commentId: string; isResolved: boolean }) => void;
-    onReactionToggled?: (data: { commentId: string; reaction: Record<string, unknown>; action: "added" | "removed" }) => void;
+    onReactionToggled?: (data: { commentId: string; reaction: TReaction; action: "added" | "removed" }) => void;
     onConnected?: () => void;
     onDisconnected?: () => void;
     onError?: (error: Error) => void;
