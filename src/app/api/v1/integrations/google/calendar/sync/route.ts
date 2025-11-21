@@ -89,8 +89,6 @@ export async function POST() {
     // 5b. Then, fetch PAST events (if we have room)
     if (pageCount < maxPagesPerRange) {
       pageToken = undefined;
-      const pastPageCount = 0;
-      const remainingPages = maxPagesPerRange - pageCount;
 
       console.log(`[Calendar Sync] Fetching past events (${pastStartDate.toISOString()} to ${now.toISOString()})`);
 
@@ -206,8 +204,8 @@ export async function POST() {
           notIn: googleEventIds,
         },
         startTime: {
-          gte: startDate,
-          lte: endDate,
+          gte: pastStartDate,
+          lte: futureEndDate,
         },
         createdAt: {
           lt: oneMinuteAgo,
