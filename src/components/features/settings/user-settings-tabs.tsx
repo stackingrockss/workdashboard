@@ -14,6 +14,7 @@ interface UserSettingsTabsProps {
     email: string;
     role: string;
     avatarUrl: string | null;
+    annualQuota: number | null;
   };
 }
 
