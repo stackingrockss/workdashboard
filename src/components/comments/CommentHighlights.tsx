@@ -16,6 +16,7 @@ import {
 interface CommentHighlightsProps {
   entityType: string;
   entityId: string;
+  organizationId: string;
   pageContext?: string;
   enabled?: boolean;
 }
@@ -23,12 +24,14 @@ interface CommentHighlightsProps {
 export function CommentHighlights({
   entityType,
   entityId,
+  organizationId,
   pageContext,
   enabled = true,
 }: CommentHighlightsProps) {
   const { comments, isLoading } = useComments({
     entityType,
     entityId,
+    organizationId,
     pageContext: pageContext || undefined,
     includeResolved: false, // Only show unresolved highlights
     enabled,
