@@ -1,30 +1,27 @@
 import { CalendarEvent } from "@/types/calendar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Calendar, Clock, Users, Video, MapPin, ExternalLink } from "lucide-react";
+import { Calendar, Clock, Users } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
-import Link from "next/link";
 
 interface CalendarEventCardProps {
   event: CalendarEvent;
-  showLinkActions?: boolean;
-  onLink?: (eventId: string, type: "account" | "opportunity", id: string) => void;
 }
 
 /**
- * CalendarEventCard - Displays a single calendar event with key details
+ * CalendarEventCard - Displays a simplified calendar event card
+ *
+ * Shows:
+ * - Meeting title
+ * - External badge (if applicable)
+ * - Date and time with duration
+ * - All attendees
  *
  * Used in:
  * - Dashboard "Upcoming Meetings" widget
  * - Opportunity detail "Related Calendar Events" section
- * - Account detail "Meeting History" section
  */
-export function CalendarEventCard({
-  event,
-  showLinkActions = false,
-  onLink,
-}: CalendarEventCardProps) {
+export function CalendarEventCard({ event }: CalendarEventCardProps) {
   const startTime = new Date(event.startTime);
   const endTime = new Date(event.endTime);
 
@@ -88,73 +85,6 @@ export function CalendarEventCard({
                     ` +${event.attendees.length - 3} more`}
                 </span>
               </div>
-            </div>
-          )}
-
-          {/* Location */}
-          {event.location && (
-            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4" />
-              <span className="line-clamp-1">{event.location}</span>
-            </div>
-          )}
-
-          {/* Meeting URL */}
-          {event.meetingUrl && (
-            <div className="flex items-center gap-1.5">
-              <Video className="h-4 w-4 text-muted-foreground" />
-              <a
-                href={event.meetingUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary hover:underline flex items-center gap-1"
-              >
-                Join Meeting
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            </div>
-          )}
-
-          {/* Description (truncated) */}
-          {event.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {event.description}
-            </p>
-          )}
-
-          {/* Linked Opportunity */}
-          {event.opportunityId && (
-            <div className="pt-2 border-t">
-              <Link
-                href={`/opportunities/${event.opportunityId}`}
-                className="text-sm text-primary hover:underline flex items-center gap-1"
-              >
-                View Linked Opportunity
-                <ExternalLink className="h-3 w-3" />
-              </Link>
-            </div>
-          )}
-
-          {/* Link Actions */}
-          {showLinkActions && !event.opportunityId && onLink && (
-            <div className="pt-2 border-t flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                Link to:
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onLink(event.id, "opportunity", "")}
-              >
-                Opportunity
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onLink(event.id, "account", "")}
-              >
-                Account
-              </Button>
             </div>
           )}
         </div>

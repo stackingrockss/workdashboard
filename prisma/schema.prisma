@@ -217,10 +217,10 @@ model Opportunity {
   gongCalls                  GongCall[]
   googleNotes                GoogleNote[]
   granolaNotes               GranolaNote[]
-  tasks                      Task[]
   account                    Account?                 @relation(fields: [accountId], references: [id])
   organization               Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner                      User                     @relation(fields: [ownerId], references: [id])
+  tasks                      Task[]
 
   @@index([organizationId])
   @@index([ownerId])
@@ -240,6 +240,8 @@ model Organization {
   createdAt            DateTime                 @default(now())
   updatedAt            DateTime                 @updatedAt
   accounts             Account[]
+  comments             Comment[]
+  commentMentions      CommentMention[]
   earningsTranscripts  EarningsCallTranscript[]
   invitations          Invitation[]
   kanbanViews          KanbanView[]
@@ -247,8 +249,6 @@ model Organization {
   settings             OrganizationSettings?
   secFilings           SecFiling[]
   users                User[]
-  comments             Comment[]
-  commentMentions      CommentMention[]
 
   @@schema("opportunity_tracker")
 }
@@ -268,32 +268,32 @@ model OrganizationSettings {
 }
 
 model User {
-  id               String             @id @default(cuid())
-  email            String             @unique
+  id               String            @id @default(cuid())
+  email            String            @unique
   name             String?
   avatarUrl        String?
-  createdAt        DateTime           @default(now())
-  supabaseId       String?            @unique
+  createdAt        DateTime          @default(now())
+  supabaseId       String?           @unique
   managerId        String?
   organizationId   String?
-  role             UserRole           @default(REP)
+  role             UserRole          @default(REP)
   annualQuota      Int?
-  ownedAccounts    Account[]          @relation("AccountOwner")
+  ownedAccounts    Account[]         @relation("AccountOwner")
   calendarEvents   CalendarEvent[]
   chatMessages     ChatMessage[]
+  authoredComments Comment[]         @relation("AuthoredComments")
+  resolvedComments Comment[]         @relation("ResolvedComments")
+  mentions         CommentMention[]  @relation("UserMentions")
+  reactions        CommentReaction[] @relation("UserReactions")
   invitations      Invitation[]
   kanbanViews      KanbanView[]
   oauthTokens      OAuthToken[]
   opportunities    Opportunity[]
-  taskLists        TaskList[]
   tasks            Task[]
-  manager          User?              @relation("ManagerReps", fields: [managerId], references: [id])
-  directReports    User[]             @relation("ManagerReps")
-  organization     Organization?      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  authoredComments Comment[]          @relation("AuthoredComments")
-  resolvedComments Comment[]          @relation("ResolvedComments")
-  mentions         CommentMention[]   @relation("UserMentions")
-  reactions        CommentReaction[]  @relation("UserReactions")
+  taskLists        TaskList[]
+  manager          User?             @relation("ManagerReps", fields: [managerId], references: [id])
+  directReports    User[]            @relation("ManagerReps")
+  organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([managerId])
@@ -353,8 +353,8 @@ model TaskList {
   title        String
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   tasks        Task[]
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, googleListId])
   @@index([userId])
@@ -375,9 +375,9 @@ model Task {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   completedAt   DateTime?
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
   taskList      TaskList     @relation(fields: [taskListId], references: [id], onDelete: Cascade)
-  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, googleTaskId])
   @@index([userId, status])
@@ -463,8 +463,8 @@ model ChatMessage {
   content       String
   contextSize   Int?
   createdAt     DateTime     @default(now())
-  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   account       Account?     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
@@ -475,37 +475,31 @@ model ChatMessage {
 }
 
 model Comment {
-  id             String             @id @default(cuid())
-  content        String             // Comment text (supports markdown)
+  id             String            @id @default(cuid())
+  content        String
   authorId       String
   organizationId String
-  // Polymorphic entity reference (can attach to any entity)
-  entityType     String             // "opportunity", "account", "contact", etc.
+  entityType     String
   entityId       String
-  pageContext    String?            // URL path for context (e.g., "/opportunities/abc123")
-  // Text selection anchoring (Google Docs-style)
-  selectionType  String?            // "text" | "element" | null (null = general comment)
-  anchorSelector String?            // CSS selector for start element
-  anchorOffset   Int?               // Character offset in start element
-  focusSelector  String?            // CSS selector for end element
-  focusOffset    Int?               // Character offset in end element
-  selectedText   String?            // Snapshot of highlighted text
-  // Status
-  isResolved     Boolean            @default(false)
+  pageContext    String?
+  selectionType  String?
+  anchorSelector String?
+  anchorOffset   Int?
+  focusSelector  String?
+  focusOffset    Int?
+  selectedText   String?
+  isResolved     Boolean           @default(false)
   resolvedAt     DateTime?
   resolvedById   String?
-  // Threading (flat replies - one level only)
   parentId       String?
-  // Metadata
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  editedAt       DateTime?          // Track when last edited
-  // Relations
-  author         User               @relation("AuthoredComments", fields: [authorId], references: [id])
-  organization   Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  parent         Comment?           @relation("CommentReplies", fields: [parentId], references: [id])
-  replies        Comment[]          @relation("CommentReplies")
-  resolvedBy     User?              @relation("ResolvedComments", fields: [resolvedById], references: [id])
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  editedAt       DateTime?
+  author         User              @relation("AuthoredComments", fields: [authorId], references: [id])
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent         Comment?          @relation("CommentReplies", fields: [parentId], references: [id])
+  replies        Comment[]         @relation("CommentReplies")
+  resolvedBy     User?             @relation("ResolvedComments", fields: [resolvedById], references: [id])
   mentions       CommentMention[]
   reactions      CommentReaction[]
 
@@ -521,14 +515,14 @@ model Comment {
 model CommentMention {
   id             String       @id @default(cuid())
   commentId      String
-  userId         String       // User who was mentioned
+  userId         String
   organizationId String
   notified       Boolean      @default(false)
   notifiedAt     DateTime?
   createdAt      DateTime     @default(now())
   comment        Comment      @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user           User         @relation("UserMentions", fields: [userId], references: [id])
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation("UserMentions", fields: [userId], references: [id])
 
   @@unique([commentId, userId])
   @@index([userId])
@@ -541,12 +535,12 @@ model CommentReaction {
   id        String   @id @default(cuid())
   commentId String
   userId    String
-  emoji     String   // Store as Unicode: "👍", "❤️", "🎉"
+  emoji     String
   createdAt DateTime @default(now())
   comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
   user      User     @relation("UserReactions", fields: [userId], references: [id])
 
-  @@unique([commentId, userId, emoji]) // One reaction per user per emoji
+  @@unique([commentId, userId, emoji])
   @@index([commentId])
   @@index([userId])
   @@schema("opportunity_tracker")
