@@ -1,4 +1,4 @@
-import { JSDOM } from "jsdom";
+import * as cheerio from "cheerio";
 
 const SEC_USER_AGENT =
   process.env.SEC_USER_AGENT || "SalesTracker admin@example.com";
@@ -204,8 +204,9 @@ export interface FilingSections {
  */
 export function extractFilingSections(htmlContent: string): FilingSections {
   try {
-    const dom = new JSDOM(htmlContent);
-    const fullText = dom.window.document.body.textContent || "";
+    // Load HTML content with cheerio (ESM-compatible, serverless-friendly)
+    const $ = cheerio.load(htmlContent);
+    const fullText = $("body").text() || "";
 
     // Extract sections based on common item markers in 10-K filings
     const businessSection = extractSection(
