@@ -40,4 +40,6 @@ export interface GongCall {
   // Background processing status
   parsingStatus?: ParsingStatus | null;
   parsingError?: string | null;
+  // Calendar event association
+  calendarEventId?: string | null;
 }

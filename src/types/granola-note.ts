@@ -9,4 +9,6 @@ export interface GranolaNote {
   noteType: NoteType;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
+  // Calendar event association
+  calendarEventId?: string | null;
 }

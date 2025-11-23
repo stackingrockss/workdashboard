@@ -1,3 +1,6 @@
+import type { GongCall } from './gong-call';
+import type { GranolaNote } from './granola-note';
+
 export interface CalendarEvent {
   id: string;
   summary: string;
@@ -11,6 +14,9 @@ export interface CalendarEvent {
   meetingUrl?: string | null;
   opportunityId?: string | null;
   accountId?: string | null;
+  // Associated notes (populated when fetching with opportunity context)
+  gongCalls?: GongCall[];
+  granolaNotes?: GranolaNote[];
 }
 
 export interface CalendarEventFilter {

@@ -79,7 +79,7 @@ export async function POST(
       );
     }
 
-    // Create the call with optional transcript
+    // Create the call with optional transcript and calendar event association
     const call = await prisma.gongCall.create({
       data: {
         opportunityId: id,
@@ -89,6 +89,7 @@ export async function POST(
         noteType: parsed.data.noteType,
         transcriptText: parsed.data.transcriptText,
         parsingStatus: parsed.data.transcriptText ? "parsing" : null,
+        calendarEventId: parsed.data.calendarEventId,
       },
     });
 

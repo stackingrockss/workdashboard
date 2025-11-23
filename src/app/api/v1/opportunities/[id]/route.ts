@@ -80,6 +80,16 @@ export async function PATCH(
     // If account name is provided instead of accountId, find or create the account
     let accountId = data.accountId;
     if (data.account && !accountId) {
+      // First check if account exists to determine update strategy
+      const existingAccount = await prisma.account.findUnique({
+        where: {
+          organizationId_name: {
+            organizationId: user.organization.id,
+            name: data.account,
+          },
+        },
+      });
+
       const account = await prisma.account.upsert({
         where: {
           organizationId_name: {
@@ -87,9 +97,16 @@ export async function PATCH(
             name: data.account,
           },
         },
-        update: {},
+        update: {
+          // Only update website if provided
+          ...(data.accountWebsite ? { website: data.accountWebsite } : {}),
+          // Only update ticker if it's currently empty (prevent overwriting existing ticker)
+          ...(data.accountTicker && !existingAccount?.ticker ? { ticker: data.accountTicker } : {}),
+        },
         create: {
           name: data.account,
+          website: data.accountWebsite ?? undefined,
+          ticker: data.accountTicker ?? undefined,
           organizationId: user.organization.id,
           ownerId: user.id,
           priority: "medium",

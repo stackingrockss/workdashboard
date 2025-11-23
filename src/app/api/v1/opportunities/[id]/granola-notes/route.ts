@@ -47,6 +47,8 @@ export async function POST(
         title: parsed.data.title,
         url: parsed.data.url,
         meetingDate: new Date(parsed.data.meetingDate),
+        noteType: parsed.data.noteType,
+        calendarEventId: parsed.data.calendarEventId,
       },
     });
 

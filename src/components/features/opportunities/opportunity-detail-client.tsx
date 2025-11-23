@@ -96,8 +96,12 @@ export function OpportunityDetailClient({ opportunity, organizationId }: Opportu
   const [isGeneratingResearch, setIsGeneratingResearch] = useState(false);
   const [researchStatus, setResearchStatus] = useState(opportunity.accountResearchStatus);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
+  const [allGongCalls, setAllGongCalls] = useState<GongCall[]>(opportunity.gongCalls || []);
+  const [allGranolaNotes, setAllGranolaNotes] = useState<GranolaNote[]>(opportunity.granolaNotes || []);
+  const [loadingCalendar, setLoadingCalendar] = useState(true);
   const router = useRouter();
-  const { setEntityContext } = useCommentSidebar();
+  const { setEntityContext} = useCommentSidebar();
 
   // Enable comment system
   useTextSelection({
@@ -712,6 +716,7 @@ export function OpportunityDetailClient({ opportunity, organizationId }: Opportu
             initialData={{
               name: opportunity.name,
               account: opportunity.account?.name || opportunity.accountName,
+              accountTicker: opportunity.account?.ticker,
               amountArr: opportunity.amountArr,
               confidenceLevel: opportunity.confidenceLevel,
               nextStep: opportunity.nextStep,

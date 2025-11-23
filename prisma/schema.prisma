@@ -64,27 +64,30 @@ model Contact {
 }
 
 model GongCall {
-  id             String         @id @default(cuid())
-  opportunityId  String
-  title          String
-  url            String
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  meetingDate    DateTime
-  noteType       NoteType?      @default(customer)
-  goals          Json?
-  nextSteps      Json?
-  painPoints     Json?
-  parsedAt       DateTime?
-  parsedPeople   Json?
-  transcriptText String?
-  parsingError   String?
-  parsingStatus  ParsingStatus?
-  riskAssessment Json?
-  opportunity    Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  id              String         @id @default(cuid())
+  opportunityId   String
+  title           String
+  url             String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  meetingDate     DateTime
+  noteType        NoteType?      @default(customer)
+  goals           Json?
+  nextSteps       Json?
+  painPoints      Json?
+  parsedAt        DateTime?
+  parsedPeople    Json?
+  transcriptText  String?
+  parsingError    String?
+  parsingStatus   ParsingStatus?
+  riskAssessment  Json?
+  calendarEventId String?
+  calendarEvent   CalendarEvent? @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
+  opportunity     Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
   @@index([parsingStatus])
+  @@index([calendarEventId])
   @@schema("opportunity_tracker")
 }
 
@@ -102,17 +105,20 @@ model GoogleNote {
 }
 
 model GranolaNote {
-  id            String      @id @default(cuid())
-  opportunityId String
-  title         String
-  url           String
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  meetingDate   DateTime
-  noteType      NoteType?   @default(customer)
-  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  id              String         @id @default(cuid())
+  opportunityId   String
+  title           String
+  url             String
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  meetingDate     DateTime
+  noteType        NoteType?      @default(customer)
+  calendarEventId String?
+  calendarEvent   CalendarEvent? @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
+  opportunity     Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
+  @@index([calendarEventId])
   @@schema("opportunity_tracker")
 }
 
@@ -319,7 +325,7 @@ model OAuthToken {
 }
 
 model CalendarEvent {
-  id             String       @id @default(cuid())
+  id             String         @id @default(cuid())
   userId         String
   googleEventId  String
   summary        String
@@ -333,11 +339,13 @@ model CalendarEvent {
   meetingUrl     String?
   opportunityId  String?
   accountId      String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  account        Account?     @relation(fields: [accountId], references: [id])
-  opportunity    Opportunity? @relation(fields: [opportunityId], references: [id])
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  account        Account?       @relation(fields: [accountId], references: [id])
+  gongCalls      GongCall[]
+  granolaNotes   GranolaNote[]
+  opportunity    Opportunity?   @relation(fields: [opportunityId], references: [id])
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, googleEventId])
   @@index([userId, startTime])

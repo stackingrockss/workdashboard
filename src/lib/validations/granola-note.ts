@@ -7,6 +7,7 @@ export const granolaCreateSchema = z.object({
   noteType: z.enum(["customer", "internal", "prospect"], {
     required_error: "Note type is required",
   }).default("customer"),
+  calendarEventId: z.string().optional(),
 });
 
 export const granolaUpdateSchema = granolaCreateSchema.partial();
