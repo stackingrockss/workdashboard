@@ -9,7 +9,7 @@ import {
   commentQuerySchema,
   type CommentCreateInput,
 } from "@/lib/validations/comment";
-import { broadcastCommentEvent } from "@/lib/realtime";
+import { broadcastCommentEvent, broadcastNotificationEvent } from "@/lib/realtime";
 
 // GET /api/v1/comments?entityType=opportunity&entityId=abc123
 export async function GET(request: NextRequest) {
@@ -330,6 +330,19 @@ export async function POST(request: NextRequest) {
         payload: { comment },
       }
     );
+
+    // Broadcast notification to each mentioned user
+    if (comment.mentions && comment.mentions.length > 0) {
+      for (const mention of comment.mentions) {
+        await broadcastNotificationEvent(mention.userId, {
+          type: "mention:created",
+          payload: {
+            mentionId: mention.id,
+            commentId: comment.id,
+          },
+        });
+      }
+    }
 
     return NextResponse.json({ comment }, { status: 201 });
   } catch (error) {

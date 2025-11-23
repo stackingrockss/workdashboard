@@ -23,6 +23,11 @@ import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 import { GranolaNotesSection } from "./granola-notes-section";
 import { GongCallsSection } from "./gong-calls-section";
 import { GoogleNotesSection } from "./google-notes-section";
+import { MeetingEventCard } from "@/components/calendar/meeting-event-card";
+import { OrphanedNotesSection } from "@/components/calendar/orphaned-notes-section";
+import type { CalendarEvent } from "@/types/calendar";
+import type { GongCall } from "@/types/gong-call";
+import type { GranolaNote } from "@/types/granola-note";
 import { OrgChartSection } from "@/components/contacts/OrgChartSection";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -176,6 +181,43 @@ export function OpportunityDetailClient({ opportunity, organizationId }: Opportu
     };
     loadContacts();
   }, [opportunity.id]);
+
+  // Load external calendar events for this opportunity
+  useEffect(() => {
+    const loadCalendarEvents = async () => {
+      setLoadingCalendar(true);
+      try {
+        // Fetch external meetings for this opportunity (90 days past to 90 days future)
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 90);
+        const endDate = new Date();
+        endDate.setDate(endDate.getDate() + 90);
+
+        const response = await fetch(
+          `/api/v1/integrations/google/calendar/events?opportunityId=${opportunity.id}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&externalOnly=true`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setCalendarEvents(data.events || []);
+        }
+      } catch (error) {
+        console.error("Failed to load calendar events:", error);
+      } finally {
+        setLoadingCalendar(false);
+      }
+    };
+
+    loadCalendarEvents();
+  }, [opportunity.id]);
+
+  // Function to refresh all data after changes
+  const handleRefreshMeetingsData = () => {
+    router.refresh();
+    // Reload Gong calls and Granola notes from opportunity
+    setAllGongCalls(opportunity.gongCalls || []);
+    setAllGranolaNotes(opportunity.granolaNotes || []);
+  };
 
   const handleUpdateOpportunity = async (data: OpportunityUpdateInput) => {
     try {
@@ -575,32 +617,71 @@ export function OpportunityDetailClient({ opportunity, organizationId }: Opportu
 
         {/* Meetings & Calls Tab */}
         <TabsContent value="meetings" className="space-y-6 mt-4">
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <GranolaNotesSection
-              opportunityId={opportunity.id}
-              notes={opportunity.granolaNotes || []}
-            />
-            <GongCallsSection
-              opportunityId={opportunity.id}
-              calls={opportunity.gongCalls || []}
-              consolidatedPainPoints={opportunity.consolidatedPainPoints as string[] | null | undefined}
-              consolidatedGoals={opportunity.consolidatedGoals as string[] | null | undefined}
-              consolidatedRiskAssessment={opportunity.consolidatedRiskAssessment}
-              lastConsolidatedAt={opportunity.lastConsolidatedAt}
-              consolidationCallCount={opportunity.consolidationCallCount}
-              consolidationStatus={opportunity.consolidationStatus}
-            />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">External Meetings & Notes</h3>
+              <p className="text-sm text-muted-foreground">
+                Calendar events with attached Gong and Granola notes
+              </p>
+            </div>
+
+            {loadingCalendar ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="text-sm text-muted-foreground">Loading calendar events...</div>
+              </div>
+            ) : calendarEvents.length === 0 ? (
+              <Card className="p-6">
+                <p className="text-sm text-muted-foreground text-center">
+                  No external meetings found. Connect Google Calendar or link this opportunity to an account.
+                </p>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {calendarEvents
+                  .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
+                  .slice(0, 10) // Show last 10 meetings
+                  .map((event, index) => {
+                    // Find Gong calls and Granola notes linked to this event
+                    const linkedGongCalls = allGongCalls.filter(call => call.calendarEventId === event.id);
+                    const linkedGranolaNotes = allGranolaNotes.filter(note => note.calendarEventId === event.id);
+
+                    return (
+                      <MeetingEventCard
+                        key={event.id}
+                        event={event}
+                        gongCalls={linkedGongCalls}
+                        granolaNotes={linkedGranolaNotes}
+                        opportunityId={opportunity.id}
+                        onRefresh={handleRefreshMeetingsData}
+                        defaultExpanded={index < 3} // Expand first 3 by default
+                      />
+                    );
+                  })}
+              </div>
+            )}
+          </div>
+
+          <Separator className="my-6" />
+
+          {/* Orphaned Notes Section */}
+          <OrphanedNotesSection
+            orphanedGongCalls={allGongCalls.filter(call => !call.calendarEventId)}
+            orphanedGranolaNotes={allGranolaNotes.filter(note => !note.calendarEventId)}
+            calendarEvents={calendarEvents}
+            opportunityId={opportunity.id}
+            onRefresh={handleRefreshMeetingsData}
+          />
+
+          <Separator className="my-6" />
+
+          {/* Google Notes Section (kept as-is at bottom) */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Google Notes</h3>
             <GoogleNotesSection
               opportunityId={opportunity.id}
               notes={opportunity.googleNotes || []}
             />
           </div>
-
-          {/* Calendar Events Section */}
-          <RelatedEventsSection
-            opportunityId={opportunity.id}
-            accountId={opportunity.accountId}
-          />
         </TabsContent>
 
         {/* Account Intel Tab */}

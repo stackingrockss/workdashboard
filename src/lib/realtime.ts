@@ -24,7 +24,7 @@ export async function broadcastCommentEvent(
   entityType: string,
   entityId: string,
   event: {
-    type: "comment:created" | "comment:updated" | "comment:deleted" | "comment:resolved" | "reaction:toggled";
+    type: "comment:created" | "comment:updated" | "comment:deleted" | "comment:resolved" | "reaction:toggled" | "mention:created";
     payload: Record<string, unknown>;
   }
 ): Promise<void> {
@@ -50,6 +50,96 @@ export async function broadcastCommentEvent(
     console.error("[Realtime] Broadcast error:", error);
     // Don't throw - broadcasting is best-effort
   }
+}
+
+/**
+ * Create a channel name for user notifications
+ * Format: notifications:user-{userId}
+ */
+export function getNotificationChannelName(userId: string): string {
+  return `notifications:user-${userId}`;
+}
+
+/**
+ * Broadcast a notification event to a specific user
+ */
+export async function broadcastNotificationEvent(
+  userId: string,
+  event: {
+    type: "mention:created";
+    payload: Record<string, unknown>;
+  }
+): Promise<void> {
+  const supabase = createClient();
+  const channelName = getNotificationChannelName(userId);
+
+  try {
+    const channel = supabase.channel(channelName);
+
+    await channel.send({
+      type: "broadcast",
+      event: event.type,
+      payload: {
+        ...event.payload,
+        userId, // Include for verification
+        timestamp: new Date().toISOString(),
+      },
+    });
+
+    // Don't need to keep channel open on server side
+    await supabase.removeChannel(channel);
+  } catch (error) {
+    console.error("[Realtime] Notification broadcast error:", error);
+    // Don't throw - broadcasting is best-effort
+  }
+}
+
+/**
+ * Subscribe to notification events for current user
+ */
+export function subscribeToNotifications(
+  userId: string,
+  callbacks: {
+    onMentionCreated?: (data: { mentionId: string; commentId: string }) => void;
+    onConnected?: () => void;
+    onDisconnected?: () => void;
+    onError?: (error: Error) => void;
+  }
+): { channel: RealtimeChannel; unsubscribe: () => void } {
+  const supabase = createClient();
+  const channelName = getNotificationChannelName(userId);
+
+  const channel = supabase.channel(channelName);
+
+  // Subscribe to mention events
+  channel
+    .on("broadcast", { event: "mention:created" }, ({ payload }) => {
+      // Verify userId matches (defense in depth)
+      if (payload.userId === userId && callbacks.onMentionCreated) {
+        callbacks.onMentionCreated({
+          mentionId: payload.mentionId,
+          commentId: payload.commentId,
+        });
+      }
+    })
+    .subscribe((status) => {
+      if (status === "SUBSCRIBED" && callbacks.onConnected) {
+        callbacks.onConnected();
+      } else if (status === "CHANNEL_ERROR" && callbacks.onError) {
+        callbacks.onError(new Error("Channel subscription failed"));
+      } else if (status === "TIMED_OUT" && callbacks.onError) {
+        callbacks.onError(new Error("Channel subscription timed out"));
+      } else if (status === "CLOSED" && callbacks.onDisconnected) {
+        callbacks.onDisconnected();
+      }
+    });
+
+  return {
+    channel,
+    unsubscribe: () => {
+      supabase.removeChannel(channel);
+    },
+  };
 }
 
 /**

@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { MainNav } from "@/components/navigation/MainNav";
 import { UserMenu } from "@/components/navigation/UserMenu";
+import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import { CommentSidebarProvider } from "@/components/comments/CommentSidebarContext";
 import { CommentSidebarWrapper } from "@/components/comments/CommentSidebarWrapper";
 import "./globals.css";
@@ -37,7 +38,10 @@ export default function RootLayout({
               <Link href="/" className="font-semibold text-lg">Opportunity Tracker</Link>
               <div className="flex items-center gap-6">
                 <MainNav />
-                <UserMenu />
+                <div className="flex items-center gap-2">
+                  <NotificationDropdown />
+                  <UserMenu />
+                </div>
               </div>
             </div>
           </header>

@@ -89,7 +89,7 @@ export function MeetingEventCard({
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="h-3 w-3 flex-shrink-0" />
               <span>
-                {formatDateShort(new Date(event.startTime))} at{" "}
+                {formatDateShort(typeof event.startTime === 'string' ? event.startTime : event.startTime.toISOString())} at{" "}
                 {formatEventTime(event.startTime, event.endTime)}
               </span>
             </div>
