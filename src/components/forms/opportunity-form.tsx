@@ -7,6 +7,20 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Badge } from "@/components/ui/badge";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -18,6 +32,8 @@ import { OpportunityStage, OpportunityOwner, ForecastCategory, getDefaultConfide
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
 import { getUsers } from "@/lib/api/users";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
+import { Check, ChevronsUpDown, Loader2, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface OpportunityFormProps {
   onSubmit: (data: OpportunityCreateInput) => Promise<void>;
@@ -57,6 +73,7 @@ export function OpportunityForm({
   const [formData, setFormData] = useState<OpportunityCreateInput>({
     name: initialData?.name || "",
     account: initialData?.account || "",
+    accountTicker: initialData?.accountTicker || "",
     accountWebsite: initialData?.accountWebsite || "",
     amountArr: initialData?.amountArr || 0,
     confidenceLevel: initialData?.confidenceLevel || getDefaultConfidenceLevel("discovery"),
@@ -71,6 +88,12 @@ export function OpportunityForm({
     securityReviewStatus: initialData?.securityReviewStatus || "not_started",
     businessCaseStatus: initialData?.businessCaseStatus || "not_started",
   });
+
+  // Company autocomplete state
+  const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [companies, setCompanies] = useState<Array<{ cik: string; ticker: string; name: string }>>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Load fiscal year settings from organization
   useEffect(() => {
@@ -119,6 +142,32 @@ export function OpportunityForm({
     }
   }, [formData.closeDate, fiscalYearStartMonth]);
 
+  // Debounced company search
+  useEffect(() => {
+    const searchCompanies = async () => {
+      if (searchQuery.trim().length < 2) {
+        setCompanies([]);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const response = await fetch(`/api/v1/sec/search-companies?q=${encodeURIComponent(searchQuery)}`);
+        if (response.ok) {
+          const data = await response.json();
+          setCompanies(data.companies || []);
+        }
+      } catch (error) {
+        console.error("Error searching companies:", error);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const timeoutId = setTimeout(searchCompanies, 300); // 300ms debounce
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -161,13 +210,90 @@ export function OpportunityForm({
 
       <div className="space-y-2">
         <Label htmlFor="account">Account *</Label>
-        <Input
-          id="account"
-          value={formData.account}
-          onChange={(e) => setFormData({ ...formData, account: e.target.value })}
-          required
-          placeholder="e.g. Acme Corp"
-        />
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              role="combobox"
+              aria-expanded={open}
+              className="w-full justify-between"
+            >
+              {formData.account || "Search public companies..."}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[400px] p-0">
+            <Command>
+              <CommandInput
+                placeholder="Type company name..."
+                value={searchQuery}
+                onValueChange={setSearchQuery}
+              />
+              <CommandList>
+                <CommandEmpty>
+                  {isSearching ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="ml-2">Searching...</span>
+                    </div>
+                  ) : searchQuery.trim().length < 2 ? (
+                    "Type at least 2 characters to search"
+                  ) : (
+                    "No public companies found"
+                  )}
+                </CommandEmpty>
+                <CommandGroup>
+                  {companies.map((company) => (
+                    <CommandItem
+                      key={company.cik}
+                      value={company.name}
+                      onSelect={() => {
+                        setFormData({
+                          ...formData,
+                          account: company.name,
+                          accountTicker: company.ticker,
+                        });
+                        setOpen(false);
+                        setSearchQuery("");
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          formData.account === company.name
+                            ? "opacity-100"
+                            : "opacity-0"
+                        )}
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-medium">{company.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {company.ticker}
+                        </span>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+
+        {formData.accountTicker && (
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="gap-1">
+              Stock Ticker: {formData.accountTicker}
+              <X
+                className="h-3 w-3 cursor-pointer"
+                onClick={() => setFormData({ ...formData, accountTicker: "" })}
+              />
+            </Badge>
+          </div>
+        )}
+
+        <p className="text-xs text-muted-foreground">
+          Search for a public company or type manually for private companies
+        </p>
       </div>
 
       <div className="space-y-2">

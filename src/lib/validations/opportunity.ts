@@ -27,6 +27,7 @@ const baseOpportunitySchema = z.object({
   // Support both old account field and new accountId for backward compatibility
   account: z.string().min(1).max(120).optional(),
   accountId: z.string().optional(),
+  accountTicker: z.string().max(10).optional().transform(val => val?.trim().toUpperCase() || undefined),
   accountWebsite: z
     .string()
     .optional()

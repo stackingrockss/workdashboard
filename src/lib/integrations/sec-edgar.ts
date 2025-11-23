@@ -60,6 +60,15 @@ interface CompanyTickersData {
 /**
  * Fetch company CIK from ticker symbol
  */
+export interface CompanyMatch {
+  cik: string;
+  ticker: string;
+  name: string;
+}
+
+/**
+ * Fetch company CIK from ticker symbol
+ */
 export async function getCikFromTicker(ticker: string): Promise<string> {
   return rateLimiter.schedule(async () => {
     const response = await fetch(
@@ -86,6 +95,48 @@ export async function getCikFromTicker(ticker: string): Promise<string> {
 
     // Pad CIK to 10 digits
     return String(company.cik_str).padStart(10, "0");
+  });
+}
+
+/**
+ * Search companies by name
+ * Returns top 10 matches from SEC database
+ */
+export async function searchCompaniesByName(query: string): Promise<CompanyMatch[]> {
+  return rateLimiter.schedule(async () => {
+    const response = await fetch(
+      `${SEC_DATA_URL}/files/company_tickers.json`,
+      {
+        headers: { "User-Agent": SEC_USER_AGENT },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`SEC API error: ${response.status}`);
+    }
+
+    const data: CompanyTickersData = await response.json();
+    const queryLower = query.toLowerCase();
+
+    // Filter and sort companies by name match
+    const matches = Object.values(data)
+      .filter((c) => c.title.toLowerCase().includes(queryLower))
+      .sort((a, b) => {
+        // Prioritize matches at start of name
+        const aIndex = a.title.toLowerCase().indexOf(queryLower);
+        const bIndex = b.title.toLowerCase().indexOf(queryLower);
+        if (aIndex !== bIndex) return aIndex - bIndex;
+        // Then by length (shorter names first)
+        return a.title.length - b.title.length;
+      })
+      .slice(0, 10) // Top 10 matches
+      .map((c) => ({
+        cik: String(c.cik_str).padStart(10, "0"),
+        ticker: c.ticker,
+        name: c.title,
+      }));
+
+    return matches;
   });
 }
 

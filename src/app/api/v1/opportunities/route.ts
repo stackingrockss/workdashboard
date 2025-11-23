@@ -61,12 +61,14 @@ export async function POST(req: NextRequest) {
           },
         },
         update: {
-          // Bidirectional sync: if website is provided, update the account
+          // Bidirectional sync: if website or ticker is provided, update the account
           ...(data.accountWebsite ? { website: data.accountWebsite } : {}),
+          ...(data.accountTicker ? { ticker: data.accountTicker } : {}),
         },
         create: {
           name: data.account,
           website: data.accountWebsite ?? undefined,
+          ticker: data.accountTicker ?? undefined,
           organizationId: user.organization.id,
           ownerId: user.id,
           priority: "medium",

@@ -6,6 +6,7 @@ import { formatCurrency, formatCurrencyCompact } from "@/lib/format";
 import { TrendingUp, Target, DollarSign, Award } from "lucide-react";
 import Link from "next/link";
 import { UpcomingMeetingsWidget } from "@/components/calendar/upcoming-meetings-widget";
+import { UpcomingTasksWidget } from "@/components/tasks/upcoming-tasks-widget";
 
 export const dynamic = "force-dynamic";
 
@@ -112,8 +113,11 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Upcoming External Meetings */}
-      <UpcomingMeetingsWidget />
+      {/* Time-sensitive widgets: Meetings and Tasks */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <UpcomingMeetingsWidget />
+        <UpcomingTasksWidget />
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* By Quarter */}

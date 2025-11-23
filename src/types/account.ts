@@ -8,6 +8,8 @@ export interface Account {
   priority: AccountPriority;
   health: AccountHealth;
   notes?: string;
+  website?: string;
+  ticker?: string;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }
