@@ -46,7 +46,7 @@ export function EarningsTranscriptCard({
   onDelete,
   onLinkToOpportunity,
 }: EarningsTranscriptCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const [isCopying, setIsCopying] = useState(false);
 
   const copyToClipboard = async (text: string, label: string) => {
@@ -265,13 +265,26 @@ ${transcript.competitiveLandscape}
 
             {transcript.processingStatus === "completed" && (
               <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <ChevronDown
-                      className={`h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-                    />
-                  </Button>
-                </CollapsibleTrigger>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <CollapsibleTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-2 hover:bg-muted/70 transition-all"
+                        >
+                          <ChevronDown
+                            className={`h-5 w-5 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`}
+                          />
+                        </Button>
+                      </CollapsibleTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{isExpanded ? "Collapse details" : "Expand details"}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </Collapsible>
             )}
           </div>

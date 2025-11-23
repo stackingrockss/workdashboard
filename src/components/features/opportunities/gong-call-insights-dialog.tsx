@@ -35,6 +35,7 @@ import {
   Check,
   UserPlus,
   ShieldAlert,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -47,6 +48,7 @@ interface GongCallInsightsDialogProps {
   onOpenChange: (open: boolean) => void;
   gongCallTitle: string;
   opportunityId: string;
+  gongCallId: string; // Add gongCallId for triggering risk analysis
   insights: {
     painPoints: string[];
     goals: string[];
@@ -56,6 +58,7 @@ interface GongCallInsightsDialogProps {
   riskAssessment?: RiskAssessment | null;
   onContactsImported?: () => void;
   autoOpenContactImport?: boolean; // If true, opens ContactImportReview immediately
+  onRiskAnalysisComplete?: () => void; // Callback when risk analysis completes
 }
 
 // ============================================================================
@@ -67,13 +70,16 @@ export function GongCallInsightsDialog({
   onOpenChange,
   gongCallTitle,
   opportunityId,
+  gongCallId,
   insights,
   riskAssessment,
   onContactsImported,
   autoOpenContactImport = false,
+  onRiskAnalysisComplete,
 }: GongCallInsightsDialogProps) {
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [showContactImport, setShowContactImport] = useState(autoOpenContactImport);
+  const [isTriggeringRiskAnalysis, setIsTriggeringRiskAnalysis] = useState(false);
 
   // Auto-open contact import if requested and there are contacts
   useEffect(() => {
@@ -104,6 +110,29 @@ export function GongCallInsightsDialog({
   const handleImportComplete = () => {
     setShowContactImport(false);
     onContactsImported?.();
+  };
+
+  // Trigger risk analysis manually
+  const triggerRiskAnalysis = async () => {
+    setIsTriggeringRiskAnalysis(true);
+    try {
+      const response = await fetch(`/api/v1/gong-calls/${gongCallId}/analyze-risk`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to trigger risk analysis");
+      }
+
+      toast.success("Risk analysis completed!");
+      onRiskAnalysisComplete?.();
+    } catch (error) {
+      console.error("Failed to trigger risk analysis:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to trigger risk analysis");
+    } finally {
+      setIsTriggeringRiskAnalysis(false);
+    }
   };
 
   // Render section with copy button
@@ -310,14 +339,34 @@ export function GongCallInsightsDialog({
     if (!riskAssessment) {
       return (
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="h-5 w-5 text-slate-400" />
-            <h4 className="font-semibold text-slate-900 dark:text-slate-100">
-              Risk Assessment
-            </h4>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldAlert className="h-5 w-5 text-slate-400" />
+              <h4 className="font-semibold text-slate-900 dark:text-slate-100">
+                Risk Assessment
+              </h4>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={triggerRiskAnalysis}
+              disabled={isTriggeringRiskAnalysis}
+            >
+              {isTriggeringRiskAnalysis ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <ShieldAlert className="h-4 w-4 mr-2" />
+                  Run Analysis
+                </>
+              )}
+            </Button>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 italic">
-            Risk analysis pending...
+            Risk analysis pending. Click "Run Analysis" to generate a risk assessment for this call.
           </p>
         </div>
       );

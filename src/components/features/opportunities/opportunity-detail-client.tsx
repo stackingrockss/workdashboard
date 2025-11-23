@@ -41,9 +41,13 @@ import { ConsolidatedInsightsCard } from "./consolidated-insights-card";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { SecFilingsSection } from "./sec-filings-section";
 import { EarningsTranscriptsSection } from "./earnings-transcripts-section";
+import { useCommentSidebar } from "@/components/comments/CommentSidebarContext";
+import { useTextSelection } from "@/components/comments/useTextSelection";
+import { CommentHighlights } from "@/components/comments/CommentHighlights";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
+  organizationId: string;
 }
 
 const stageOptions = [
@@ -85,7 +89,7 @@ const platformTypeOptions = [
   { value: "isv", label: "ISV" },
 ];
 
-export function OpportunityDetailClient({ opportunity }: OpportunityDetailClientProps) {
+export function OpportunityDetailClient({ opportunity, organizationId }: OpportunityDetailClientProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -93,6 +97,20 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
   const [researchStatus, setResearchStatus] = useState(opportunity.accountResearchStatus);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const router = useRouter();
+  const { setEntityContext } = useCommentSidebar();
+
+  // Enable comment system
+  useTextSelection({
+    enabled: true,
+    entityType: "opportunity",
+    entityId: opportunity.id,
+    pageContext: `/opportunities/${opportunity.id}`,
+  });
+
+  // Set entity context for comment sidebar
+  useEffect(() => {
+    setEntityContext("opportunity", opportunity.id, `/opportunities/${opportunity.id}`);
+  }, [opportunity.id, setEntityContext]);
 
   // Poll for research status when generating
   useEffect(() => {
@@ -312,7 +330,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           </TabsTrigger>
           <TabsTrigger value="research" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            Research & Notes
+            Notes
           </TabsTrigger>
           <TabsTrigger value="account-intel" className="flex items-center gap-2">
             <Target className="h-4 w-4" />
@@ -454,43 +472,9 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           <TimelineSection opportunityId={opportunity.id} />
         </TabsContent>
 
-        {/* Research & Notes Tab */}
+        {/* Notes Tab */}
         <TabsContent value="research" className="space-y-4 mt-4">
           <div className="grid gap-4">
-            {/* Account research with AI generation - Collapsible */}
-            <Collapsible defaultOpen={false}>
-              <Card>
-                <CollapsibleTrigger className="w-full">
-                  <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                    <CardTitle className="flex items-center justify-between text-base">
-                      <span>Account Research</span>
-                      <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform data-[state=open]:rotate-180" />
-                    </CardTitle>
-                  </CardHeader>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <CardContent className="pt-0">
-                    <InlineMarkdownWithAI
-                      label=""
-                      value={opportunity.accountResearch || ""}
-                      onSave={async (value) => handleFieldUpdate("accountResearch", value)}
-                      placeholder={
-                        researchStatus === "generating"
-                          ? "Generating account research with AI... This may take 10-30 seconds."
-                          : researchStatus === "failed"
-                          ? "AI generation failed. Click 'Generate with Gemini' to retry."
-                          : "AI-powered account research and pre-meeting intelligence..."
-                      }
-                      rows={8}
-                      className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
-                      onGenerate={handleGenerateAccountResearch}
-                      isGenerating={isGeneratingResearch || researchStatus === "generating"}
-                      generateButtonLabel="Generate with Gemini"
-                    />
-                  </CardContent>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
             <InlineTextarea
               label="Risk Notes"
               value={opportunity.riskNotes || ""}
@@ -623,7 +607,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
                 <div>
                   <h3 className="text-lg font-semibold">{opportunity.account.name}</h3>
                   <p className="text-sm text-muted-foreground">
-                    SEC filings and earnings call transcripts for account-level research
+                    Account research, SEC filings, and earnings call transcripts
                   </p>
                 </div>
                 {opportunity.account.ticker && (
@@ -632,6 +616,49 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
                   </div>
                 )}
               </div>
+
+              {/* Account research with AI generation - Enhanced Collapsible */}
+              <Collapsible defaultOpen={true}>
+                <Card className="border-2 shadow-md hover:shadow-lg transition-shadow">
+                  <CollapsibleTrigger className="w-full group">
+                    <CardHeader className="cursor-pointer hover:bg-muted/70 transition-all duration-200 py-5">
+                      <CardTitle className="flex items-center justify-between text-lg">
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold">Account Research</span>
+                          <span className="text-xs text-muted-foreground font-normal group-data-[state=closed]:block group-data-[state=open]:hidden">
+                            Click to expand
+                          </span>
+                          <span className="text-xs text-muted-foreground font-normal group-data-[state=open]:block group-data-[state=closed]:hidden">
+                            Click to collapse
+                          </span>
+                        </div>
+                        <ChevronDown className="h-6 w-6 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </CardTitle>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0">
+                      <InlineMarkdownWithAI
+                        label=""
+                        value={opportunity.accountResearch || ""}
+                        onSave={async (value) => handleFieldUpdate("accountResearch", value)}
+                        placeholder={
+                          researchStatus === "generating"
+                            ? "Generating account research with AI... This may take 10-30 seconds."
+                            : researchStatus === "failed"
+                            ? "AI generation failed. Click 'Generate with Gemini' to retry."
+                            : "AI-powered account research and pre-meeting intelligence..."
+                        }
+                        rows={8}
+                        className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
+                        onGenerate={handleGenerateAccountResearch}
+                        isGenerating={isGeneratingResearch || researchStatus === "generating"}
+                        generateButtonLabel="Generate with Gemini"
+                      />
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
 
               <Separator />
 
@@ -738,6 +765,14 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Comment Highlights */}
+      <CommentHighlights
+        entityType="opportunity"
+        entityId={opportunity.id}
+        organizationId={organizationId}
+        pageContext={`/opportunities/${opportunity.id}`}
+      />
 
       {/* AI Chat Widget */}
       <ChatWidget

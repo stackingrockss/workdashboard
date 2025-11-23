@@ -550,6 +550,7 @@ export function GongCallsSection({
           }}
           gongCallTitle={selectedCallForViewing.title}
           opportunityId={opportunityId}
+          gongCallId={selectedCallForViewing.id}
           insights={{
             painPoints: (selectedCallForViewing.painPoints as string[]) || [],
             goals: (selectedCallForViewing.goals as string[]) || [],
@@ -558,6 +559,9 @@ export function GongCallsSection({
           }}
           riskAssessment={(selectedCallForViewing.riskAssessment as RiskAssessment) || null}
           onContactsImported={() => {
+            router.refresh();
+          }}
+          onRiskAnalysisComplete={() => {
             router.refresh();
           }}
           autoOpenContactImport={autoOpenContactImport}

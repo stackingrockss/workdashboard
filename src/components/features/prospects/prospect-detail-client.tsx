@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { OrgChartSection } from "@/components/contacts/OrgChartSection";
 import { ConvertToOpportunityDialog } from "./convert-to-opportunity-dialog";
+import { useCommentSidebar } from "@/components/comments/CommentSidebarContext";
+import { useTextSelection } from "@/components/comments/useTextSelection";
+import { CommentHighlights } from "@/components/comments/CommentHighlights";
 
 interface ProspectDetailClientProps {
   account: {
@@ -26,10 +29,25 @@ interface ProspectDetailClientProps {
     createdAt: string;
     updatedAt: string;
   };
+  organizationId: string;
 }
 
-export function ProspectDetailClient({ account }: ProspectDetailClientProps) {
+export function ProspectDetailClient({ account, organizationId }: ProspectDetailClientProps) {
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
+  const { setEntityContext } = useCommentSidebar();
+
+  // Enable comment system
+  useTextSelection({
+    enabled: true,
+    entityType: "account",
+    entityId: account.id,
+    pageContext: `/prospects/${account.id}`,
+  });
+
+  // Set entity context for comment sidebar
+  useEffect(() => {
+    setEntityContext("account", account.id, `/prospects/${account.id}`);
+  }, [account.id, setEntityContext]);
 
   const priorityColors = {
     low: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100",
@@ -147,6 +165,14 @@ export function ProspectDetailClient({ account }: ProspectDetailClientProps) {
         onOpenChange={setIsConvertDialogOpen}
         accountId={account.id}
         accountName={account.name}
+      />
+
+      {/* Comment Highlights */}
+      <CommentHighlights
+        entityType="account"
+        entityId={account.id}
+        organizationId={organizationId}
+        pageContext={`/prospects/${account.id}`}
       />
     </div>
   );
