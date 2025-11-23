@@ -253,6 +253,49 @@ export async function POST(request: NextRequest) {
             avatarUrl: true,
           },
         },
+        resolvedBy: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        replies: {
+          include: {
+            author: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                avatarUrl: true,
+              },
+            },
+            mentions: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                  },
+                },
+              },
+            },
+            reactions: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: "asc",
+          },
+        },
         mentions: {
           include: {
             user: {

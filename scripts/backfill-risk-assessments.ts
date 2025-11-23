@@ -10,15 +10,16 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 async function main() {
   console.log("🔍 Finding Gong calls without risk assessments...\n");
 
-  const callsNeedingRisk = await prisma.gongCall.findMany({
+  // Get all completed calls and filter in JavaScript (Prisma JSON null checks are quirky)
+  const allCompletedCalls = await prisma.gongCall.findMany({
     where: {
       parsingStatus: "completed",
-      riskAssessment: null,
     },
     select: {
       id: true,
       title: true,
       parsedAt: true,
+      riskAssessment: true,
       opportunity: {
         select: {
           id: true,
@@ -30,6 +31,9 @@ async function main() {
       parsedAt: "desc",
     },
   });
+
+  // Filter for calls without risk assessment
+  const callsNeedingRisk = allCompletedCalls.filter((call) => !call.riskAssessment || call.riskAssessment === null);
 
   if (callsNeedingRisk.length === 0) {
     console.log("✅ All completed calls already have risk assessments!");
