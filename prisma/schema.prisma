@@ -21,6 +21,9 @@ model Account {
   organizationId      String
   website             String?
   ticker              String?
+  nextEarningsDate    DateTime?
+  earningsDateSource  String?
+  lastEarningsSync    DateTime?
   organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner               User?                    @relation("AccountOwner", fields: [ownerId], references: [id])
   calendarEvents      CalendarEvent[]
@@ -29,10 +32,12 @@ model Account {
   earningsTranscripts EarningsCallTranscript[]
   opportunities       Opportunity[]
   secFilings          SecFiling[]
+  tasks               Task[]
 
   @@unique([organizationId, name])
   @@index([organizationId])
   @@index([ownerId])
+  @@index([nextEarningsDate])
   @@schema("opportunity_tracker")
 }
 
@@ -380,9 +385,12 @@ model Task {
   status        TaskStatus   @default(needsAction)
   position      String
   opportunityId String?
+  accountId     String?
+  taskSource    String?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   completedAt   DateTime?
+  account       Account?     @relation(fields: [accountId], references: [id])
   opportunity   Opportunity? @relation(fields: [opportunityId], references: [id])
   taskList      TaskList     @relation(fields: [taskListId], references: [id], onDelete: Cascade)
   user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -390,6 +398,7 @@ model Task {
   @@unique([userId, googleTaskId])
   @@index([userId, status])
   @@index([opportunityId])
+  @@index([accountId])
   @@index([taskListId])
   @@schema("opportunity_tracker")
 }
@@ -525,17 +534,19 @@ model CommentMention {
   commentId      String
   userId         String
   organizationId String
-  notified       Boolean      @default(false)
-  notifiedAt     DateTime?
+  isRead         Boolean      @default(false)
+  readAt         DateTime?
   createdAt      DateTime     @default(now())
   comment        Comment      @relation(fields: [commentId], references: [id], onDelete: Cascade)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User         @relation("UserMentions", fields: [userId], references: [id])
+  user           User         @relation("UserMentions", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([commentId, userId])
+  @@index([userId, organizationId, isRead])
   @@index([userId])
   @@index([commentId])
-  @@index([notified])
+  @@index([organizationId])
+  @@index([isRead])
   @@schema("opportunity_tracker")
 }
 
@@ -687,5 +698,18 @@ enum TaskStatus {
   needsAction
   completed
 
+  @@schema("opportunity_tracker")
+}
+
+model SecCompanyCache {
+  id        String   @id @default(cuid())
+  cik       String   @unique
+  ticker    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([name])
+  @@index([ticker])
   @@schema("opportunity_tracker")
 }

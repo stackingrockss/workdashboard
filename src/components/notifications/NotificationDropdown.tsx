@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bell, CheckCheck, Inbox } from "lucide-react";
+import { Bell, CheckCheck, Inbox, AlertCircle } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { MentionNotificationItem } from "./MentionNotificationItem";
 import { Badge } from "@/components/ui/badge";
@@ -23,24 +23,32 @@ export function NotificationDropdown() {
     notifications,
     unreadCount,
     isLoading,
+    error,
     markAllAsRead,
     handleNotificationClick,
+    refetch,
   } = useNotifications();
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative"
+          aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
+          aria-haspopup="menu"
+        >
+          <Bell className="h-5 w-5" aria-hidden="true" />
           {unreadCount > 0 && (
             <Badge
               variant="destructive"
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+              aria-label={`${unreadCount} unread notifications`}
             >
               {unreadCount > 9 ? "9+" : unreadCount}
             </Badge>
           )}
-          <span className="sr-only">Notifications</span>
         </Button>
       </DropdownMenuTrigger>
 
@@ -66,15 +74,31 @@ export function NotificationDropdown() {
 
         <DropdownMenuSeparator />
 
+        {/* Error State */}
+        {error && !isLoading && (
+          <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+            <AlertCircle className="h-12 w-12 text-destructive mb-2" />
+            <p className="text-sm font-medium">Failed to load notifications</p>
+            <p className="text-xs text-muted-foreground mt-1 mb-3">{error}</p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => refetch()}
+            >
+              Try Again
+            </Button>
+          </div>
+        )}
+
         {/* Loading State */}
-        {isLoading && (
+        {isLoading && !error && (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
             Loading notifications...
           </div>
         )}
 
         {/* Empty State */}
-        {!isLoading && notifications.length === 0 && (
+        {!isLoading && !error && notifications.length === 0 && (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Inbox className="h-12 w-12 text-muted-foreground mb-2" />
             <p className="text-sm font-medium">No new notifications</p>
@@ -85,7 +109,7 @@ export function NotificationDropdown() {
         )}
 
         {/* Notification List */}
-        {!isLoading && notifications.length > 0 && (
+        {!isLoading && !error && notifications.length > 0 && (
           <ScrollArea className="max-h-[400px]">
             <div className="space-y-1 p-1">
               {notifications.map((notification) => (
@@ -100,7 +124,7 @@ export function NotificationDropdown() {
         )}
 
         {/* Footer */}
-        {!isLoading && notifications.length > 0 && (
+        {!isLoading && !error && notifications.length > 0 && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuItem className="justify-center text-sm text-muted-foreground cursor-pointer">

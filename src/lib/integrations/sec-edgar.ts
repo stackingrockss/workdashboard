@@ -113,35 +113,45 @@ export async function getCikFromTicker(ticker: string): Promise<string> {
  * Uses 24-hour cache to reduce bandwidth and improve performance
  */
 async function getCompanyTickersData(): Promise<CompanyTickersData> {
-  // Check if cache is valid
-  if (
-    companyTickersCache &&
-    Date.now() - companyTickersCache.timestamp < CACHE_TTL
-  ) {
-    return companyTickersCache.data;
-  }
-
-  // Fetch fresh data
-  const response = await fetch(
-    `${SEC_DATA_URL}/files/company_tickers.json`,
-    {
-      headers: { "User-Agent": SEC_USER_AGENT },
+  try {
+    // Check if cache is valid
+    if (
+      companyTickersCache &&
+      Date.now() - companyTickersCache.timestamp < CACHE_TTL
+    ) {
+      console.log("Using cached company tickers data");
+      return companyTickersCache.data;
     }
-  );
 
-  if (!response.ok) {
-    throw new Error(`SEC API error: ${response.status}`);
+    console.log("Fetching fresh company tickers data from SEC...");
+    // Fetch fresh data
+    const response = await fetch(
+      `${SEC_DATA_URL}/files/company_tickers.json`,
+      {
+        headers: { "User-Agent": SEC_USER_AGENT },
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => "Unable to read error");
+      console.error(`SEC API error: ${response.status} - ${errorText}`);
+      throw new Error(`SEC API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data: CompanyTickersData = await response.json();
+    console.log(`Successfully fetched ${Object.keys(data).length} companies from SEC`);
+
+    // Update cache
+    companyTickersCache = {
+      data,
+      timestamp: Date.now(),
+    };
+
+    return data;
+  } catch (error) {
+    console.error("Error fetching company tickers data:", error);
+    throw error;
   }
-
-  const data: CompanyTickersData = await response.json();
-
-  // Update cache
-  companyTickersCache = {
-    data,
-    timestamp: Date.now(),
-  };
-
-  return data;
 }
 
 /**
@@ -150,30 +160,35 @@ async function getCompanyTickersData(): Promise<CompanyTickersData> {
  * Uses cached data to improve performance (24hr TTL)
  */
 export async function searchCompaniesByName(query: string): Promise<CompanyMatch[]> {
-  return rateLimiter.schedule(async () => {
-    const data = await getCompanyTickersData();
-    const queryLower = query.toLowerCase();
+  try {
+    return await rateLimiter.schedule(async () => {
+      const data = await getCompanyTickersData();
+      const queryLower = query.toLowerCase();
 
-    // Filter and sort companies by name match
-    const matches = Object.values(data)
-      .filter((c) => c.title.toLowerCase().includes(queryLower))
-      .sort((a, b) => {
-        // Prioritize matches at start of name
-        const aIndex = a.title.toLowerCase().indexOf(queryLower);
-        const bIndex = b.title.toLowerCase().indexOf(queryLower);
-        if (aIndex !== bIndex) return aIndex - bIndex;
-        // Then by length (shorter names first)
-        return a.title.length - b.title.length;
-      })
-      .slice(0, 10) // Top 10 matches
-      .map((c) => ({
-        cik: String(c.cik_str).padStart(10, "0"),
-        ticker: c.ticker,
-        name: c.title,
-      }));
+      // Filter and sort companies by name match
+      const matches = Object.values(data)
+        .filter((c) => c.title.toLowerCase().includes(queryLower))
+        .sort((a, b) => {
+          // Prioritize matches at start of name
+          const aIndex = a.title.toLowerCase().indexOf(queryLower);
+          const bIndex = b.title.toLowerCase().indexOf(queryLower);
+          if (aIndex !== bIndex) return aIndex - bIndex;
+          // Then by length (shorter names first)
+          return a.title.length - b.title.length;
+        })
+        .slice(0, 10) // Top 10 matches
+        .map((c) => ({
+          cik: String(c.cik_str).padStart(10, "0"),
+          ticker: c.ticker,
+          name: c.title,
+        }));
 
-    return matches;
-  });
+      return matches;
+    });
+  } catch (error) {
+    console.error("Error in searchCompaniesByName:", error);
+    throw new Error(`Failed to search companies: ${error instanceof Error ? error.message : "Unknown error"}`);
+  }
 }
 
 interface FilingMetadata {

@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId: user.id,
         organizationId: user.organization.id,
-        ...(includeRead ? {} : { notified: false }), // Only unread if includeRead is false
+        ...(includeRead ? {} : { isRead: false }), // Only unread if includeRead is false
       },
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId: user.id,
         organizationId: user.organization.id,
-        notified: false,
+        isRead: false,
       },
     });
 
@@ -74,16 +74,18 @@ export async function GET(request: NextRequest) {
       commentId: mention.commentId,
       comment: {
         id: mention.comment.id,
-        content: mention.comment.content,
+        content: mention.comment.content.slice(0, 200), // Truncate to 200 chars
+        contentPreview: mention.comment.content.slice(0, 80), // Short preview for UI
+        contentLength: mention.comment.content.length,
         entityType: mention.comment.entityType,
         entityId: mention.comment.entityId,
         pageContext: mention.comment.pageContext,
         createdAt: mention.comment.createdAt.toISOString(),
         author: mention.comment.author,
       },
-      isRead: mention.notified,
+      isRead: mention.isRead,
       createdAt: mention.createdAt.toISOString(),
-      readAt: mention.notifiedAt?.toISOString() || null,
+      readAt: mention.readAt?.toISOString() || null,
     }));
 
     return NextResponse.json({
@@ -150,8 +152,8 @@ export async function PATCH(request: NextRequest) {
         organizationId: user.organization.id,
       },
       data: {
-        notified: true,
-        notifiedAt: new Date(),
+        isRead: true,
+        readAt: new Date(),
       },
     });
 

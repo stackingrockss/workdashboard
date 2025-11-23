@@ -3,6 +3,7 @@
 
 import { createClient } from "@/lib/supabase/client";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { logError } from "@/lib/errors";
 
 /**
  * Create a channel name for comment broadcasts
@@ -47,7 +48,7 @@ export async function broadcastCommentEvent(
     // Don't need to keep channel open on server side
     await supabase.removeChannel(channel);
   } catch (error) {
-    console.error("[Realtime] Broadcast error:", error);
+    logError("realtime-broadcast", error, { organizationId, entityType, entityId });
     // Don't throw - broadcasting is best-effort
   }
 }
@@ -89,7 +90,7 @@ export async function broadcastNotificationEvent(
     // Don't need to keep channel open on server side
     await supabase.removeChannel(channel);
   } catch (error) {
-    console.error("[Realtime] Notification broadcast error:", error);
+    logError("realtime-notification-broadcast", error, { userId });
     // Don't throw - broadcasting is best-effort
   }
 }

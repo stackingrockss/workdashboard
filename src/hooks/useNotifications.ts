@@ -5,6 +5,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { logError, getErrorMessage } from "@/lib/errors";
 
 export interface NotificationComment {
   id: string;
@@ -63,8 +64,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       setNotifications(data.notifications || []);
       setUnreadCount(data.unreadCount || 0);
     } catch (err) {
-      console.error("Error fetching notifications:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch notifications");
+      logError("fetch-notifications", err);
+      setError(getErrorMessage(err, "Failed to fetch notifications"));
     } finally {
       setIsLoading(false);
     }
@@ -92,7 +93,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
         return true;
       } catch (err) {
-        console.error("Error marking notifications as read:", err);
+        logError("mark-notifications-read", err);
         return false;
       }
     },
