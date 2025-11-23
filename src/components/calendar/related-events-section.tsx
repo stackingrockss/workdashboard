@@ -4,17 +4,14 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, Plus, AlertCircle } from "lucide-react";
+import { Calendar, AlertCircle } from "lucide-react";
 import { CalendarEvent } from "@/types/calendar";
 import { CalendarEventCard } from "./calendar-event-card";
-import { ScheduleFollowupDialog } from "./schedule-followup-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface RelatedEventsSectionProps {
   opportunityId: string;
-  opportunityName: string;
   accountId?: string;
-  contactEmails?: string[];
 }
 
 /**
@@ -23,19 +20,15 @@ interface RelatedEventsSectionProps {
  * Features:
  * - Displays past and upcoming meetings
  * - Groups by past/upcoming
- * - "Schedule Follow-up" button
  * - Auto-filters by account email domain or contact emails
  */
 export function RelatedEventsSection({
   opportunityId,
-  opportunityName,
   accountId,
-  contactEmails = [],
 }: RelatedEventsSectionProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [notConnected, setNotConnected] = useState(false);
 
   useEffect(() => {
@@ -86,11 +79,6 @@ export function RelatedEventsSection({
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleScheduleSuccess = () => {
-    // Reload events after scheduling
-    loadRelatedEvents();
   };
 
   const now = new Date();
@@ -150,21 +138,10 @@ export function RelatedEventsSection({
     return (
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Related Calendar Events
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowScheduleDialog(true)}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Schedule Follow-up
-            </Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Related Calendar Events
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Alert variant="destructive">
@@ -182,41 +159,26 @@ export function RelatedEventsSection({
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Related Calendar Events
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowScheduleDialog(true)}
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Schedule Follow-up
-            </Button>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Calendar className="h-5 w-5" />
+          Related Calendar Events
+        </CardTitle>
+        <CardDescription>
+          {events.length > 0
+            ? `${pastEvents.length} past, ${upcomingEvents.length} upcoming meeting${upcomingEvents.length !== 1 ? "s" : ""}`
+            : "No meetings found for this opportunity"}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {events.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground">
+            <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>No calendar events found for this opportunity</p>
           </div>
-          <CardDescription>
-            {events.length > 0
-              ? `${pastEvents.length} past, ${upcomingEvents.length} upcoming meeting${upcomingEvents.length !== 1 ? "s" : ""}`
-              : "No meetings found for this opportunity"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {events.length === 0 ? (
-            <div className="text-center py-6 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No calendar events found for this opportunity</p>
-              <p className="text-sm mt-1">
-                Schedule a follow-up meeting to get started
-              </p>
-            </div>
-          ) : (
-            <>
+        ) : (
+          <>
               {/* Upcoming Meetings */}
               {upcomingEvents.length > 0 && (
                 <div className="space-y-3">
@@ -259,18 +221,7 @@ export function RelatedEventsSection({
               )}
             </>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Schedule Follow-up Dialog */}
-      <ScheduleFollowupDialog
-        open={showScheduleDialog}
-        onOpenChange={setShowScheduleDialog}
-        opportunityId={opportunityId}
-        opportunityName={opportunityName}
-        contactEmails={contactEmails}
-        onSuccess={handleScheduleSuccess}
-      />
-    </>
+      </CardContent>
+    </Card>
   );
 }

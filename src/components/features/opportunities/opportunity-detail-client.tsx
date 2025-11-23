@@ -611,9 +611,7 @@ export function OpportunityDetailClient({ opportunity }: OpportunityDetailClient
           {/* Calendar Events Section */}
           <RelatedEventsSection
             opportunityId={opportunity.id}
-            opportunityName={opportunity.name}
             accountId={opportunity.accountId}
-            contactEmails={contacts.map((c) => c.email).filter((email): email is string => !!email)}
           />
         </TabsContent>
 
