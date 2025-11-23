@@ -20,8 +20,6 @@ import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
-import { GranolaNotesSection } from "./granola-notes-section";
-import { GongCallsSection } from "./gong-calls-section";
 import { GoogleNotesSection } from "./google-notes-section";
 import { MeetingEventCard } from "@/components/calendar/meeting-event-card";
 import { OrphanedNotesSection } from "@/components/calendar/orphaned-notes-section";
@@ -40,7 +38,6 @@ import {
 import { InlineMarkdownWithAI } from "@/components/ui/inline-markdown";
 import { DecisionMakerSection } from "@/components/opportunity/DecisionMakerSection";
 import { Contact } from "@/types/contact";
-import { RelatedEventsSection } from "@/components/calendar/related-events-section";
 import { TimelineSection } from "./timeline/timeline-section";
 import { ConsolidatedInsightsCard } from "./consolidated-insights-card";
 import { ChatWidget } from "@/components/chat/chat-widget";
@@ -211,12 +208,15 @@ export function OpportunityDetailClient({ opportunity, organizationId }: Opportu
     loadCalendarEvents();
   }, [opportunity.id]);
 
+  // Sync local state when opportunity prop updates (after router.refresh())
+  useEffect(() => {
+    setAllGongCalls(opportunity.gongCalls || []);
+    setAllGranolaNotes(opportunity.granolaNotes || []);
+  }, [opportunity.gongCalls, opportunity.granolaNotes]);
+
   // Function to refresh all data after changes
   const handleRefreshMeetingsData = () => {
     router.refresh();
-    // Reload Gong calls and Granola notes from opportunity
-    setAllGongCalls(opportunity.gongCalls || []);
-    setAllGranolaNotes(opportunity.granolaNotes || []);
   };
 
   const handleUpdateOpportunity = async (data: OpportunityUpdateInput) => {
