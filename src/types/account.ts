@@ -10,6 +10,9 @@ export interface Account {
   notes?: string;
   website?: string;
   ticker?: string;
+  nextEarningsDate?: string | null; // ISO date string
+  earningsDateSource?: string | null;
+  lastEarningsSync?: string | null; // ISO date string
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
 }

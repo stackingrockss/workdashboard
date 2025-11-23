@@ -90,6 +90,9 @@ export interface Opportunity {
     name: string;
     website?: string;
     ticker?: string;
+    nextEarningsDate?: string | null;
+    earningsDateSource?: string | null;
+    lastEarningsSync?: string | null;
   };
   amountArr: number; // annual recurring revenue forecast
   confidenceLevel: number; // 1-5 scale (replaces probability)

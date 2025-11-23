@@ -24,6 +24,7 @@ export function NotificationDropdown() {
     unreadCount,
     isLoading,
     error,
+    isConnected,
     markAllAsRead,
     handleNotificationClick,
     refetch,
@@ -49,13 +50,25 @@ export function NotificationDropdown() {
               {unreadCount > 9 ? "9+" : unreadCount}
             </Badge>
           )}
+          {/* Connection status indicator */}
+          {isConnected && (
+            <div
+              className="absolute bottom-0 right-0 h-2 w-2 bg-green-500 rounded-full border border-background"
+              title="Real-time connected"
+            />
+          )}
         </Button>
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-80">
         {/* Header */}
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>Notifications</span>
+          <span className="flex items-center gap-2">
+            Notifications
+            {isConnected && (
+              <span className="text-xs text-muted-foreground font-normal">• Live</span>
+            )}
+          </span>
           {unreadCount > 0 && (
             <Button
               variant="ghost"

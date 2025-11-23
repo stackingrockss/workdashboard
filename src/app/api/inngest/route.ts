@@ -11,6 +11,7 @@ import { syncAllGoogleTasksJob } from "@/lib/inngest/functions/sync-google-tasks
 import { processSecFilingJob } from "@/lib/inngest/functions/process-sec-filing";
 import { processEarningsTranscriptJob } from "@/lib/inngest/functions/process-earnings-transcript";
 import { refreshSecCacheJob } from "@/lib/inngest/functions/refresh-sec-cache";
+import { syncEarningsDatesJob } from "@/lib/inngest/functions/sync-earnings-dates";
 
 // Increase timeout for long-running AI jobs
 // Vercel Pro: 300s (5 min), Hobby: 60s max
@@ -31,6 +32,7 @@ export const { GET, POST, PUT } = serve({
     processSecFilingJob, // SEC EDGAR 10-K filing processing
     processEarningsTranscriptJob, // Earnings call transcript processing
     refreshSecCacheJob, // SEC company data cache refresh (daily at 2 AM UTC)
+    syncEarningsDatesJob, // Earnings dates sync and reminder tasks (daily at 9 AM)
   ],
   signingKey: process.env.INNGEST_SIGNING_KEY,
 });

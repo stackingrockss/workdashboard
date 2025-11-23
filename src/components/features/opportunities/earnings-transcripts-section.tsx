@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { EarningsTranscriptCard } from "./earnings-transcript-card";
 import { AddEarningsTranscriptDialog } from "./add-earnings-transcript-dialog";
+import { UpcomingEarningsCard } from "./upcoming-earnings-card";
 
 export interface EarningsTranscript {
   id: string;
@@ -48,13 +49,19 @@ export interface EarningsTranscript {
 
 interface EarningsTranscriptsSectionProps {
   accountId: string;
+  accountName: string;
   accountTicker: string | null;
+  nextEarningsDate?: Date | string | null;
+  lastEarningsSync?: Date | string | null;
   opportunityId: string;
 }
 
 export function EarningsTranscriptsSection({
   accountId,
+  accountName,
   accountTicker,
+  nextEarningsDate,
+  lastEarningsSync,
   opportunityId,
 }: EarningsTranscriptsSectionProps) {
   const [transcripts, setTranscripts] = useState<EarningsTranscript[]>([]);
@@ -203,6 +210,17 @@ export function EarningsTranscriptsSection({
           Add Transcript
         </Button>
       </div>
+
+      {/* Upcoming Earnings Card - only show if account has a ticker */}
+      {accountTicker && (
+        <UpcomingEarningsCard
+          accountId={accountId}
+          accountName={accountName}
+          ticker={accountTicker}
+          nextEarningsDate={nextEarningsDate}
+          lastEarningsSync={lastEarningsSync}
+        />
+      )}
 
       {transcripts.length === 0 ? (
         <Card>

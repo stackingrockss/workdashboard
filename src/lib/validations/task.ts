@@ -45,6 +45,8 @@ export const taskCreateSchema = z.object({
     .optional()
     .nullable(),
   opportunityId: z.string().cuid().optional().nullable(),
+  accountId: z.string().cuid().optional().nullable(),
+  taskSource: z.string().max(50).optional(),
 });
 
 export type TaskCreateInput = z.infer<typeof taskCreateSchema>;
@@ -70,6 +72,8 @@ export const taskUpdateSchema = z.object({
     .nullable(),
   status: z.enum(['needsAction', 'completed']).optional(),
   opportunityId: z.string().cuid().optional().nullable(),
+  accountId: z.string().cuid().optional().nullable(),
+  taskSource: z.string().max(50).optional(),
 });
 
 export type TaskUpdateInput = z.infer<typeof taskUpdateSchema>;
@@ -80,6 +84,8 @@ export type TaskUpdateInput = z.infer<typeof taskUpdateSchema>;
 export const taskFilterSchema = z.object({
   status: z.enum(['needsAction', 'completed', 'all']).optional(),
   opportunityId: z.string().cuid().optional(),
+  accountId: z.string().cuid().optional(),
+  taskSource: z.string().max(50).optional(),
   dueAfter: z
     .string()
     .datetime({ message: 'Invalid date format' })

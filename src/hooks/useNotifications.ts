@@ -3,9 +3,12 @@
 
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { logError, getErrorMessage } from "@/lib/errors";
+import { subscribeToNotifications } from "@/lib/realtime";
+import { toast } from "sonner";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface NotificationComment {
   id: string;
@@ -34,15 +37,22 @@ export interface Notification {
 interface UseNotificationsOptions {
   enabled?: boolean;
   pollingInterval?: number; // in milliseconds
+  enableRealtime?: boolean; // Enable WebSocket-based real-time updates
 }
 
 export function useNotifications(options: UseNotificationsOptions = {}) {
-  const { enabled = true, pollingInterval = 30000 } = options; // Poll every 30 seconds
+  const { enabled = true, pollingInterval = 30000, enableRealtime = true } = options;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(false); // WebSocket connection status
   const router = useRouter();
+
+  // Store channel reference and userId for real-time subscription
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Fetch notifications from API
   const fetchNotifications = useCallback(async () => {
@@ -70,6 +80,76 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       setIsLoading(false);
     }
   }, [enabled]);
+
+  // Fetch userId from API for real-time subscription
+  useEffect(() => {
+    if (!enabled || !enableRealtime) return;
+
+    const fetchUserId = async () => {
+      try {
+        const response = await fetch("/api/v1/users/me");
+        if (!response.ok) {
+          throw new Error("Failed to fetch user ID");
+        }
+        const data = await response.json();
+        setUserId(data.id);
+      } catch (err) {
+        logError("fetch-user-id", err);
+        // Continue without real-time if user fetch fails
+      }
+    };
+
+    fetchUserId();
+  }, [enabled, enableRealtime]);
+
+  // Fetch single notification by mention ID (for optimistic updates)
+  const fetchNotificationByMentionId = useCallback(async (mentionId: string) => {
+    try {
+      const response = await fetch("/api/v1/notifications/mentions?limit=20&includeRead=false");
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      const newNotification = data.notifications.find((n: Notification) => n.id === mentionId);
+      return newNotification || null;
+    } catch (err) {
+      logError("fetch-single-notification", err);
+      return null;
+    }
+  }, []);
+
+  // Handle real-time mention event
+  const handleMentionCreated = useCallback(
+    async (data: { mentionId: string; commentId: string }) => {
+      // Optimistically increment unread count
+      setUnreadCount((prev) => prev + 1);
+
+      // Fetch the full notification data
+      const newNotification = await fetchNotificationByMentionId(data.mentionId);
+
+      if (newNotification) {
+        // Add to notification list
+        setNotifications((prev) => [newNotification, ...prev]);
+
+        // Show toast notification
+        const authorName =
+          newNotification.comment.author.name || newNotification.comment.author.email;
+        toast.info(`${authorName} mentioned you`, {
+          description: newNotification.comment.content.slice(0, 60) + "...",
+          action: {
+            label: "View",
+            onClick: () => {
+              handleNotificationClick(newNotification);
+            },
+          },
+          duration: 5000,
+        });
+      } else {
+        // Fallback: refetch all notifications if we can't get the specific one
+        await fetchNotifications();
+      }
+    },
+    [fetchNotificationByMentionId, fetchNotifications]
+  );
 
   // Mark specific notifications as read
   const markAsRead = useCallback(
@@ -127,6 +207,41 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     [markAsRead, router]
   );
 
+  // Set up real-time subscription
+  useEffect(() => {
+    if (!enabled || !enableRealtime || !userId) {
+      return;
+    }
+
+    // Subscribe to notification events
+    const { channel, unsubscribe } = subscribeToNotifications(userId, {
+      onMentionCreated: handleMentionCreated,
+      onConnected: () => {
+        setIsConnected(true);
+        console.log("✅ Real-time notifications connected");
+      },
+      onDisconnected: () => {
+        setIsConnected(false);
+        console.log("⚠️ Real-time notifications disconnected");
+      },
+      onError: (error) => {
+        logError("realtime-subscription", error);
+        setIsConnected(false);
+        // Continue with polling fallback
+      },
+    });
+
+    channelRef.current = channel;
+    unsubscribeRef.current = unsubscribe;
+
+    // Cleanup on unmount
+    return () => {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+      }
+    };
+  }, [enabled, enableRealtime, userId, handleMentionCreated]);
+
   // Initial fetch
   useEffect(() => {
     if (enabled) {
@@ -134,22 +249,29 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     }
   }, [enabled, fetchNotifications]);
 
-  // Polling for new notifications
+  // Polling for new notifications (fallback and data integrity check)
   useEffect(() => {
     if (!enabled || !pollingInterval) return;
 
+    // If real-time is enabled and connected, reduce polling frequency
+    const effectiveInterval =
+      enableRealtime && isConnected
+        ? pollingInterval * 4 // Poll every 2 minutes instead of 30 seconds
+        : pollingInterval;
+
     const interval = setInterval(() => {
       fetchNotifications();
-    }, pollingInterval);
+    }, effectiveInterval);
 
     return () => clearInterval(interval);
-  }, [enabled, pollingInterval, fetchNotifications]);
+  }, [enabled, pollingInterval, enableRealtime, isConnected, fetchNotifications]);
 
   return {
     notifications,
     unreadCount,
     isLoading,
     error,
+    isConnected, // WebSocket connection status
     markAsRead,
     markAllAsRead,
     handleNotificationClick,

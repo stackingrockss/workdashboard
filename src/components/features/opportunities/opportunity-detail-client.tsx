@@ -759,7 +759,10 @@ export function OpportunityDetailClient({ opportunity, organizationId }: Opportu
               {/* Earnings Transcripts Section */}
               <EarningsTranscriptsSection
                 accountId={opportunity.account.id}
+                accountName={opportunity.account.name}
                 accountTicker={opportunity.account.ticker || null}
+                nextEarningsDate={opportunity.account.nextEarningsDate}
+                lastEarningsSync={opportunity.account.lastEarningsSync}
                 opportunityId={opportunity.id}
               />
             </div>

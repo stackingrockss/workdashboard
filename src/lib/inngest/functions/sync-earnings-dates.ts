@@ -1,0 +1,254 @@
+// src/lib/inngest/functions/sync-earnings-dates.ts
+// Inngest background job for syncing earnings dates and creating reminder tasks
+
+import { inngest } from "@/lib/inngest/client";
+import { prisma } from "@/lib/db";
+import { getEarningsCalendar } from "@/lib/integrations/financial-modeling-prep";
+import { GoogleTasksClient } from "@/lib/integrations/google-tasks";
+import { add } from "date-fns";
+
+/**
+ * Background job that syncs earnings dates for all accounts with tickers
+ * Creates reminder tasks 7-14 days before earnings
+ * Runs daily at 9 AM
+ */
+export const syncEarningsDatesJob = inngest.createFunction(
+  {
+    id: "sync-earnings-dates",
+    name: "Sync Earnings Dates and Create Reminders",
+    retries: 2,
+  },
+  { cron: "0 9 * * *" }, // Daily at 9 AM
+  async ({ step }) => {
+    // Step 1: Fetch all accounts with tickers
+    const accountsWithTickers = await step.run("fetch-accounts-with-tickers", async () => {
+      const accounts = await prisma.account.findMany({
+        where: {
+          ticker: { not: null },
+        },
+        select: {
+          id: true,
+          ticker: true,
+          name: true,
+          organizationId: true,
+          lastEarningsSync: true,
+        },
+      });
+
+      return accounts.filter((acc) => acc.ticker !== null);
+    });
+
+    if (accountsWithTickers.length === 0) {
+      return {
+        success: true,
+        message: "No accounts with tickers found",
+        totalAccounts: 0,
+        earningsSynced: 0,
+        remindersCreated: 0,
+        errors: 0,
+      };
+    }
+
+    let earningsSynced = 0;
+    let earningsFailed = 0;
+    const syncErrors: Array<{ accountId: string; error: string }> = [];
+
+    // Step 2: For each account, fetch and update earnings calendar
+    for (const account of accountsWithTickers) {
+      await step.run(`sync-earnings-${account.id}`, async () => {
+        try {
+          // Fetch earnings calendar from FMP API
+          const earningsData = await getEarningsCalendar(account.ticker!);
+
+          if (!earningsData || earningsData.length === 0) {
+            console.log(`Account ${account.name}: No earnings data found`);
+            earningsSynced++;
+            return { success: true, earningsFound: false };
+          }
+
+          // Filter for future earnings dates
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const upcomingEarnings = earningsData
+            .filter((earnings) => new Date(earnings.date) >= today)
+            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+          // Get the next earnings date
+          const nextEarnings = upcomingEarnings[0] || null;
+
+          // Update account with next earnings date
+          if (nextEarnings) {
+            await prisma.account.update({
+              where: { id: account.id },
+              data: {
+                nextEarningsDate: new Date(nextEarnings.date),
+                earningsDateSource: "api",
+                lastEarningsSync: new Date(),
+              },
+            });
+            earningsSynced++;
+            return {
+              success: true,
+              earningsFound: true,
+              nextEarningsDate: nextEarnings.date,
+            };
+          } else {
+            // No upcoming earnings, clear the date
+            await prisma.account.update({
+              where: { id: account.id },
+              data: {
+                nextEarningsDate: null,
+                lastEarningsSync: new Date(),
+              },
+            });
+            earningsSynced++;
+            return { success: true, earningsFound: false };
+          }
+        } catch (error) {
+          console.error(`Failed to sync earnings for account ${account.name}:`, error);
+          earningsFailed++;
+          syncErrors.push({
+            accountId: account.id,
+            error: error instanceof Error ? error.message : "Unknown error",
+          });
+          return { success: false, error: String(error) };
+        }
+      });
+    }
+
+    // Step 3: Find accounts with earnings 7-14 days away
+    const upcomingAccounts = await step.run("find-upcoming-earnings", async () => {
+      const sevenDaysFromNow = add(new Date(), { days: 7 });
+      const fourteenDaysFromNow = add(new Date(), { days: 14 });
+
+      return await prisma.account.findMany({
+        where: {
+          nextEarningsDate: {
+            gte: sevenDaysFromNow,
+            lte: fourteenDaysFromNow,
+          },
+        },
+        include: {
+          organization: {
+            include: {
+              users: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+    });
+
+    let remindersCreated = 0;
+    let remindersFailed = 0;
+
+    // Step 4: Create reminder tasks for upcoming earnings
+    for (const account of upcomingAccounts) {
+      await step.run(`create-reminders-${account.id}`, async () => {
+        if (!account.nextEarningsDate) return { skipped: true };
+
+        const earningsDate = new Date(account.nextEarningsDate);
+        const taskDueDate = new Date(earningsDate);
+        taskDueDate.setDate(taskDueDate.getDate() - 2); // Reminder 2 days before
+
+        // Create task for each user in the organization
+        for (const user of account.organization.users) {
+          try {
+            // Check if reminder task already exists
+            const existingTask = await prisma.task.findFirst({
+              where: {
+                accountId: account.id,
+                userId: user.id,
+                taskSource: "earnings_reminder",
+                due: { gte: new Date() },
+              },
+            });
+
+            if (existingTask) {
+              console.log(
+                `Reminder already exists for ${account.name} - ${user.name || user.id}`
+              );
+              continue;
+            }
+
+            // Find user's default task list
+            const taskList = await prisma.taskList.findFirst({
+              where: { userId: user.id },
+              orderBy: { createdAt: "asc" },
+            });
+
+            if (!taskList) {
+              console.log(`User ${user.id} has no task list connected`);
+              continue;
+            }
+
+            // Create task in Google Tasks
+            const googleTasksClient = new GoogleTasksClient();
+            const taskTitle = `Earnings Call: ${account.name}`;
+            const taskNotes = `
+Upcoming earnings call for ${account.name} (${account.ticker})
+
+Earnings Date: ${earningsDate.toLocaleDateString()}
+
+Prepare for:
+- Review previous quarter performance
+- Check analyst expectations
+- Review industry trends
+- Prepare questions for management
+            `.trim();
+
+            const googleTask = await googleTasksClient.createTask(user.id, taskList.googleListId, {
+              title: taskTitle,
+              notes: taskNotes,
+              due: taskDueDate,
+            });
+
+            // Store task in database
+            await prisma.task.create({
+              data: {
+                userId: user.id,
+                taskListId: taskList.id,
+                googleTaskId: googleTask.id,
+                title: taskTitle,
+                notes: taskNotes,
+                due: taskDueDate,
+                status: "needsAction",
+                position: googleTask.position,
+                accountId: account.id,
+                taskSource: "earnings_reminder",
+              },
+            });
+
+            remindersCreated++;
+            console.log(`Created earnings reminder for ${account.name} - ${user.name || user.id}`);
+          } catch (error) {
+            console.error(`Failed to create reminder for user ${user.id}:`, error);
+            remindersFailed++;
+          }
+        }
+
+        return {
+          success: true,
+          remindersCreated: account.organization.users.length,
+        };
+      });
+    }
+
+    // Return summary
+    return {
+      success: true,
+      totalAccounts: accountsWithTickers.length,
+      earningsSynced,
+      earningsFailed,
+      upcomingEarningsCount: upcomingAccounts.length,
+      remindersCreated,
+      remindersFailed,
+      errors: syncErrors,
+    };
+  }
+);
