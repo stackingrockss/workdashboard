@@ -58,6 +58,16 @@ interface CompanyTickersData {
 }
 
 /**
+ * Cache for company tickers to avoid repeated fetches (1.5MB file)
+ */
+let companyTickersCache: {
+  data: CompanyTickersData;
+  timestamp: number;
+} | null = null;
+
+const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
+/**
  * Fetch company CIK from ticker symbol
  */
 export interface CompanyMatch {
@@ -99,23 +109,49 @@ export async function getCikFromTicker(ticker: string): Promise<string> {
 }
 
 /**
+ * Fetch and cache company tickers data
+ * Uses 24-hour cache to reduce bandwidth and improve performance
+ */
+async function getCompanyTickersData(): Promise<CompanyTickersData> {
+  // Check if cache is valid
+  if (
+    companyTickersCache &&
+    Date.now() - companyTickersCache.timestamp < CACHE_TTL
+  ) {
+    return companyTickersCache.data;
+  }
+
+  // Fetch fresh data
+  const response = await fetch(
+    `${SEC_DATA_URL}/files/company_tickers.json`,
+    {
+      headers: { "User-Agent": SEC_USER_AGENT },
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(`SEC API error: ${response.status}`);
+  }
+
+  const data: CompanyTickersData = await response.json();
+
+  // Update cache
+  companyTickersCache = {
+    data,
+    timestamp: Date.now(),
+  };
+
+  return data;
+}
+
+/**
  * Search companies by name
  * Returns top 10 matches from SEC database
+ * Uses cached data to improve performance (24hr TTL)
  */
 export async function searchCompaniesByName(query: string): Promise<CompanyMatch[]> {
   return rateLimiter.schedule(async () => {
-    const response = await fetch(
-      `${SEC_DATA_URL}/files/company_tickers.json`,
-      {
-        headers: { "User-Agent": SEC_USER_AGENT },
-      }
-    );
-
-    if (!response.ok) {
-      throw new Error(`SEC API error: ${response.status}`);
-    }
-
-    const data: CompanyTickersData = await response.json();
+    const data = await getCompanyTickersData();
     const queryLower = query.toLowerCase();
 
     // Filter and sort companies by name match

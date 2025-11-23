@@ -239,7 +239,23 @@ export function OpportunityForm({
                   ) : searchQuery.trim().length < 2 ? (
                     "Type at least 2 characters to search"
                   ) : (
-                    "No public companies found"
+                    <div className="py-6 px-4 text-center">
+                      <p className="text-sm text-muted-foreground mb-3">
+                        No public companies found
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setFormData({ ...formData, account: searchQuery });
+                          setOpen(false);
+                          setSearchQuery("");
+                        }}
+                        className="gap-2"
+                      >
+                        Use &ldquo;{searchQuery}&rdquo; as private company
+                      </Button>
+                    </div>
                   )}
                 </CommandEmpty>
                 <CommandGroup>
@@ -419,7 +435,18 @@ export function OpportunityForm({
       )}
 
       <div className="flex justify-end gap-2 pt-4">
-        <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            // Reset search state when canceling
+            setSearchQuery("");
+            setCompanies([]);
+            setOpen(false);
+            onCancel();
+          }}
+          disabled={loading}
+        >
           Cancel
         </Button>
         <Button type="submit" disabled={loading}>

@@ -1,276 +1,126 @@
 # Inngest Setup Guide
 
-This guide explains how to set up and use Inngest for reliable background job processing in the Opportunity Tracker app.
-
-## What Was Changed
-
-### ✅ Files Created
-1. `src/lib/inngest/client.ts` - Inngest client configuration
-2. `src/lib/inngest/functions/parse-gong-transcript.ts` - Background job function for parsing transcripts
-3. `src/app/api/inngest/route.ts` - API endpoint for Inngest to call
-
-### ✅ Files Modified
-1. `src/lib/ai/background-transcript-parsing.ts` - Now uses Inngest instead of Promise.resolve()
-2. `.env.local` - Added Inngest configuration comments
-
-## Why Inngest?
-
-The previous implementation used `Promise.resolve().then()` which **doesn't work in serverless environments** like Vercel:
-
-**Problem:**
-- API returns response immediately
-- Vercel terminates the function execution
-- Background job is killed mid-execution
-- Database status stuck at "parsing" forever
-
-**Solution (Inngest):**
-- Job is queued in Inngest's infrastructure
-- Runs to completion even after API response
-- Automatic retries on failure (3x by default)
-- Full observability dashboard
-- **Free tier: 50,000 jobs/month**
-
----
+This application uses [Inngest](https://www.inngest.com/) for background job processing, including:
+- Parsing Gong call transcripts
+- **Risk analysis** for Gong calls
+- Consolidating insights from multiple calls
+- Processing SEC filings and earnings transcripts
+- Syncing calendar events and Google tasks
 
 ## Local Development Setup
 
-### 1. Install Inngest CLI (already done)
-```bash
-npm install inngest
-```
+### Prerequisites
+- Next.js dev server running (`npm run dev`)
+- Inngest Dev Server running (required for background jobs)
 
-### 2. Start Inngest Dev Server
-Open a new terminal and run:
-```bash
-npx inngest-cli@latest dev
-```
+### Step 1: Start the Next.js Development Server
 
-This will:
-- Start the Inngest Dev Server on `http://localhost:8288`
-- Open the Inngest dashboard in your browser
-- Connect to your Next.js app at `http://localhost:3000/api/inngest`
-
-### 3. Start Your Next.js Dev Server
-In another terminal:
 ```bash
 npm run dev
 ```
 
-### 4. Test the Integration
-Run the test script:
+This starts your Next.js app at `http://localhost:3000`
+
+### Step 2: Start the Inngest Dev Server
+
+**In a separate terminal window**, run:
+
 ```bash
-npx tsx test-inngest-parsing.ts
+npm run dev:inngest
 ```
 
-Then check:
-- Inngest dashboard at `http://localhost:8288`
-- You should see the job running/completed
-- Check database to see parsing results
+This starts the Inngest Dev Server at `http://localhost:8288`
 
----
+The Inngest Dev Server:
+- Processes background jobs locally
+- Provides a dashboard to monitor job execution
+- Shows logs and errors for debugging
 
-## Production Setup (Vercel)
+### Step 3: Verify Setup
 
-### 1. Sign Up for Inngest
-1. Go to https://app.inngest.com/sign-up
-2. Sign up (free - no credit card required)
-3. Create a new app called "opportunity-tracker"
+1. Open the Inngest dashboard: `http://localhost:8288`
+2. You should see your registered functions:
+   - `parse-gong-transcript`
+   - **`analyze-call-risk`** ← This is what generates risk assessments
+   - `consolidate-insights`
+   - `process-sec-filing`
+   - `process-earnings-transcript`
+   - `sync-calendar-events`
+   - `sync-google-tasks`
 
-### 2. Get Your Keys
-1. Go to **Settings → Keys** in Inngest dashboard
-2. Copy your **Signing Key** and **Event Key**
+## Testing Risk Analysis
 
-### 3. Add Environment Variables to Vercel
-Add these to your Vercel project settings (Settings → Environment Variables):
+### Automatic Trigger (after parsing)
+When you upload a Gong call transcript, the system automatically:
+1. Parses the transcript (extracts pain points, goals, people, next steps)
+2. **Triggers risk analysis** via the `gong/risk.analyze` event
+3. Risk analysis runs asynchronously and saves results to the database
 
-```
-INNGEST_SIGNING_KEY=your-signing-key-here
-INNGEST_EVENT_KEY=your-event-key-here
-```
+**Important**: This only works if the Inngest Dev Server is running!
 
-### 4. Deploy
+### Manual Trigger (API endpoint)
+You can manually trigger risk analysis for any completed Gong call:
+
 ```bash
-git add .
-git commit -m "feat: add Inngest for reliable background job processing"
-git push
+curl -X POST http://localhost:3000/api/v1/gong-calls/{callId}/analyze-risk
 ```
 
-Vercel will automatically detect the `/api/inngest` endpoint and configure it.
+Or use the **"Run Analysis" button** in the Transcript Insights dialog when risk assessment is pending.
 
-### 5. Sync Your App with Inngest
-After deployment:
-1. Go to Inngest dashboard → **Apps**
-2. Click **Sync** next to your app
-3. Inngest will discover your job functions automatically
+### Backfill Missing Risk Assessments
 
----
+If you have Gong calls that were parsed before the Inngest Dev Server was running, you can backfill them:
 
-## How It Works
-
-### Flow Diagram
-
-```
-User uploads transcript
-         ↓
-API creates GongCall record
-         ↓
-triggerTranscriptParsing() sends event to Inngest
-         ↓
-API returns 200 OK immediately ✅
-         ↓
-[Background] Inngest runs parseGongTranscriptJob
-         ↓
-Job updates database with results
-         ↓
-User sees parsed data on refresh
-```
-
-### Job Steps (Visible in Dashboard)
-
-1. **update-status-parsing** - Set status to "parsing"
-2. **parse-transcript** - Call Gemini API to parse transcript
-3. **save-parsed-results** - Save results to database
-4. **update-opportunity-history** - Update opportunity history fields
-
-Each step is retried independently if it fails.
-
----
-
-## Testing the Fix for the Stuck Call
-
-### Option 1: Via Test Script (Local)
 ```bash
-npx tsx test-inngest-parsing.ts
+# Check which calls are missing risk assessments
+npx tsx scripts/check-gong-risk-status.ts
+
+# Manually trigger risk analysis for a specific call
+curl -X POST http://localhost:3000/api/v1/gong-calls/{callId}/analyze-risk
 ```
 
-Then watch the Inngest dashboard at `http://localhost:8288`
+## Environment Variables
 
-### Option 2: Via Production (If Deployed)
-After deploying with Inngest keys:
+Ensure these are set in your `.env.local`:
 
-1. Go to your production app
-2. Navigate to the opportunity with the stuck call
-3. Click "Retry Parsing" (if you add this button)
-4. Or manually trigger via Inngest dashboard
-
-### Option 3: Manual Database Fix (Quick)
-If you just want to unstuck the current call without testing:
-```bash
-npx tsx fix-stuck-call.ts
+```env
+INNGEST_SIGNING_KEY="signkey-prod-..."
+INNGEST_EVENT_KEY="..."
 ```
-
-This just changes the status from "parsing" to "completed" or "failed".
-
----
-
-## Monitoring Jobs
-
-### Local Development
-- Dashboard: `http://localhost:8288`
-- Shows all jobs, runs, logs, and timing
-
-### Production
-- Dashboard: `https://app.inngest.com`
-- Same features as local
-- Email notifications on failures (optional)
-
----
-
-## Adding More Background Jobs
-
-To add a new job (e.g., sending email notifications):
-
-1. Create job function in `src/lib/inngest/functions/send-email.ts`:
-```typescript
-import { inngest } from "@/lib/inngest/client";
-
-export const sendEmailJob = inngest.createFunction(
-  { id: "send-email", name: "Send Email Notification" },
-  { event: "email/send" },
-  async ({ event }) => {
-    // Your email sending logic
-  }
-);
-```
-
-2. Register in `src/app/api/inngest/route.ts`:
-```typescript
-import { sendEmailJob } from "@/lib/inngest/functions/send-email";
-
-export const { GET, POST, PUT } = serve({
-  client: inngest,
-  functions: [
-    parseGongTranscriptJob,
-    sendEmailJob, // Add here
-  ],
-});
-```
-
-3. Trigger from anywhere:
-```typescript
-await inngest.send({
-  name: "email/send",
-  data: { to: "user@example.com", subject: "Hello" },
-});
-```
-
----
 
 ## Troubleshooting
 
-### "Job not running in local dev"
-- Make sure Inngest Dev Server is running: `npx inngest-cli@latest dev`
-- Make sure Next.js dev server is running: `npm run dev`
-- Check that `/api/inngest` is accessible
+### Jobs not running?
+- ✅ Verify Inngest Dev Server is running (`npm run dev:inngest`)
+- ✅ Check the Inngest dashboard at `http://localhost:8288`
+- ✅ Look for errors in both terminal windows (Next.js and Inngest)
 
-### "Job failing with API key error"
-- Make sure `GEMINI_API_KEY` is set in `.env.local` (local) or Vercel (production)
-- Restart your dev server after adding the key
+### Risk assessment still pending?
+- ✅ Make sure the Gong call has `parsingStatus: "completed"`
+- ✅ Check Inngest dashboard for failed jobs
+- ✅ Try manually triggering via the API or UI button
 
-### "Job not appearing in Inngest dashboard (production)"
-- Make sure `INNGEST_SIGNING_KEY` and `INNGEST_EVENT_KEY` are set in Vercel
-- Redeploy your app
-- Click "Sync" in Inngest dashboard → Apps
+### Jobs failing with API errors?
+- ✅ Check that `GOOGLE_AI_API_KEY` is set (risk analysis uses Gemini)
+- ✅ Verify you're not hitting rate limits
+- ✅ Check Inngest logs for detailed error messages
 
----
+## Production Deployment
 
-## Cost
+In production (Vercel), Inngest Cloud handles job processing automatically:
+- No need to run a separate dev server
+- Jobs are processed reliably with retries
+- Monitor jobs via Inngest Cloud dashboard
 
-**Free Tier (Current):**
-- 50,000 job runs/month
-- Unlimited functions
-- Unlimited retries
-- Full observability
+### Production Setup
+1. Create an Inngest Cloud account
+2. Add your app's URL to Inngest Cloud
+3. Set environment variables in Vercel:
+   - `INNGEST_SIGNING_KEY`
+   - `INNGEST_EVENT_KEY`
 
-**Your Usage:**
-- ~10-50 calls/day = ~300-1,500 jobs/month
-- Well within free tier limits
+## Learn More
 
-**Paid Tier (If needed later):**
-- Starts at $20/month for 200K jobs
-- You won't need this unless processing 1,000+ calls/day
-
----
-
-## Benefits Over Previous Approach
-
-| Feature | Old (Promise.resolve) | New (Inngest) |
-|---------|----------------------|---------------|
-| **Reliability** | ❌ Jobs killed by Vercel | ✅ Always completes |
-| **Retries** | ❌ Manual | ✅ Automatic (3x) |
-| **Observability** | ❌ Console logs only | ✅ Full dashboard |
-| **Error tracking** | ❌ Lost on failure | ✅ Captured & logged |
-| **Debugging** | ❌ Hard to trace | ✅ Step-by-step view |
-| **Scalability** | ❌ Limited | ✅ Unlimited |
-
----
-
-## Next Steps
-
-1. **Test locally** - Run the test script and verify in dashboard
-2. **Sign up for Inngest** - Create account (free)
-3. **Add keys to Vercel** - Configure production environment
-4. **Deploy** - Push to production
-5. **Monitor** - Watch jobs complete successfully
-
-No more stuck parsing jobs! 🎉
+- [Inngest Documentation](https://www.inngest.com/docs)
+- [Inngest Dev Server Guide](https://www.inngest.com/docs/local-development)
+- [Inngest Cloud Dashboard](https://app.inngest.com/)

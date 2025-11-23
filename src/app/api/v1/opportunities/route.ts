@@ -53,6 +53,16 @@ export async function POST(req: NextRequest) {
     // If account name is provided instead of accountId, find or create the account
     let accountId = data.accountId;
     if (!accountId && data.account) {
+      // First check if account exists to determine update strategy
+      const existingAccount = await prisma.account.findUnique({
+        where: {
+          organizationId_name: {
+            organizationId: user.organization.id,
+            name: data.account,
+          },
+        },
+      });
+
       const account = await prisma.account.upsert({
         where: {
           organizationId_name: {
@@ -61,9 +71,10 @@ export async function POST(req: NextRequest) {
           },
         },
         update: {
-          // Bidirectional sync: if website or ticker is provided, update the account
+          // Only update website if provided
           ...(data.accountWebsite ? { website: data.accountWebsite } : {}),
-          ...(data.accountTicker ? { ticker: data.accountTicker } : {}),
+          // Only update ticker if it's currently empty (prevent overwriting existing ticker)
+          ...(data.accountTicker && !existingAccount?.ticker ? { ticker: data.accountTicker } : {}),
         },
         create: {
           name: data.account,

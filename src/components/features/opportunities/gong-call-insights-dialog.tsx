@@ -366,7 +366,7 @@ export function GongCallInsightsDialog({
             </Button>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 italic">
-            Risk analysis pending. Click "Run Analysis" to generate a risk assessment for this call.
+            Risk analysis pending. Click &ldquo;Run Analysis&rdquo; to generate a risk assessment for this call.
           </p>
         </div>
       );
