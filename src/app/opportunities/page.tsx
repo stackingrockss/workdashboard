@@ -12,7 +12,17 @@ export const dynamic = "force-dynamic";
 
 export default async function OpportunitiesPage() {
   // Require authentication
-  const user = await requireAuth();
+  let user;
+  try {
+    user = await requireAuth();
+  } catch (error) {
+    // If authentication fails, redirect to login
+    console.error("[OpportunitiesPage] Authentication failed:", error);
+
+    // Use Next.js redirect for proper navigation
+    const { redirect } = await import("next/navigation");
+    redirect("/auth/login");
+  }
 
   // Get organization's fiscal year settings
   const fiscalYearStartMonth = user.organization?.fiscalYearStartMonth ?? 1;

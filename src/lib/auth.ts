@@ -8,11 +8,23 @@ import type { User as PrismaUser } from "@prisma/client";
  * Returns null if not authenticated
  */
 export async function getCurrentSupabaseUser(): Promise<SupabaseUser | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error
+    } = await supabase.auth.getUser();
+
+    if (error) {
+      console.error("[getCurrentSupabaseUser] Supabase auth error:", error);
+      return null;
+    }
+
+    return user;
+  } catch (error) {
+    console.error("[getCurrentSupabaseUser] Failed to create Supabase client:", error);
+    return null;
+  }
 }
 
 /**
@@ -148,7 +160,17 @@ export async function requireAuth(): Promise<PrismaUser & {
 }> {
   const user = await getCurrentUser();
 
-  if (!user || !user.organization) {
+  if (!user) {
+    console.error("[requireAuth] No user found - Supabase session missing or expired");
+    throw new Error("Unauthorized");
+  }
+
+  if (!user.organization) {
+    console.error("[requireAuth] User exists but has no organization", {
+      userId: user.id,
+      email: user.email,
+      organizationId: user.organizationId
+    });
     throw new Error("Unauthorized");
   }
 

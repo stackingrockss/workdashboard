@@ -49,13 +49,23 @@ export async function updateSession(request: NextRequest) {
 
   const {
     data: { user },
+    error
   } = await supabase.auth.getUser();
+
+  // Log auth errors in production for debugging
+  if (error && process.env.NODE_ENV === "production") {
+    console.error("[middleware] Supabase auth error:", error);
+  }
 
   // Protect routes that require authentication
   const publicPaths = ["/", "/auth/login", "/auth/callback"];
   const isPublicPath = publicPaths.some((path) => request.nextUrl.pathname === path);
 
   if (!user && !isPublicPath && !request.nextUrl.pathname.startsWith("/auth")) {
+    // Log redirect for debugging
+    if (process.env.NODE_ENV === "production") {
+      console.log(`[middleware] No user found, redirecting ${request.nextUrl.pathname} → /auth/login`);
+    }
     // Redirect to login if user is not authenticated
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";

@@ -66,6 +66,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
       const response = await fetch("/api/v1/notifications/mentions?limit=10&includeRead=false");
 
+      if (response.status === 401) {
+        // Session expired, redirect to login
+        window.location.href = "/auth/login";
+        return;
+      }
+
       if (!response.ok) {
         throw new Error("Failed to fetch notifications");
       }
@@ -88,6 +94,11 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     const fetchUserId = async () => {
       try {
         const response = await fetch("/api/v1/users/me");
+        if (response.status === 401) {
+          // Session expired, redirect to login
+          window.location.href = "/auth/login";
+          return;
+        }
         if (!response.ok) {
           throw new Error("Failed to fetch user ID");
         }
