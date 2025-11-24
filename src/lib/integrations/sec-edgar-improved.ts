@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 const SEC_USER_AGENT =
   process.env.SEC_USER_AGENT || "SalesTracker admin@example.com";
 const SEC_BASE_URL = "https://www.sec.gov";
-const SEC_DATA_URL = "https://data.sec.gov";
+const SEC_DATA_URL = "https://www.sec.gov";
 
 /**
  * Rate limiter for SEC EDGAR API (10 requests/second limit)
