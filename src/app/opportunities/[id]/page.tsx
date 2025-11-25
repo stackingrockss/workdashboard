@@ -111,6 +111,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
       parsedPeople: call.parsedPeople as unknown,
       nextSteps: call.nextSteps as unknown,
       riskAssessment: call.riskAssessment as unknown,
+      calendarEventId: call.calendarEventId || undefined, // For linking to calendar events
       createdAt: call.createdAt.toISOString(),
       updatedAt: call.updatedAt.toISOString(),
     })),
