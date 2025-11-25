@@ -12,12 +12,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ListTodo, Settings, AlertCircle, Calendar } from "lucide-react";
+import { ListTodo, Settings, AlertCircle, Calendar, RefreshCw } from "lucide-react";
 import { TaskCard } from "./task-card";
+import { toast } from "sonner";
 import type { TaskWithRelations } from "@/types/task";
 
 /**
  * Groups tasks by timeframe relative to today
+ * Tasks without due dates go into "No Due Date" group
  */
 function groupTasksByTimeframe(
   tasks: TaskWithRelations[]
@@ -33,22 +35,25 @@ function groupTasksByTimeframe(
   nextWeek.setDate(nextWeek.getDate() + 7);
 
   tasks.forEach((task) => {
-    if (!task.due) return; // Skip tasks without due dates
-
-    const dueDate = new Date(task.due);
-    dueDate.setHours(0, 0, 0, 0);
-
     let label: string;
-    if (dueDate < today) {
-      label = "Overdue";
-    } else if (dueDate.getTime() === today.getTime()) {
-      label = "Today";
-    } else if (dueDate.getTime() === tomorrow.getTime()) {
-      label = "Tomorrow";
-    } else if (dueDate <= nextWeek) {
-      label = "This Week";
+
+    if (!task.due) {
+      label = "No Due Date";
     } else {
-      label = "Later";
+      const dueDate = new Date(task.due);
+      dueDate.setHours(0, 0, 0, 0);
+
+      if (dueDate < today) {
+        label = "Overdue";
+      } else if (dueDate.getTime() === today.getTime()) {
+        label = "Today";
+      } else if (dueDate.getTime() === tomorrow.getTime()) {
+        label = "Tomorrow";
+      } else if (dueDate <= nextWeek) {
+        label = "This Week";
+      } else {
+        label = "Later";
+      }
     }
 
     if (!groups[label]) {
@@ -61,23 +66,25 @@ function groupTasksByTimeframe(
 }
 
 /**
- * UpcomingTasksWidget - Dashboard widget showing upcoming Google Tasks
+ * UpcomingTasksWidget - Dashboard widget showing Google Tasks
  *
  * Features:
- * - Shows tasks due in next 7 days
- * - Groups by timeframe (Overdue, Today, Tomorrow, This Week)
- * - Limits to 10 most urgent tasks
+ * - Shows all pending tasks from Google Tasks
+ * - Groups by timeframe (Overdue, Today, Tomorrow, This Week, Later, No Due Date)
+ * - Limits to 15 tasks
  * - Quick mark complete action
  * - Links to linked opportunities
+ * - Manual sync button
  * - Auto-refreshes every 5 minutes
  */
 export function UpcomingTasksWidget() {
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<TaskWithRelations[]>([]);
   const [notConnected, setNotConnected] = useState(false);
 
-  const loadUpcomingTasks = async () => {
+  const loadTasks = async () => {
     setLoading(true);
     setError(null);
     setNotConnected(false);
@@ -111,18 +118,14 @@ export function UpcomingTasksWidget() {
         return;
       }
 
-      // Calculate date range (next 7 days)
-      const sevenDaysFromNow = new Date();
-      sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-
-      // Fetch tasks from all lists in parallel
+      // Fetch tasks from all lists in parallel (no date filter, all pending tasks)
       const allTasks: TaskWithRelations[] = [];
 
       await Promise.all(
         taskLists.map(async (list: { id: string }) => {
           try {
             const tasksResponse = await fetch(
-              `/api/v1/tasks/lists/${list.id}/tasks?status=needsAction&dueBefore=${sevenDaysFromNow.toISOString()}`
+              `/api/v1/tasks/lists/${list.id}/tasks?status=needsAction`
             );
 
             if (tasksResponse.ok) {
@@ -136,30 +139,62 @@ export function UpcomingTasksWidget() {
         })
       );
 
-      // Filter tasks with due dates and sort by due date
+      // Sort tasks: overdue first, then by due date, then tasks without due dates
       const sortedTasks = allTasks
-        .filter((task) => task.due)
         .sort((a, b) => {
+          // Tasks with due dates come before tasks without
+          if (a.due && !b.due) return -1;
+          if (!a.due && b.due) return 1;
+          if (!a.due && !b.due) return 0;
+
+          // Both have due dates - sort by date
           const dateA = new Date(a.due!).getTime();
           const dateB = new Date(b.due!).getTime();
           return dateA - dateB;
         })
-        .slice(0, 10); // Limit to 10 tasks
+        .slice(0, 15); // Limit to 15 tasks
 
       setTasks(sortedTasks);
     } catch (err) {
-      console.error("Failed to load upcoming tasks:", err);
+      console.error("Failed to load tasks:", err);
       setError("Failed to load tasks");
     } finally {
       setLoading(false);
     }
   };
 
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const response = await fetch("/api/v1/integrations/google/tasks/sync", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to sync");
+      }
+
+      const data = await response.json();
+      toast.success(
+        `Synced ${data.stats.tasksSynced} tasks from ${data.stats.listsSynced} lists`
+      );
+
+      // Reload tasks after sync
+      await loadTasks();
+    } catch (err) {
+      console.error("Failed to sync tasks:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to sync tasks");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   useEffect(() => {
-    loadUpcomingTasks();
+    loadTasks();
 
     // Auto-refresh every 5 minutes
-    const interval = setInterval(loadUpcomingTasks, 5 * 60 * 1000);
+    const interval = setInterval(loadTasks, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
   }, []);
@@ -176,7 +211,7 @@ export function UpcomingTasksWidget() {
   );
 
   // Define display order for timeframe groups
-  const groupOrder = ["Overdue", "Today", "Tomorrow", "This Week", "Later"];
+  const groupOrder = ["Overdue", "Today", "Tomorrow", "This Week", "Later", "No Due Date"];
 
   return (
     <Card className="col-span-full md:col-span-1">
@@ -184,16 +219,27 @@ export function UpcomingTasksWidget() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <ListTodo className="h-5 w-5 text-primary" />
-            <CardTitle>Upcoming Tasks</CardTitle>
+            <CardTitle>Tasks</CardTitle>
           </div>
-          <Link href="/settings/integrations">
-            <Button variant="ghost" size="icon">
-              <Settings className="h-4 w-4" />
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleSync}
+              disabled={syncing || notConnected}
+              title="Sync from Google Tasks"
+            >
+              <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
             </Button>
-          </Link>
+            <Link href="/settings/integrations">
+              <Button variant="ghost" size="icon" title="Settings">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </Link>
+          </div>
         </div>
         <CardDescription>
-          Tasks due in the next 7 days from Google Tasks
+          Your pending tasks from Google Tasks
         </CardDescription>
       </CardHeader>
 
@@ -213,7 +259,7 @@ export function UpcomingTasksWidget() {
             <Alert>
               <Calendar className="h-4 w-4" />
               <AlertDescription>
-                Connect your Google Tasks to view upcoming tasks alongside your
+                Connect your Google Tasks to view tasks alongside your
                 opportunities.
               </AlertDescription>
             </Alert>
@@ -230,7 +276,7 @@ export function UpcomingTasksWidget() {
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
-            <Button onClick={loadUpcomingTasks} variant="outline" className="w-full">
+            <Button onClick={loadTasks} variant="outline" className="w-full">
               Try Again
             </Button>
           </div>
@@ -239,13 +285,13 @@ export function UpcomingTasksWidget() {
         {/* Empty state */}
         {!loading && !notConnected && !error && tasks.length === 0 && (
           <div className="text-center py-8">
-            <CardDescription className="mb-2">
-              You have no upcoming tasks in the next 7 days.
+            <CardDescription className="mb-4">
+              No pending tasks found.
             </CardDescription>
-            <p className="text-sm text-muted-foreground">
-              Tasks will appear here when you have items due soon in Google
-              Tasks.
-            </p>
+            <Button onClick={handleSync} variant="outline" disabled={syncing}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Syncing..." : "Sync from Google Tasks"}
+            </Button>
           </div>
         )}
 
