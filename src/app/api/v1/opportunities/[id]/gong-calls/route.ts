@@ -79,6 +79,20 @@ export async function POST(
       );
     }
 
+    // Validate calendarEventId if provided
+    let validCalendarEventId: string | undefined = undefined;
+    if (parsed.data.calendarEventId) {
+      const calendarEvent = await prisma.calendarEvent.findUnique({
+        where: {
+          id: parsed.data.calendarEventId,
+        },
+      });
+      if (calendarEvent) {
+        validCalendarEventId = calendarEvent.id;
+      }
+      // If calendar event doesn't exist, we silently ignore it rather than failing
+    }
+
     // Create the call with optional transcript and calendar event association
     const call = await prisma.gongCall.create({
       data: {
@@ -89,7 +103,7 @@ export async function POST(
         noteType: parsed.data.noteType,
         transcriptText: parsed.data.transcriptText,
         parsingStatus: parsed.data.transcriptText ? "parsing" : null,
-        calendarEventId: parsed.data.calendarEventId,
+        calendarEventId: validCalendarEventId,
       },
     });
 
