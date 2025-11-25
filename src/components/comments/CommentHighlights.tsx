@@ -72,6 +72,9 @@ export function CommentHighlights({
           highlightRange(range, {
             color: "#ffeb3b",
             className: `comment-highlight comment-highlight-${comment.id}`,
+            commentId: comment.id,
+            isResolved: comment.isResolved,
+            authorId: comment.authorId,
             onClick: () => {
               // Open sidebar and scroll to comment
               openSidebar(entityType, entityId, pageContext);

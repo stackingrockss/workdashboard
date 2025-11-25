@@ -239,12 +239,18 @@ export function highlightRange(
     color?: string;
     onClick?: () => void;
     className?: string;
+    commentId?: string;
+    isResolved?: boolean;
+    authorId?: string;
   } = {}
 ): HTMLElement[] {
   const {
     color = "#ffeb3b",
     onClick,
     className = "comment-highlight",
+    commentId,
+    isResolved,
+    authorId,
   } = options;
 
   const highlights: HTMLElement[] = [];
@@ -259,6 +265,17 @@ export function highlightRange(
     wrapper.style.backgroundColor = color;
     wrapper.style.cursor = onClick ? "pointer" : "default";
     wrapper.style.transition = "background-color 0.2s";
+
+    // Add data attributes for position tracking
+    if (commentId) {
+      wrapper.setAttribute("data-comment-id", commentId);
+    }
+    if (isResolved !== undefined) {
+      wrapper.setAttribute("data-resolved", String(isResolved));
+    }
+    if (authorId) {
+      wrapper.setAttribute("data-author-id", authorId);
+    }
 
     if (onClick) {
       wrapper.addEventListener("click", onClick);

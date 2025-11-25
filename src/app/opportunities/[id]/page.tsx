@@ -126,7 +126,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     updatedAt: opportunityFromDB.updatedAt.toISOString(),
   };
 
-  return <OpportunityDetailClient opportunity={opportunity} organizationId={user.organization.id} />;
+  return <OpportunityDetailClient opportunity={opportunity} organizationId={user.organization.id} userId={user.id} />;
 }
 
 

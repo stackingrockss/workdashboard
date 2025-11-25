@@ -210,3 +210,68 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Comment Position Indicator Styles */
+
+/* Container for anchor icons - ensures proper relative positioning */
+.comment-anchor-icons-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 40;
+  overflow: visible;
+}
+
+.comment-anchor-icons-container > * {
+  pointer-events: auto;
+}
+
+/* Flash animation when scrolling to a comment */
+@keyframes comment-highlight-flash {
+  0% {
+    background-color: #ffeb3b;
+  }
+  25% {
+    background-color: #ff9800;
+  }
+  50% {
+    background-color: #ffeb3b;
+  }
+  75% {
+    background-color: #ff9800;
+  }
+  100% {
+    background-color: #ffeb3b;
+  }
+}
+
+.comment-highlight-flash {
+  animation: comment-highlight-flash 0.5s ease-in-out 2;
+}
+
+/* Scrollbar marker hover state */
+.comment-scrollbar-marker:hover {
+  width: 12px !important;
+  height: 6px !important;
+}
+
+/* Ensure anchor icons appear above content */
+.comment-anchor-icon {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.comment-anchor-icon:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Dark mode adjustments for comment indicators */
+.dark .comment-anchor-icon {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.dark .comment-anchor-icon:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
