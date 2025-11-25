@@ -129,6 +129,7 @@ export async function GET(req: NextRequest) {
       },
       take: maxResults,
       select: {
+        id: true, // Include the database ID for linking
         googleEventId: true,
         summary: true,
         description: true,
@@ -141,12 +142,15 @@ export async function GET(req: NextRequest) {
         meetingUrl: true,
         opportunityId: true,
         accountId: true,
+        source: true,
       },
     });
 
     // Transform to match Google Calendar client response format
+    // IMPORTANT: Use database `id` for linking, not googleEventId
     const transformedEvents = events.map(event => ({
-      id: event.googleEventId,
+      id: event.id, // Database ID - used for linking Gong calls/Granola notes
+      googleEventId: event.googleEventId, // Google's event ID - for reference
       summary: event.summary,
       description: event.description,
       location: event.location,
@@ -156,6 +160,7 @@ export async function GET(req: NextRequest) {
       isExternal: event.isExternal,
       organizerEmail: event.organizerEmail,
       meetingUrl: event.meetingUrl,
+      source: event.source,
     }));
 
     return NextResponse.json({
