@@ -6,6 +6,7 @@ import { inngest } from "@/lib/inngest/client";
 import { parseGongTranscriptJob } from "@/lib/inngest/functions/parse-gong-transcript";
 import { analyzeCallRiskJob } from "@/lib/inngest/functions/analyze-call-risk";
 import { consolidateInsightsJob } from "@/lib/inngest/functions/consolidate-insights";
+import { checkConsolidationJob } from "@/lib/inngest/functions/check-consolidation";
 import { syncAllCalendarEventsJob } from "@/lib/inngest/functions/sync-calendar-events";
 import { syncAllGoogleTasksJob } from "@/lib/inngest/functions/sync-google-tasks";
 import { processSecFilingJob } from "@/lib/inngest/functions/process-sec-filing";
@@ -27,6 +28,7 @@ export const { GET, POST, PUT } = serve({
   functions: [
     parseGongTranscriptJob,
     analyzeCallRiskJob,
+    checkConsolidationJob, // Lightweight job to check & trigger consolidation
     consolidateInsightsJob,
     syncAllCalendarEventsJob,
     syncAllGoogleTasksJob, // Google Tasks background sync (every 15 minutes)

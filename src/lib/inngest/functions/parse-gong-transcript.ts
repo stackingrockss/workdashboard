@@ -110,51 +110,26 @@ export const parseGongTranscriptJob = inngest.createFunction(
       }
     });
 
-    // Step 7: Trigger risk analysis job
-    await step.run("trigger-risk-analysis", async () => {
-      try {
-        await step.sendEvent("trigger-risk-analysis-event", {
+    // Step 7: Trigger downstream jobs (risk analysis + consolidation check)
+    // These are sent as separate events so they run independently and aren't
+    // affected by timeouts in this job
+    await step.run("trigger-downstream-jobs", async () => {
+      const events = [
+        {
           name: "gong/risk.analyze",
+          data: { gongCallId },
+        },
+        {
+          name: "gong/parsing.completed",
           data: {
+            opportunityId: updatedCall.opportunityId,
             gongCallId,
           },
-        });
-        return { riskAnalysisTriggered: true };
-      } catch (error) {
-        // Log but don't fail the main job if risk analysis trigger fails
-        console.error("Failed to trigger risk analysis:", error);
-        return { riskAnalysisTriggered: false, error: String(error) };
-      }
-    });
+        },
+      ];
 
-    // Step 8: Trigger consolidation job (if 2+ parsed calls exist)
-    await step.run("trigger-consolidation", async () => {
-      try {
-        // Check how many parsed calls exist for this opportunity
-        const parsedCallCount = await prisma.gongCall.count({
-          where: {
-            opportunityId: updatedCall.opportunityId,
-            parsingStatus: ParsingStatus.completed,
-          },
-        });
-
-        // Only trigger consolidation if we have 2+ parsed calls
-        if (parsedCallCount >= 2) {
-          await step.sendEvent("trigger-consolidation-event", {
-            name: "gong/insights.consolidate",
-            data: {
-              opportunityId: updatedCall.opportunityId,
-            },
-          });
-          return { consolidationTriggered: true, parsedCallCount };
-        }
-
-        return { consolidationTriggered: false, parsedCallCount, reason: "Less than 2 parsed calls" };
-      } catch (error) {
-        // Log but don't fail the main job if consolidation trigger fails
-        console.error("Failed to trigger consolidation:", error);
-        return { consolidationTriggered: false, error: String(error) };
-      }
+      await step.sendEvent("downstream-events", events);
+      return { triggered: ["risk-analysis", "consolidation-check"] };
     });
 
     return {
