@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Calendar, CheckCircle, XCircle, Loader2, RefreshCw, Unplug, AlertCircle } from "lucide-react";
+import { Calendar, CheckCircle, XCircle, Loader2, RefreshCw, Unplug, AlertCircle, CheckSquare } from "lucide-react";
 import { toast } from "sonner";
 import { CalendarConnectionStatus } from "@/types/calendar";
 import Link from "next/link";
@@ -40,7 +40,7 @@ export function IntegrationsSettingsContent() {
     const error = searchParams.get("error");
 
     if (status === "connected") {
-      toast.success("Google Calendar connected successfully!");
+      toast.success("Google services connected successfully!");
       // Reload connection status
       checkConnectionStatus();
     } else if (error) {
@@ -116,7 +116,7 @@ export function IntegrationsSettingsContent() {
         throw new Error(data.error || "Failed to disconnect");
       }
 
-      toast.success("Google Calendar disconnected successfully");
+      toast.success("Google services disconnected successfully");
       setConnectionStatus({ connected: false });
       setShowDisconnectDialog(false);
     } catch (error) {
@@ -314,6 +314,120 @@ export function IntegrationsSettingsContent() {
         </CardContent>
       </Card>
 
+      {/* Google Tasks Integration */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <CheckSquare className="h-5 w-5" />
+                Google Tasks
+                {connectionStatus.connected && connectionStatus.scopes?.includes('https://www.googleapis.com/auth/tasks') ? (
+                  <Badge variant="default" className="ml-2">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="ml-2">
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Not Connected
+                  </Badge>
+                )}
+              </CardTitle>
+              <CardDescription className="mt-2">
+                Connect your Google Tasks to view and manage tasks alongside opportunities
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!connectionStatus.connected || !connectionStatus.scopes?.includes('https://www.googleapis.com/auth/tasks') ? (
+            <>
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Features:</p>
+                <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
+                  <li>View upcoming tasks on your dashboard</li>
+                  <li>Link tasks to opportunities and accounts</li>
+                  <li>Track overdue and today&apos;s tasks</li>
+                  <li>Create and manage tasks from the app</li>
+                  <li>Auto-sync every 15 minutes</li>
+                </ul>
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center gap-4">
+                <Button onClick={handleConnect} className="gap-2">
+                  <CheckSquare className="h-4 w-4" />
+                  Connect Google Tasks
+                </Button>
+                <p className="text-sm text-muted-foreground">
+                  You&apos;ll be redirected to Google to grant permissions
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="space-y-3">
+                {connectionStatus.email && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Connected as:</span>
+                    <span className="text-sm text-muted-foreground">
+                      {connectionStatus.email}
+                    </span>
+                  </div>
+                )}
+
+                {connectionStatus.lastSync && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">Last synced:</span>
+                    <span className="text-sm text-muted-foreground">
+                      {new Date(connectionStatus.lastSync).toLocaleString()}
+                    </span>
+                  </div>
+                )}
+
+                <div>
+                  <span className="text-sm font-medium">Permissions:</span>
+                  <ul className="text-sm text-muted-foreground mt-1 space-y-1">
+                    <li>• Read and write tasks</li>
+                    <li>• Manage task lists</li>
+                  </ul>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <Button
+                  variant="outline"
+                  onClick={checkConnectionStatus}
+                  disabled={loading || syncing}
+                  className="gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+                  Refresh Status
+                </Button>
+
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowDisconnectDialog(true)}
+                  disabled={disconnecting || syncing}
+                  className="gap-2"
+                >
+                  <Unplug className="h-4 w-4" />
+                  Disconnect
+                </Button>
+
+                <p className="text-sm text-muted-foreground">
+                  Tasks sync automatically every 15 minutes
+                </p>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Domain Warning Dialog */}
       <AlertDialog open={showDomainWarning} onOpenChange={setShowDomainWarning}>
         <AlertDialogContent>
@@ -339,9 +453,9 @@ export function IntegrationsSettingsContent() {
       <AlertDialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Disconnect Google Calendar?</AlertDialogTitle>
+            <AlertDialogTitle>Disconnect Google Services?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will revoke access to your Google Calendar and remove all stored credentials.
+              This will revoke access to your Google Calendar and Google Tasks, and remove all stored credentials.
               You can reconnect at any time.
             </AlertDialogDescription>
           </AlertDialogHeader>
