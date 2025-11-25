@@ -12,6 +12,7 @@ interface CommentSidebarContextType {
   selectedCommentId: string | null;
   pageContext: string | null;
   openSidebar: (entityType: string, entityId: string, pageContext?: string) => void;
+  openSidebarWithSelection: (entityType: string, entityId: string, pageContext?: string) => void;
   closeSidebar: () => void;
   selectComment: (commentId: string | null) => void;
   setEntityContext: (entityType: string, entityId: string, pageContext?: string) => void;
@@ -31,6 +32,14 @@ export function CommentSidebarProvider({ children }: CommentSidebarProviderProps
   const [selectedCommentId, setSelectedCommentId] = useState<string | null>(null);
 
   const openSidebar = (type: string, id: string, context?: string) => {
+    setEntityType(type);
+    setEntityId(id);
+    setPageContext(context || null);
+    setIsOpen(true);
+  };
+
+  const openSidebarWithSelection = (type: string, id: string, context?: string) => {
+    // Same as openSidebar, but provides semantic clarity for toolbar usage
     setEntityType(type);
     setEntityId(id);
     setPageContext(context || null);
@@ -61,6 +70,7 @@ export function CommentSidebarProvider({ children }: CommentSidebarProviderProps
         selectedCommentId,
         pageContext,
         openSidebar,
+        openSidebarWithSelection,
         closeSidebar,
         selectComment,
         setEntityContext,

@@ -21,6 +21,8 @@ import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 import { GoogleNotesSection } from "./google-notes-section";
+import { GongCallsSection } from "./gong-calls-section";
+import { GranolaNotesSection } from "./granola-notes-section";
 import { MeetingEventCard } from "@/components/calendar/meeting-event-card";
 import { OrphanedNotesSection } from "@/components/calendar/orphaned-notes-section";
 import type { CalendarEvent } from "@/types/calendar";
@@ -46,10 +48,15 @@ import { EarningsTranscriptsSection } from "./earnings-transcripts-section";
 import { useCommentSidebar } from "@/components/comments/CommentSidebarContext";
 import { useTextSelection } from "@/components/comments/useTextSelection";
 import { CommentHighlights } from "@/components/comments/CommentHighlights";
+import { CommentAnchorIcons } from "@/components/comments/CommentAnchorIcons";
+import { CommentScrollbarMarkers } from "@/components/comments/CommentScrollbarMarkers";
+import { SelectionCommentToolbar } from "@/components/comments/SelectionCommentToolbar";
+import type { TextSelection } from "@/lib/text-selection";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
   organizationId: string;
+  userId?: string;
 }
 
 const stageOptions = [
@@ -91,7 +98,7 @@ const platformTypeOptions = [
   { value: "isv", label: "ISV" },
 ];
 
-export function OpportunityDetailClient({ opportunity, organizationId }: OpportunityDetailClientProps) {
+export function OpportunityDetailClient({ opportunity, organizationId, userId }: OpportunityDetailClientProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -102,10 +109,17 @@ export function OpportunityDetailClient({ opportunity, organizationId }: Opportu
   const [allGongCalls, setAllGongCalls] = useState<GongCall[]>(opportunity.gongCalls || []);
   const [allGranolaNotes, setAllGranolaNotes] = useState<GranolaNote[]>(opportunity.granolaNotes || []);
   const [loadingCalendar, setLoadingCalendar] = useState(true);
+  const [addGongDialogEventId, setAddGongDialogEventId] = useState<string | null>(null);
+  const [addGranolaDialogEventId, setAddGranolaDialogEventId] = useState<string | null>(null);
   const router = useRouter();
-  const { setEntityContext} = useCommentSidebar();
+  const { setEntityContext, openSidebarWithSelection } = useCommentSidebar();
 
-  // Enable comment system
+  // Handle comment toolbar click - opens sidebar when user clicks Comment button
+  const handleCommentClick = (selection: TextSelection) => {
+    openSidebarWithSelection("opportunity", opportunity.id, `/opportunities/${opportunity.id}`);
+  };
+
+  // Enable comment system (no longer auto-opens sidebar)
   useTextSelection({
     enabled: true,
     entityType: "opportunity",
@@ -316,6 +330,15 @@ export function OpportunityDetailClient({ opportunity, organizationId }: Opportu
     } finally {
       setIsGeneratingResearch(false);
     }
+  };
+
+  // Callbacks for adding Gong/Granola calls from calendar events
+  const handleAddGongCall = (eventId: string) => {
+    setAddGongDialogEventId(eventId);
+  };
+
+  const handleAddGranolaNote = (eventId: string) => {
+    setAddGranolaDialogEventId(eventId);
   };
 
   return (
@@ -653,6 +676,8 @@ export function OpportunityDetailClient({ opportunity, organizationId }: Opportu
                         granolaNotes={linkedGranolaNotes}
                         opportunityId={opportunity.id}
                         onRefresh={handleRefreshMeetingsData}
+                        onAddGongCall={handleAddGongCall}
+                        onAddGranolaNote={handleAddGranolaNote}
                         defaultExpanded={index < 3} // Expand first 3 by default
                       />
                     );
@@ -863,12 +888,74 @@ export function OpportunityDetailClient({ opportunity, organizationId }: Opportu
         pageContext={`/opportunities/${opportunity.id}`}
       />
 
+      {/* Comment Position Indicators */}
+      <CommentAnchorIcons
+        entityType="opportunity"
+        entityId={opportunity.id}
+        organizationId={organizationId}
+        pageContext={`/opportunities/${opportunity.id}`}
+        userId={userId}
+      />
+      <CommentScrollbarMarkers
+        entityType="opportunity"
+        entityId={opportunity.id}
+        organizationId={organizationId}
+        pageContext={`/opportunities/${opportunity.id}`}
+        userId={userId}
+      />
+
+      {/* Selection Comment Toolbar - appears when text is selected */}
+      <SelectionCommentToolbar
+        enabled={true}
+        onCommentClick={handleCommentClick}
+      />
+
       {/* AI Chat Widget */}
       <ChatWidget
         entityType="opportunity"
         entityId={opportunity.id}
         entityName={opportunity.name}
       />
+
+      {/* Add Gong Call Dialog (triggered from calendar events) */}
+      {addGongDialogEventId && (
+        <Dialog open={!!addGongDialogEventId} onOpenChange={(open) => !open && setAddGongDialogEventId(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add Gong Call</DialogTitle>
+            </DialogHeader>
+            <GongCallsSection
+              opportunityId={opportunity.id}
+              calls={[]}
+              preselectedCalendarEventId={addGongDialogEventId}
+              onCallAdded={() => {
+                setAddGongDialogEventId(null);
+                handleRefreshMeetingsData();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Add Granola Note Dialog (triggered from calendar events) */}
+      {addGranolaDialogEventId && (
+        <Dialog open={!!addGranolaDialogEventId} onOpenChange={(open) => !open && setAddGranolaDialogEventId(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add Granola Note</DialogTitle>
+            </DialogHeader>
+            <GranolaNotesSection
+              opportunityId={opportunity.id}
+              notes={[]}
+              preselectedCalendarEventId={addGranolaDialogEventId}
+              onNoteAdded={() => {
+                setAddGranolaDialogEventId(null);
+                handleRefreshMeetingsData();
+              }}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

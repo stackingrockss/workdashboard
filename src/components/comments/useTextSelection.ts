@@ -41,7 +41,7 @@ export function useTextSelection({
     }, 100);
   }, [enabled]);
 
-  // Handle mouseup to show comment option
+  // Handle mouseup to capture selection (no longer auto-opens sidebar)
   const handleMouseUp = useCallback(
     (event: MouseEvent) => {
       if (!enabled) return;
@@ -52,21 +52,15 @@ export function useTextSelection({
       const capturedSelection = captureTextSelection();
       if (!capturedSelection) return;
 
-      // Open sidebar with the selection
+      // Set entity context for when user clicks comment button
       setEntityContext(entityType, entityId, pageContext);
-      openSidebar(entityType, entityId, pageContext);
 
-      // Call custom handler if provided
+      // Call custom handler if provided (for toolbar integration)
       if (onSelection) {
         onSelection(capturedSelection);
       }
-
-      // Show toast with hint
-      toast.info("Text selected. Add a comment in the sidebar →", {
-        duration: 2000,
-      });
     },
-    [enabled, entityType, entityId, pageContext, openSidebar, setEntityContext, onSelection]
+    [enabled, entityType, entityId, pageContext, setEntityContext, onSelection]
   );
 
   // Handle keyboard shortcut (Cmd/Ctrl + Shift + C to comment)

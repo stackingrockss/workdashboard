@@ -11,6 +11,8 @@ import { ConvertToOpportunityDialog } from "./convert-to-opportunity-dialog";
 import { useCommentSidebar } from "@/components/comments/CommentSidebarContext";
 import { useTextSelection } from "@/components/comments/useTextSelection";
 import { CommentHighlights } from "@/components/comments/CommentHighlights";
+import { SelectionCommentToolbar } from "@/components/comments/SelectionCommentToolbar";
+import type { TextSelection } from "@/lib/text-selection";
 
 interface ProspectDetailClientProps {
   account: {
@@ -34,9 +36,14 @@ interface ProspectDetailClientProps {
 
 export function ProspectDetailClient({ account, organizationId }: ProspectDetailClientProps) {
   const [isConvertDialogOpen, setIsConvertDialogOpen] = useState(false);
-  const { setEntityContext } = useCommentSidebar();
+  const { setEntityContext, openSidebarWithSelection } = useCommentSidebar();
 
-  // Enable comment system
+  // Handle comment toolbar click - opens sidebar when user clicks Comment button
+  const handleCommentClick = (selection: TextSelection) => {
+    openSidebarWithSelection("account", account.id, `/prospects/${account.id}`);
+  };
+
+  // Enable comment system (no longer auto-opens sidebar)
   useTextSelection({
     enabled: true,
     entityType: "account",
@@ -173,6 +180,12 @@ export function ProspectDetailClient({ account, organizationId }: ProspectDetail
         entityId={account.id}
         organizationId={organizationId}
         pageContext={`/prospects/${account.id}`}
+      />
+
+      {/* Selection Comment Toolbar - appears when text is selected */}
+      <SelectionCommentToolbar
+        enabled={true}
+        onCommentClick={handleCommentClick}
       />
     </div>
   );
