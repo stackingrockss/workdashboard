@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, ExternalLink } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -187,8 +187,8 @@ export function AddEarningsTranscriptDialog({
               </SelectTrigger>
               <SelectContent>
                 {accountTicker && (
-                  <SelectItem value="financialmodelingprep">
-                    Financial Modeling Prep API
+                  <SelectItem value="api-ninjas">
+                    Auto-fetch (S&P 100 companies)
                   </SelectItem>
                 )}
                 <SelectItem value="manual">Manual Upload</SelectItem>
@@ -197,7 +197,7 @@ export function AddEarningsTranscriptDialog({
             </Select>
             <p className="text-xs text-muted-foreground">
               {accountTicker
-                ? "API fetch will auto-download transcript"
+                ? "Auto-fetch works for S&P 100 companies only"
                 : "Add ticker to account to use API"}
             </p>
             {errors.source && (
@@ -207,7 +207,20 @@ export function AddEarningsTranscriptDialog({
 
           {selectedSource === "manual" && (
             <div className="space-y-2">
-              <Label htmlFor="transcriptText">Transcript Text</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="transcriptText">Transcript Text</Label>
+                {accountTicker && (
+                  <a
+                    href={`https://seekingalpha.com/symbol/${accountTicker.toUpperCase()}/earnings/transcripts`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    Find on Seeking Alpha
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
               <Textarea
                 id="transcriptText"
                 placeholder="Paste the full earnings call transcript here..."
@@ -215,6 +228,11 @@ export function AddEarningsTranscriptDialog({
                 {...register("transcriptText")}
                 disabled={isSubmitting}
               />
+              {accountTicker && (
+                <p className="text-xs text-muted-foreground">
+                  Copy the transcript from Seeking Alpha and paste it above
+                </p>
+              )}
               {errors.transcriptText && (
                 <p className="text-sm text-destructive">{errors.transcriptText.message}</p>
               )}

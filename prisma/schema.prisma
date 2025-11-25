@@ -253,6 +253,7 @@ model Organization {
   accounts             Account[]
   comments             Comment[]
   commentMentions      CommentMention[]
+  contents             Content[]
   earningsTranscripts  EarningsCallTranscript[]
   invitations          Invitation[]
   kanbanViews          KanbanView[]
@@ -294,6 +295,7 @@ model User {
   calendarSyncStates CalendarSyncState[]
   chatMessages       ChatMessage[]
   authoredComments   Comment[]            @relation("AuthoredComments")
+  createdContents    Content[]            @relation("ContentCreatedBy")
   resolvedComments   Comment[]            @relation("ResolvedComments")
   mentions           CommentMention[]     @relation("UserMentions")
   reactions          CommentReaction[]    @relation("UserReactions")
@@ -741,5 +743,36 @@ model SecCompanyCache {
 
   @@index([name])
   @@index([ticker])
+  @@schema("opportunity_tracker")
+}
+
+model Content {
+  id             String       @id @default(cuid())
+  title          String
+  url            String
+  description    String?
+  contentType    ContentType
+  createdById    String
+  organizationId String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  createdBy      User         @relation("ContentCreatedBy", fields: [createdById], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, url])
+  @@index([organizationId])
+  @@index([contentType])
+  @@schema("opportunity_tracker")
+}
+
+enum ContentType {
+  blog_post
+  case_study
+  whitepaper
+  video
+  webinar
+  other
+
   @@schema("opportunity_tracker")
 }

@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import { getEarningsCalendar } from "@/lib/integrations/financial-modeling-prep";
+import {
+  getNextEarningsDate as getFinnhubEarningsDate,
+  isFinnhubConfigured,
+} from "@/lib/integrations/finnhub";
+import { estimateNextEarningsDate as getSecEdgarEstimate } from "@/lib/integrations/sec-edgar";
 
 export async function POST(
   _req: NextRequest,
@@ -33,40 +37,45 @@ export async function POST(
       );
     }
 
-    // Fetch earnings calendar from Financial Modeling Prep API
-    const earningsData = await getEarningsCalendar(account.ticker);
+    let earningsResult: {
+      date: Date;
+      isEstimate: boolean;
+      source: string;
+    } | null = null;
 
-    if (!earningsData || earningsData.length === 0) {
-      return NextResponse.json(
-        { error: "No earnings data found for this ticker" },
-        { status: 404 }
-      );
+    // Try Finnhub first (more accurate, has actual earnings calendar)
+    if (isFinnhubConfigured()) {
+      try {
+        earningsResult = await getFinnhubEarningsDate(account.ticker);
+      } catch (error) {
+        console.warn(`Finnhub earnings fetch failed for ${account.ticker}:`, error);
+      }
     }
 
-    // Filter for future earnings dates
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Fall back to SEC EDGAR estimate if Finnhub unavailable or failed
+    if (!earningsResult) {
+      try {
+        earningsResult = await getSecEdgarEstimate(account.ticker);
+      } catch (error) {
+        console.warn(`SEC EDGAR estimate failed for ${account.ticker}:`, error);
+      }
+    }
 
-    const upcomingEarnings = earningsData
-      .filter((earnings) => new Date(earnings.date) >= today)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    // Get the next earnings date
-    const nextEarnings = upcomingEarnings[0] || null;
-
-    // Update account with next earnings date
+    // Update account with earnings date
     let updatedAccount = account;
-    if (nextEarnings) {
+    if (earningsResult) {
       updatedAccount = await prisma.account.update({
         where: { id: account.id },
         data: {
-          nextEarningsDate: new Date(nextEarnings.date),
-          earningsDateSource: "api",
+          nextEarningsDate: earningsResult.date,
+          earningsDateSource: earningsResult.isEstimate
+            ? `${earningsResult.source}-estimate`
+            : earningsResult.source,
           lastEarningsSync: new Date(),
         },
       });
     } else {
-      // No upcoming earnings found, clear the date
+      // No earnings data found, clear the date
       updatedAccount = await prisma.account.update({
         where: { id: account.id },
         data: {
@@ -83,10 +92,16 @@ export async function POST(
         name: updatedAccount.name,
         ticker: updatedAccount.ticker,
         nextEarningsDate: updatedAccount.nextEarningsDate,
+        earningsDateSource: updatedAccount.earningsDateSource,
         lastEarningsSync: updatedAccount.lastEarningsSync,
       },
-      nextEarnings,
-      upcomingCount: upcomingEarnings.length,
+      earningsInfo: earningsResult
+        ? {
+            date: earningsResult.date,
+            isEstimate: earningsResult.isEstimate,
+            source: earningsResult.source,
+          }
+        : null,
     });
   } catch (error) {
     console.error("Error syncing earnings dates:", error);
@@ -94,7 +109,12 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     return NextResponse.json(
-      { error: "Failed to sync earnings dates" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Failed to sync earnings dates",
+      },
       { status: 500 }
     );
   }

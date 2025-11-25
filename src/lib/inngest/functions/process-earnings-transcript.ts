@@ -4,7 +4,10 @@
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/db";
 import { TranscriptProcessingStatus } from "@prisma/client";
-import { fetchEarningsTranscript } from "@/lib/integrations/financial-modeling-prep";
+import {
+  fetchTranscriptWithFallback,
+  getSeekingAlphaTranscriptUrl,
+} from "@/lib/integrations/api-ninjas";
 import { parseEarningsTranscript } from "@/lib/ai/parse-earnings-transcript";
 
 /**
@@ -61,25 +64,33 @@ export const processEarningsTranscriptJob = inngest.createFunction(
           );
         }
 
-        try {
-          const text = await fetchEarningsTranscript(
-            ticker,
-            transcriptData.fiscalYear,
-            transcriptData.quarter
-          );
+        // Parse quarter string (e.g., "Q1" -> 1)
+        const quarterNum = parseInt(transcriptData.quarter.replace("Q", ""), 10);
 
+        // Try API Ninjas (S&P 100 companies on free tier)
+        const result = await fetchTranscriptWithFallback(
+          ticker,
+          transcriptData.fiscalYear,
+          quarterNum
+        );
+
+        if (result.success && result.transcript) {
           // Save fetched transcript to database
           await prisma.earningsCallTranscript.update({
             where: { id: transcriptId },
-            data: { transcriptText: text },
+            data: { transcriptText: result.transcript },
           });
 
-          return text;
-        } catch (error) {
-          throw new Error(
-            `Failed to fetch transcript from Financial Modeling Prep: ${error instanceof Error ? error.message : "Unknown error"}`
-          );
+          return result.transcript;
         }
+
+        // Transcript not available via API - manual upload required
+        const seekingAlphaUrl = getSeekingAlphaTranscriptUrl(ticker);
+        throw new Error(
+          `Transcript not available via API for ${ticker}. ` +
+            `Please manually upload the transcript. ` +
+            `You can find it at: ${seekingAlphaUrl}`
+        );
       });
     }
 

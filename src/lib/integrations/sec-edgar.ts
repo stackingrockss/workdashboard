@@ -82,7 +82,7 @@ export interface CompanyMatch {
 export async function getCikFromTicker(ticker: string): Promise<string> {
   return rateLimiter.schedule(async () => {
     const response = await fetch(
-      `${SEC_DATA_URL}/files/company_tickers.json`,
+      `${SEC_BASE_URL}/files/company_tickers.json`,
       {
         headers: { "User-Agent": SEC_USER_AGENT },
       }
@@ -374,4 +374,96 @@ function extractSection(
  */
 export function getFilingViewerUrl(cik: string, accessionNumber: string): string {
   return `${SEC_BASE_URL}/cgi-bin/viewer?action=view&cik=${cik}&accession_number=${accessionNumber}&xbrl_type=v`;
+}
+
+/**
+ * Estimate next earnings date based on historical filing patterns
+ * Companies typically file 10-Q ~45 days after quarter end
+ * @param ticker Stock ticker symbol
+ */
+export async function estimateNextEarningsDate(
+  ticker: string
+): Promise<{ date: Date; isEstimate: boolean; source: string } | null> {
+  try {
+    const cik = await getCikFromTicker(ticker);
+
+    // Fetch company submissions to get recent filings
+    const response = await rateLimiter.schedule(async () => {
+      const res = await fetch(`${SEC_DATA_URL}/submissions/CIK${cik}.json`, {
+        headers: { "User-Agent": SEC_USER_AGENT },
+      });
+      if (!res.ok) {
+        throw new Error(`SEC API error: ${res.status}`);
+      }
+      return res.json() as Promise<CompanySubmissions>;
+    });
+
+    const recentFilings = response.filings.recent;
+
+    // Get recent 10-Q and 10-K filings to analyze patterns
+    const quarterlyFilings: Array<{ form: string; filingDate: string; reportDate: string }> = [];
+
+    for (let i = 0; i < recentFilings.form.length && quarterlyFilings.length < 8; i++) {
+      const form = recentFilings.form[i];
+      if (form === "10-Q" || form === "10-K") {
+        quarterlyFilings.push({
+          form,
+          filingDate: recentFilings.filingDate[i],
+          reportDate: recentFilings.reportDate[i],
+        });
+      }
+    }
+
+    if (quarterlyFilings.length === 0) {
+      return null;
+    }
+
+    // Calculate average days between report date and filing date
+    const reportToFilingDays: number[] = [];
+    for (const filing of quarterlyFilings) {
+      if (filing.reportDate && filing.filingDate) {
+        const reportDate = new Date(filing.reportDate);
+        const filingDate = new Date(filing.filingDate);
+        const daysDiff = Math.floor(
+          (filingDate.getTime() - reportDate.getTime()) / (1000 * 60 * 60 * 24)
+        );
+        if (daysDiff > 0 && daysDiff < 90) {
+          reportToFilingDays.push(daysDiff);
+        }
+      }
+    }
+
+    const avgDaysToFile =
+      reportToFilingDays.length > 0
+        ? Math.round(
+            reportToFilingDays.reduce((a, b) => a + b, 0) / reportToFilingDays.length
+          )
+        : 45; // Default to 45 days
+
+    // Get the most recent report date
+    const lastReportDate = new Date(quarterlyFilings[0].reportDate);
+
+    // Estimate next quarter end (add ~90 days)
+    const nextQuarterEnd = new Date(lastReportDate);
+    nextQuarterEnd.setDate(nextQuarterEnd.getDate() + 90);
+
+    // Estimate filing date
+    const estimatedFilingDate = new Date(nextQuarterEnd);
+    estimatedFilingDate.setDate(estimatedFilingDate.getDate() + avgDaysToFile);
+
+    // If estimated date is in the past, add another quarter
+    const today = new Date();
+    if (estimatedFilingDate < today) {
+      estimatedFilingDate.setDate(estimatedFilingDate.getDate() + 90);
+    }
+
+    return {
+      date: estimatedFilingDate,
+      isEstimate: true,
+      source: "sec-edgar",
+    };
+  } catch (error) {
+    console.error(`Error estimating earnings date for ${ticker}:`, error);
+    return null;
+  }
 }

@@ -3,7 +3,11 @@
 
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/db";
-import { getEarningsCalendar } from "@/lib/integrations/financial-modeling-prep";
+import {
+  getNextEarningsDate as getFinnhubEarningsDate,
+  isFinnhubConfigured,
+} from "@/lib/integrations/finnhub";
+import { estimateNextEarningsDate as getSecEdgarEstimate } from "@/lib/integrations/sec-edgar";
 import { GoogleTasksClient } from "@/lib/integrations/google-tasks";
 import { add } from "date-fns";
 
@@ -57,33 +61,39 @@ export const syncEarningsDatesJob = inngest.createFunction(
     for (const account of accountsWithTickers) {
       await step.run(`sync-earnings-${account.id}`, async () => {
         try {
-          // Fetch earnings calendar from FMP API
-          const earningsData = await getEarningsCalendar(account.ticker!);
+          let earningsResult: {
+            date: Date;
+            isEstimate: boolean;
+            source: string;
+          } | null = null;
 
-          if (!earningsData || earningsData.length === 0) {
-            console.log(`Account ${account.name}: No earnings data found`);
-            earningsSynced++;
-            return { success: true, earningsFound: false };
+          // Try Finnhub first (more accurate, has actual earnings calendar)
+          if (isFinnhubConfigured()) {
+            try {
+              earningsResult = await getFinnhubEarningsDate(account.ticker!);
+            } catch (error) {
+              console.warn(`Finnhub failed for ${account.name}:`, error);
+            }
           }
 
-          // Filter for future earnings dates
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
+          // Fall back to SEC EDGAR estimate
+          if (!earningsResult) {
+            try {
+              earningsResult = await getSecEdgarEstimate(account.ticker!);
+            } catch (error) {
+              console.warn(`SEC EDGAR estimate failed for ${account.name}:`, error);
+            }
+          }
 
-          const upcomingEarnings = earningsData
-            .filter((earnings) => new Date(earnings.date) >= today)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-          // Get the next earnings date
-          const nextEarnings = upcomingEarnings[0] || null;
-
-          // Update account with next earnings date
-          if (nextEarnings) {
+          // Update account with earnings date
+          if (earningsResult) {
             await prisma.account.update({
               where: { id: account.id },
               data: {
-                nextEarningsDate: new Date(nextEarnings.date),
-                earningsDateSource: "api",
+                nextEarningsDate: earningsResult.date,
+                earningsDateSource: earningsResult.isEstimate
+                  ? `${earningsResult.source}-estimate`
+                  : earningsResult.source,
                 lastEarningsSync: new Date(),
               },
             });
@@ -91,10 +101,12 @@ export const syncEarningsDatesJob = inngest.createFunction(
             return {
               success: true,
               earningsFound: true,
-              nextEarningsDate: nextEarnings.date,
+              nextEarningsDate: earningsResult.date.toISOString(),
+              source: earningsResult.source,
+              isEstimate: earningsResult.isEstimate,
             };
           } else {
-            // No upcoming earnings, clear the date
+            // No earnings data found, clear the date
             await prisma.account.update({
               where: { id: account.id },
               data: {

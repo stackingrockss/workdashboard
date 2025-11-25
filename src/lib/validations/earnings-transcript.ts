@@ -7,8 +7,8 @@ export const earningsTranscriptCreateSchema = z.object({
   title: z.string().min(2).max(200).optional(),
   transcriptText: z.string().min(100).optional(),
   source: z
-    .enum(["financialmodelingprep", "sec-8k", "manual"])
-    .default("financialmodelingprep"),
+    .enum(["api-ninjas", "finnhub", "financialmodelingprep", "sec-8k", "manual"])
+    .default("api-ninjas"),
   sourceUrl: z.string().url().optional(),
 });
 
