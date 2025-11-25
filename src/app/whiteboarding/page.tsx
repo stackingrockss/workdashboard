@@ -6,6 +6,8 @@ import { Plus } from "lucide-react";
 import Link from "next/link";
 import { Opportunity } from "@/types/opportunity";
 
+export const dynamic = "force-dynamic";
+
 export default async function WhiteboardingPage() {
   const user = await requireAuth();
 
