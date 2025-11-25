@@ -13,6 +13,15 @@ export interface CalendarEventData {
   isExternal: boolean;
   organizerEmail?: string | null;
   meetingUrl?: string | null;
+  status?: 'confirmed' | 'tentative' | 'cancelled';
+}
+
+// Custom error class for sync token invalidation (HTTP 410)
+export class SyncTokenInvalidError extends Error {
+  constructor(message: string = 'Sync token has been invalidated') {
+    super(message);
+    this.name = 'SyncTokenInvalidError';
+  }
 }
 
 export interface CreateCalendarEventInput {
@@ -218,6 +227,175 @@ export class GoogleCalendarClient {
       };
     } catch (error) {
       console.error('Failed to list calendar events:', error);
+      throw new Error('Failed to fetch calendar events');
+    }
+  }
+
+  /**
+   * Lists calendar events using incremental sync with sync tokens.
+   *
+   * This method supports two modes:
+   * 1. Full sync (no syncToken): Fetches all events within the date range and returns a syncToken
+   * 2. Incremental sync (with syncToken): Fetches only events changed since the last sync
+   *
+   * IMPORTANT: When using syncToken, timeMin/timeMax are ignored by Google's API.
+   * The sync token "remembers" the original query parameters.
+   *
+   * @throws {SyncTokenInvalidError} When Google returns 410 (sync token expired/invalidated)
+   */
+  async listEventsIncremental(
+    userId: string,
+    options: {
+      // For full sync (initial sync or after token invalidation)
+      startDate?: Date;
+      endDate?: Date;
+      // For incremental sync
+      syncToken?: string;
+      // Pagination
+      pageToken?: string;
+      maxResults?: number;
+      // Whether to include deleted events (required for incremental sync to work properly)
+      showDeleted?: boolean;
+    }
+  ): Promise<{
+    events: CalendarEventData[];
+    nextPageToken?: string;
+    nextSyncToken?: string;
+  }> {
+    try {
+      const calendar = await this.getClient(userId);
+
+      // Build the request parameters
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const requestParams: any = {
+        calendarId: 'primary',
+        singleEvents: true,
+        maxResults: options.maxResults || 50,
+        // Show deleted events so we can remove them from our database
+        showDeleted: options.showDeleted ?? true,
+      };
+
+      // Sync token mode: use syncToken, ignore date range
+      // Google's sync token inherently "remembers" the original time range
+      if (options.syncToken) {
+        requestParams.syncToken = options.syncToken;
+        console.log(`[Calendar] Incremental sync for user ${userId} with syncToken`);
+      } else {
+        // Full sync mode: use date range
+        if (!options.startDate || !options.endDate) {
+          throw new Error('startDate and endDate are required for full sync (when no syncToken provided)');
+        }
+        requestParams.timeMin = options.startDate.toISOString();
+        requestParams.timeMax = options.endDate.toISOString();
+        requestParams.orderBy = 'startTime';
+        console.log(`[Calendar] Full sync for user ${userId}: ${options.startDate.toISOString()} to ${options.endDate.toISOString()}`);
+      }
+
+      // Add pagination token if provided
+      if (options.pageToken) {
+        requestParams.pageToken = options.pageToken;
+      }
+
+      const response = await calendar.events.list(requestParams);
+
+      if (!response.data.items) {
+        return {
+          events: [],
+          nextPageToken: response.data.nextPageToken || undefined,
+          nextSyncToken: response.data.nextSyncToken || undefined,
+        };
+      }
+
+      // Get user's organization domain to detect external meetings
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { organization: true },
+      });
+
+      const organizationDomain = user?.organization?.domain || '';
+      const userEmail = user?.email || undefined;
+
+      // Transform Google Calendar events to our format
+      // Note: Deleted events will have status='cancelled' and minimal data
+      const events = response.data.items
+        .map((event) => {
+          // Handle cancelled/deleted events
+          if (event.status === 'cancelled') {
+            // For deleted events, we only need the ID to remove from our database
+            return {
+              id: event.id!,
+              summary: event.summary || '(Deleted)',
+              description: null,
+              location: null,
+              startTime: new Date(), // Placeholder - not used for deleted events
+              endTime: new Date(), // Placeholder - not used for deleted events
+              attendees: [],
+              isExternal: false,
+              organizerEmail: null,
+              meetingUrl: null,
+              status: 'cancelled' as const,
+            };
+          }
+
+          const attendeeEmails =
+            event.attendees?.map((a) => a.email).filter(Boolean) || [];
+
+          const isExternal = this.isExternalEvent(
+            attendeeEmails as string[],
+            organizationDomain,
+            userEmail,
+            event.summary ?? undefined
+          );
+
+          // Extract meeting URL from various sources
+          const meetingUrl =
+            event.hangoutLink ||
+            event.conferenceData?.entryPoints?.find(
+              (ep) => ep.entryPointType === 'video'
+            )?.uri ||
+            null;
+
+          const startDateTime = event.start?.dateTime || event.start?.date;
+          const endDateTime = event.end?.dateTime || event.end?.date;
+
+          if (!event.id || !startDateTime || !endDateTime) {
+            return null;
+          }
+
+          return {
+            id: event.id,
+            summary: event.summary || '(No title)',
+            description: event.description || null,
+            location: event.location || null,
+            startTime: new Date(startDateTime),
+            endTime: new Date(endDateTime),
+            attendees: attendeeEmails as string[],
+            isExternal,
+            organizerEmail: event.organizer?.email || null,
+            meetingUrl,
+            status: (event.status as 'confirmed' | 'tentative' | 'cancelled') || 'confirmed',
+          };
+        })
+        .filter((event): event is NonNullable<typeof event> => event !== null);
+
+      return {
+        events,
+        nextPageToken: response.data.nextPageToken || undefined,
+        nextSyncToken: response.data.nextSyncToken || undefined,
+      };
+    } catch (error: unknown) {
+      // Check for 410 Gone error (sync token invalidated)
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as { code: number }).code === 410
+      ) {
+        console.warn(`[Calendar] Sync token invalidated for user ${userId} - need full sync`);
+        throw new SyncTokenInvalidError();
+      }
+
+      console.error('Failed to list calendar events (incremental):', error);
       throw new Error('Failed to fetch calendar events');
     }
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,9 +27,12 @@ import { formatDateShort } from "@/lib/format";
 interface GranolaNoteSectionProps {
   opportunityId: string;
   notes: GranolaNote[];
+  // Optional: Preselected calendar event (for linking from calendar)
+  preselectedCalendarEventId?: string | null;
+  onNoteAdded?: () => void;
 }
 
-export function GranolaNotesSection({ opportunityId, notes }: GranolaNoteSectionProps) {
+export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarEventId, onNoteAdded }: GranolaNoteSectionProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
@@ -37,6 +40,13 @@ export function GranolaNotesSection({ opportunityId, notes }: GranolaNoteSection
   const [meetingDate, setMeetingDate] = useState("");
   const [noteType, setNoteType] = useState<NoteType>("customer");
   const router = useRouter();
+
+  // Auto-open dialog when preselectedCalendarEventId is provided
+  useEffect(() => {
+    if (preselectedCalendarEventId && !isAddDialogOpen) {
+      setIsAddDialogOpen(true);
+    }
+  }, [preselectedCalendarEventId, isAddDialogOpen]);
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,6 +62,7 @@ export function GranolaNotesSection({ opportunityId, notes }: GranolaNoteSection
         url,
         meetingDate: new Date(meetingDate).toISOString(),
         noteType,
+        calendarEventId: preselectedCalendarEventId || undefined,
       });
       toast.success("Granola note added successfully!");
       setIsAddDialogOpen(false);
@@ -59,7 +70,13 @@ export function GranolaNotesSection({ opportunityId, notes }: GranolaNoteSection
       setUrl("");
       setMeetingDate("");
       setNoteType("customer");
-      router.refresh();
+
+      // Call the callback if provided
+      if (onNoteAdded) {
+        onNoteAdded();
+      } else {
+        router.refresh();
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to add Granola note");
     } finally {

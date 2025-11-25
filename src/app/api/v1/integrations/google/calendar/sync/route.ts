@@ -1,25 +1,111 @@
 // src/app/api/v1/integrations/google/calendar/sync/route.ts
 // Manual trigger API for syncing calendar events immediately
+// Uses incremental sync with sync tokens and only stores external events
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { googleCalendarClient, type CalendarEventData } from '@/lib/integrations/google-calendar';
+import {
+  googleCalendarClient,
+  SyncTokenInvalidError,
+  type CalendarEventData,
+} from '@/lib/integrations/google-calendar';
 import { getValidAccessToken } from '@/lib/integrations/oauth-helpers';
 import { requireAuth } from '@/lib/auth';
+
+/**
+ * Helper: Perform auto-matching of event to opportunity/account
+ */
+async function matchEventToOpportunityAndAccount(
+  event: CalendarEventData,
+  emailToOpportunityMap: Map<string, string>,
+  emailToAccountMap: Map<string, string>,
+  domainToAccountsMap: Map<string, Array<{ id: string; name: string; opportunities: Array<{ id: string; name: string }> }>>
+): Promise<{ opportunityId: string | null; accountId: string | null; matchedBy: 'contact' | 'domain' | null }> {
+  let matchedOpportunityId: string | null = null;
+  let matchedAccountId: string | null = null;
+  let matchedBy: 'contact' | 'domain' | null = null;
+
+  const extractDomain = (email: string): string | null => {
+    const domain = email.split('@')[1]?.toLowerCase();
+    return domain || null;
+  };
+
+  // Strategy 1: Match by contact email (most specific)
+  for (const attendeeEmail of event.attendees) {
+    const email = attendeeEmail.toLowerCase();
+
+    if (emailToOpportunityMap.has(email)) {
+      matchedOpportunityId = emailToOpportunityMap.get(email)!;
+
+      const opportunity = await prisma.opportunity.findUnique({
+        where: { id: matchedOpportunityId },
+        select: { accountId: true },
+      });
+      if (opportunity?.accountId) {
+        matchedAccountId = opportunity.accountId;
+      }
+
+      matchedBy = 'contact';
+      break;
+    }
+
+    if (!matchedAccountId && emailToAccountMap.has(email)) {
+      matchedAccountId = emailToAccountMap.get(email)!;
+      matchedBy = 'contact';
+    }
+  }
+
+  // Strategy 2: Match by attendee email domain → account website domain
+  if (!matchedOpportunityId && !matchedAccountId) {
+    for (const attendeeEmail of event.attendees) {
+      const domain = extractDomain(attendeeEmail);
+      if (!domain) continue;
+
+      if (domainToAccountsMap.has(domain)) {
+        const matchedAccounts = domainToAccountsMap.get(domain)!;
+        const firstAccount = matchedAccounts[0];
+        matchedAccountId = firstAccount.id;
+
+        if (firstAccount.opportunities.length === 1) {
+          matchedOpportunityId = firstAccount.opportunities[0].id;
+        } else if (firstAccount.opportunities.length > 1) {
+          const meetingTitle = event.summary.toLowerCase();
+          const matchedOpp = firstAccount.opportunities.find(opp =>
+            meetingTitle.includes(opp.name.toLowerCase()) ||
+            opp.name.toLowerCase().includes(meetingTitle)
+          );
+          if (matchedOpp) {
+            matchedOpportunityId = matchedOpp.id;
+          }
+        }
+
+        matchedBy = 'domain';
+        break;
+      }
+    }
+  }
+
+  return { opportunityId: matchedOpportunityId, accountId: matchedAccountId, matchedBy };
+}
 
 /**
  * POST /api/v1/integrations/google/calendar/sync
  *
  * Manually triggers a calendar sync for the authenticated user.
- * This is useful for:
- * - Initial sync after connecting calendar
- * - Forcing a refresh when events aren't showing up
- * - Recalculating isExternal after organization domain changes
+ * Uses incremental sync with sync tokens for efficiency.
+ * Only stores external events (meetings with external attendees).
+ *
+ * Query params:
+ * - forceFullSync=true: Forces a full sync by clearing the sync token
  *
  * @returns Sync status and statistics
  */
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    // Parse query params
+    const { searchParams } = new URL(request.url);
+    const forceFullSync = searchParams.get('forceFullSync') === 'true';
+
     // 1. Authenticate user
     const user = await requireAuth();
 
@@ -50,76 +136,122 @@ export async function POST() {
       );
     }
 
-    // 4. Define date ranges: Fetch future events first (priority), then past events
+    // 4. Get or create sync state
     const now = new Date();
-    const pastStartDate = new Date(now);
-    pastStartDate.setDate(pastStartDate.getDate() - 90);
-    const futureEndDate = new Date(now);
-    futureEndDate.setDate(futureEndDate.getDate() + 90);
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - 90);
+    const endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + 90);
 
-    console.log(`[Calendar Sync] Starting manual sync for user ${user.id}`);
+    let syncState = await prisma.calendarSyncState.findUnique({
+      where: {
+        userId_provider: {
+          userId: user.id,
+          provider: 'google',
+        },
+      },
+    });
 
-    // 5a. First, fetch FUTURE events (today onwards) - PRIORITY
+    // Create sync state if it doesn't exist
+    if (!syncState) {
+      syncState = await prisma.calendarSyncState.create({
+        data: {
+          userId: user.id,
+          provider: 'google',
+          syncToken: null,
+          timeMin: startDate,
+          timeMax: endDate,
+          lastSyncAt: null,
+          lastSyncStatus: null,
+          lastSyncError: null,
+        },
+      });
+    }
+
+    // Clear sync token if force full sync requested
+    if (forceFullSync && syncState.syncToken) {
+      await prisma.calendarSyncState.update({
+        where: { userId_provider: { userId: user.id, provider: 'google' } },
+        data: { syncToken: null },
+      });
+      syncState.syncToken = null;
+      console.log(`[Calendar Sync] User ${user.id}: Force full sync requested`);
+    }
+
+    const isIncremental = !!syncState.syncToken;
+
+    console.log(`[Calendar Sync] Starting ${isIncremental ? 'incremental' : 'full'} sync for user ${user.id}`);
+
+    // 5. Fetch events using incremental sync
     let allEvents: CalendarEventData[] = [];
     let pageToken: string | undefined = undefined;
+    let nextSyncToken: string | undefined = undefined;
     let pageCount = 0;
-    const maxPagesPerRange = 10; // Max 10 pages per date range
+    const maxPages = 50;
 
-    console.log(`[Calendar Sync] Fetching future events (${now.toISOString()} to ${futureEndDate.toISOString()})`);
-
-    do {
-      const response = await googleCalendarClient.listEvents(
-        user.id,
-        now, // Start from today
-        futureEndDate,
-        {
-          externalOnly: false,
-          pageToken,
-          maxResults: 50,
-        }
-      );
-
-      allEvents = allEvents.concat(response.events);
-      pageToken = response.nextPageToken;
-      pageCount++;
-    } while (pageToken && pageCount < maxPagesPerRange);
-
-    console.log(`[Calendar Sync] Fetched ${allEvents.length} future events`);
-
-    // 5b. Then, fetch PAST events (if we have room)
-    if (pageCount < maxPagesPerRange) {
-      pageToken = undefined;
-
-      console.log(`[Calendar Sync] Fetching past events (${pastStartDate.toISOString()} to ${now.toISOString()})`);
-
-      let pastEventCount = 0;
+    try {
       do {
-        const response = await googleCalendarClient.listEvents(
-          user.id,
-          pastStartDate,
-          now,
-          {
-            externalOnly: false,
-            pageToken,
-            maxResults: 50,
-          }
-        );
+        const response = await googleCalendarClient.listEventsIncremental(user.id, {
+          startDate: isIncremental ? undefined : startDate,
+          endDate: isIncremental ? undefined : endDate,
+          syncToken: syncState.syncToken || undefined,
+          pageToken,
+          maxResults: 100,
+          showDeleted: true,
+        });
 
         allEvents = allEvents.concat(response.events);
         pageToken = response.nextPageToken;
+        nextSyncToken = response.nextSyncToken;
         pageCount++;
-        pastEventCount += response.events.length;
-      } while (pageToken && pageCount < maxPagesPerRange);
+      } while (pageToken && pageCount < maxPages);
+    } catch (error) {
+      if (error instanceof SyncTokenInvalidError) {
+        // Clear sync token and retry with full sync
+        console.log(`[Calendar Sync] User ${user.id}: Sync token invalidated, retrying with full sync`);
+        await prisma.calendarSyncState.update({
+          where: { userId_provider: { userId: user.id, provider: 'google' } },
+          data: { syncToken: null },
+        });
 
-      console.log(`[Calendar Sync] Fetched ${pastEventCount} past events`);
+        // Retry the request
+        do {
+          const response = await googleCalendarClient.listEventsIncremental(user.id, {
+            startDate,
+            endDate,
+            pageToken,
+            maxResults: 100,
+            showDeleted: true,
+          });
+
+          allEvents = allEvents.concat(response.events);
+          pageToken = response.nextPageToken;
+          nextSyncToken = response.nextSyncToken;
+          pageCount++;
+        } while (pageToken && pageCount < maxPages);
+      } else {
+        throw error;
+      }
     }
 
-    console.log(`[Calendar Sync] Total fetched: ${allEvents.length} events from Google Calendar`);
+    console.log(`[Calendar Sync] Fetched ${allEvents.length} events from Google Calendar`);
 
-    if (allEvents.length === 0) {
+    if (allEvents.length === 0 && isIncremental) {
+      // Update sync state even if no changes
+      await prisma.calendarSyncState.update({
+        where: { userId_provider: { userId: user.id, provider: 'google' } },
+        data: {
+          syncToken: nextSyncToken || syncState.syncToken,
+          lastSyncAt: new Date(),
+          lastSyncStatus: 'success',
+          lastSyncError: null,
+        },
+      });
+
       return NextResponse.json({
         success: true,
-        message: 'No events found in date range',
+        message: 'No changes since last sync',
+        isIncremental: true,
         stats: {
           eventsProcessed: 0,
           eventsCreated: 0,
@@ -129,10 +261,7 @@ export async function POST() {
       });
     }
 
-    // 6. Extract Google event IDs for cleanup
-    const googleEventIds = allEvents.map(event => event.id);
-
-    // 7. Build matching lookup maps for auto-linking events to opportunities/accounts
+    // 6. Build matching lookup maps
     if (!user.organization?.id) {
       return NextResponse.json(
         { error: 'User must belong to an organization' },
@@ -140,7 +269,6 @@ export async function POST() {
       );
     }
 
-    // Fetch all accounts in the user's organization with websites
     const allAccounts = await prisma.account.findMany({
       where: {
         organizationId: user.organization.id,
@@ -159,7 +287,6 @@ export async function POST() {
       },
     });
 
-    // Fetch all contacts with emails (for more precise matching)
     const allContacts = await prisma.contact.findMany({
       where: {
         opportunity: {
@@ -174,12 +301,10 @@ export async function POST() {
       },
     });
 
-    // Build lookup maps
     const emailToOpportunityMap = new Map<string, string>();
     const emailToAccountMap = new Map<string, string>();
     const domainToAccountsMap = new Map<string, Array<{ id: string; name: string; opportunities: Array<{ id: string; name: string }> }>>();
 
-    // Map contact emails to opportunities/accounts
     for (const contact of allContacts) {
       if (contact.email) {
         const email = contact.email.toLowerCase();
@@ -192,7 +317,6 @@ export async function POST() {
       }
     }
 
-    // Map account domains to accounts
     for (const account of allAccounts) {
       if (account.website) {
         try {
@@ -209,21 +333,53 @@ export async function POST() {
       }
     }
 
-    // Helper function to extract domain from email
-    const extractDomain = (email: string): string | null => {
-      const domain = email.split('@')[1]?.toLowerCase();
-      return domain || null;
-    };
-
-    // 8. Upsert events into database with automatic matching
+    // 7. Process events
     let createdCount = 0;
     let updatedCount = 0;
+    let deletedCount = 0;
+    let skippedInternal = 0;
     let matchedByContact = 0;
     let matchedByDomain = 0;
     const errors: string[] = [];
 
     for (const event of allEvents) {
       try {
+        // Handle deleted events
+        if (event.status === 'cancelled') {
+          const deleteResult = await prisma.calendarEvent.deleteMany({
+            where: {
+              userId: user.id,
+              googleEventId: event.id,
+            },
+          });
+          if (deleteResult.count > 0) {
+            deletedCount++;
+          }
+          continue;
+        }
+
+        // Skip internal events (only store external events)
+        if (!event.isExternal) {
+          // If exists in DB, delete it (it became internal)
+          const existingEvent = await prisma.calendarEvent.findUnique({
+            where: {
+              userId_googleEventId: {
+                userId: user.id,
+                googleEventId: event.id,
+              },
+            },
+          });
+          if (existingEvent) {
+            await prisma.calendarEvent.delete({
+              where: { id: existingEvent.id },
+            });
+            deletedCount++;
+          }
+          skippedInternal++;
+          continue;
+        }
+
+        // Check if event exists
         const existingEvent = await prisma.calendarEvent.findUnique({
           where: {
             userId_googleEventId: {
@@ -233,70 +389,18 @@ export async function POST() {
           },
         });
 
-        let matchedOpportunityId: string | null = null;
-        let matchedAccountId: string | null = null;
+        // Match event to opportunity/account
+        const { opportunityId, accountId, matchedBy } = await matchEventToOpportunityAndAccount(
+          event,
+          emailToOpportunityMap,
+          emailToAccountMap,
+          domainToAccountsMap
+        );
 
-        // Strategy 1: Match by contact email (most specific)
-        for (const attendeeEmail of event.attendees) {
-          const email = attendeeEmail.toLowerCase();
+        if (matchedBy === 'contact') matchedByContact++;
+        if (matchedBy === 'domain') matchedByDomain++;
 
-          if (emailToOpportunityMap.has(email)) {
-            matchedOpportunityId = emailToOpportunityMap.get(email)!;
-
-            // Get the account from the opportunity
-            const opportunity = await prisma.opportunity.findUnique({
-              where: { id: matchedOpportunityId },
-              select: { accountId: true },
-            });
-            if (opportunity?.accountId) {
-              matchedAccountId = opportunity.accountId;
-            }
-
-            matchedByContact++;
-            break;
-          }
-
-          if (!matchedAccountId && emailToAccountMap.has(email)) {
-            matchedAccountId = emailToAccountMap.get(email)!;
-            matchedByContact++;
-          }
-        }
-
-        // Strategy 2: Match by attendee email domain → account website domain
-        if (!matchedOpportunityId && !matchedAccountId) {
-          for (const attendeeEmail of event.attendees) {
-            const domain = extractDomain(attendeeEmail);
-            if (!domain) continue;
-
-            if (domainToAccountsMap.has(domain)) {
-              const matchedAccounts = domainToAccountsMap.get(domain)!;
-
-              // Use the first matched account
-              const firstAccount = matchedAccounts[0];
-              matchedAccountId = firstAccount.id;
-
-              // If the account has exactly one opportunity, link to it
-              if (firstAccount.opportunities.length === 1) {
-                matchedOpportunityId = firstAccount.opportunities[0].id;
-              }
-              // If multiple opportunities, try to match by meeting title
-              else if (firstAccount.opportunities.length > 1) {
-                const meetingTitle = event.summary.toLowerCase();
-                const matchedOpp = firstAccount.opportunities.find(opp =>
-                  meetingTitle.includes(opp.name.toLowerCase()) ||
-                  opp.name.toLowerCase().includes(meetingTitle)
-                );
-                if (matchedOpp) {
-                  matchedOpportunityId = matchedOpp.id;
-                }
-              }
-
-              matchedByDomain++;
-              break;
-            }
-          }
-        }
-
+        // Upsert external event
         await prisma.calendarEvent.upsert({
           where: {
             userId_googleEventId: {
@@ -314,9 +418,8 @@ export async function POST() {
             isExternal: event.isExternal,
             organizerEmail: event.organizerEmail,
             meetingUrl: event.meetingUrl,
-            // Auto-link to opportunity/account based on matching logic
-            opportunityId: matchedOpportunityId,
-            accountId: matchedAccountId,
+            opportunityId,
+            accountId,
           },
           create: {
             userId: user.id,
@@ -330,9 +433,8 @@ export async function POST() {
             isExternal: event.isExternal,
             organizerEmail: event.organizerEmail,
             meetingUrl: event.meetingUrl,
-            // Auto-link to opportunity/account based on matching logic
-            opportunityId: matchedOpportunityId,
-            accountId: matchedAccountId,
+            opportunityId,
+            accountId,
           },
         });
 
@@ -342,46 +444,41 @@ export async function POST() {
           createdCount++;
         }
       } catch (error) {
-        console.error(`Failed to upsert event ${event.id}:`, error);
+        console.error(`[Calendar Sync] Failed to process event ${event.id}:`, error);
         errors.push(`Failed to sync event: ${event.summary}`);
       }
     }
 
-    console.log(
-      `[Calendar Sync] Matched ${matchedByContact} by contact, ${matchedByDomain} by domain`
-    );
-
-    // 8. Delete stale events (events not in Google API response within date range)
-    // Only delete events created more than 1 minute ago to avoid race conditions
-    const oneMinuteAgo = new Date(Date.now() - 60000);
-    const deleteResult = await prisma.calendarEvent.deleteMany({
-      where: {
-        userId: user.id,
-        googleEventId: {
-          notIn: googleEventIds,
-        },
-        startTime: {
-          gte: pastStartDate,
-          lte: futureEndDate,
-        },
-        createdAt: {
-          lt: oneMinuteAgo,
-        },
+    // 8. Update sync state
+    await prisma.calendarSyncState.update({
+      where: { userId_provider: { userId: user.id, provider: 'google' } },
+      data: {
+        syncToken: nextSyncToken || syncState.syncToken,
+        timeMin: startDate,
+        timeMax: endDate,
+        lastSyncAt: new Date(),
+        lastSyncStatus: 'success',
+        lastSyncError: null,
       },
     });
 
     console.log(
-      `[Calendar Sync] Completed: ${createdCount} created, ${updatedCount} updated, ${deleteResult.count} deleted`
+      `[Calendar Sync] Completed: ${createdCount} created, ${updatedCount} updated, ${deletedCount} deleted, ` +
+      `${skippedInternal} internal skipped, matched: ${matchedByContact} by contact, ${matchedByDomain} by domain`
     );
 
     return NextResponse.json({
       success: true,
-      message: `Successfully synced ${allEvents.length} events`,
+      message: `Successfully synced calendar`,
+      isIncremental,
       stats: {
         eventsProcessed: allEvents.length,
         eventsCreated: createdCount,
         eventsUpdated: updatedCount,
-        eventsDeleted: deleteResult.count,
+        eventsDeleted: deletedCount,
+        internalEventsSkipped: skippedInternal,
+        matchedByContact,
+        matchedByDomain,
         errors: errors.length > 0 ? errors : undefined,
       },
     });

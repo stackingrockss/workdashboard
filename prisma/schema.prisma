@@ -279,32 +279,33 @@ model OrganizationSettings {
 }
 
 model User {
-  id               String            @id @default(cuid())
-  email            String            @unique
-  name             String?
-  avatarUrl        String?
-  createdAt        DateTime          @default(now())
-  supabaseId       String?           @unique
-  managerId        String?
-  organizationId   String?
-  role             UserRole          @default(REP)
-  annualQuota      Int?
-  ownedAccounts    Account[]         @relation("AccountOwner")
-  calendarEvents   CalendarEvent[]
-  chatMessages     ChatMessage[]
-  authoredComments Comment[]         @relation("AuthoredComments")
-  resolvedComments Comment[]         @relation("ResolvedComments")
-  mentions         CommentMention[]  @relation("UserMentions")
-  reactions        CommentReaction[] @relation("UserReactions")
-  invitations      Invitation[]
-  kanbanViews      KanbanView[]
-  oauthTokens      OAuthToken[]
-  opportunities    Opportunity[]
-  tasks            Task[]
-  taskLists        TaskList[]
-  manager          User?             @relation("ManagerReps", fields: [managerId], references: [id])
-  directReports    User[]            @relation("ManagerReps")
-  organization     Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                 String               @id @default(cuid())
+  email              String               @unique
+  name               String?
+  avatarUrl          String?
+  createdAt          DateTime             @default(now())
+  supabaseId         String?              @unique
+  managerId          String?
+  organizationId     String?
+  role               UserRole             @default(REP)
+  annualQuota        Int?
+  ownedAccounts      Account[]            @relation("AccountOwner")
+  calendarEvents     CalendarEvent[]
+  calendarSyncStates CalendarSyncState[]
+  chatMessages       ChatMessage[]
+  authoredComments   Comment[]            @relation("AuthoredComments")
+  resolvedComments   Comment[]            @relation("ResolvedComments")
+  mentions           CommentMention[]     @relation("UserMentions")
+  reactions          CommentReaction[]    @relation("UserReactions")
+  invitations        Invitation[]
+  kanbanViews        KanbanView[]
+  oauthTokens        OAuthToken[]
+  opportunities      Opportunity[]
+  tasks              Task[]
+  taskLists          TaskList[]
+  manager            User?                @relation("ManagerReps", fields: [managerId], references: [id])
+  directReports      User[]               @relation("ManagerReps")
+  organization       Organization?        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([managerId])
@@ -326,6 +327,26 @@ model OAuthToken {
   @@unique([userId, provider])
   @@index([userId])
   @@index([expiresAt])
+  @@schema("opportunity_tracker")
+}
+
+model CalendarSyncState {
+  id             String    @id @default(cuid())
+  userId         String
+  provider       String
+  syncToken      String?
+  timeMin        DateTime
+  timeMax        DateTime
+  lastSyncAt     DateTime?
+  lastSyncStatus String?
+  lastSyncError  String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([userId])
+  @@index([lastSyncAt])
   @@schema("opportunity_tracker")
 }
 

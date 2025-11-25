@@ -42,6 +42,9 @@ interface GongCallsSectionProps {
   lastConsolidatedAt?: string | null;
   consolidationCallCount?: number | null;
   consolidationStatus?: ConsolidationStatus | null;
+  // Optional: Preselected calendar event (for linking from calendar)
+  preselectedCalendarEventId?: string | null;
+  onCallAdded?: () => void;
 }
 
 export function GongCallsSection({
@@ -53,6 +56,8 @@ export function GongCallsSection({
   lastConsolidatedAt,
   consolidationCallCount,
   consolidationStatus,
+  preselectedCalendarEventId,
+  onCallAdded,
 }: GongCallsSectionProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,6 +71,13 @@ export function GongCallsSection({
   const [autoOpenContactImport, setAutoOpenContactImport] = useState(false);
   const [isConsolidating, setIsConsolidating] = useState(false);
   const router = useRouter();
+
+  // Auto-open dialog when preselectedCalendarEventId is provided
+  useEffect(() => {
+    if (preselectedCalendarEventId && !isAddDialogOpen) {
+      setIsAddDialogOpen(true);
+    }
+  }, [preselectedCalendarEventId, isAddDialogOpen]);
 
   // Auto-refresh when any call is in "parsing" state
   useEffect(() => {
@@ -158,6 +170,7 @@ export function GongCallsSection({
         meetingDate: new Date(meetingDate).toISOString(),
         noteType,
         transcriptText: transcriptText.trim() || undefined,
+        calendarEventId: preselectedCalendarEventId || undefined,
       });
       const successMessage = transcriptText.trim()
         ? "Call added. Parsing transcript in background..."
@@ -169,7 +182,13 @@ export function GongCallsSection({
       setMeetingDate("");
       setNoteType("customer");
       setTranscriptText("");
-      router.refresh();
+
+      // Call the callback if provided
+      if (onCallAdded) {
+        onCallAdded();
+      } else {
+        router.refresh();
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to add Gong call");
     } finally {
