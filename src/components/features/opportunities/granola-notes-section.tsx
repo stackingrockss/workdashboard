@@ -24,29 +24,42 @@ import { createGranolaNote, deleteGranolaNote } from "@/lib/api/granola-notes";
 import { useRouter } from "next/navigation";
 import { formatDateShort } from "@/lib/format";
 
+interface PreselectedCalendarEvent {
+  id: string;
+  title: string;
+  startTime: string | Date;
+}
+
 interface GranolaNoteSectionProps {
   opportunityId: string;
   notes: GranolaNote[];
   // Optional: Preselected calendar event (for linking from calendar)
-  preselectedCalendarEventId?: string | null;
+  preselectedCalendarEvent?: PreselectedCalendarEvent | null;
   onNoteAdded?: () => void;
 }
 
-export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarEventId, onNoteAdded }: GranolaNoteSectionProps) {
+export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarEvent, onNoteAdded }: GranolaNoteSectionProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [meetingDate, setMeetingDate] = useState("");
   const [noteType, setNoteType] = useState<NoteType>("customer");
+  const [hasAutoOpenedForEvent, setHasAutoOpenedForEvent] = useState(false);
   const router = useRouter();
 
-  // Auto-open dialog when preselectedCalendarEventId is provided
+  // Auto-open dialog and pre-fill form when preselectedCalendarEvent is provided
   useEffect(() => {
-    if (preselectedCalendarEventId && !isAddDialogOpen) {
+    if (preselectedCalendarEvent && !isAddDialogOpen && !hasAutoOpenedForEvent) {
+      // Pre-fill form fields from calendar event
+      setTitle(preselectedCalendarEvent.title);
+      const eventDate = new Date(preselectedCalendarEvent.startTime);
+      setMeetingDate(eventDate.toISOString().split("T")[0]);
+
       setIsAddDialogOpen(true);
+      setHasAutoOpenedForEvent(true);
     }
-  }, [preselectedCalendarEventId, isAddDialogOpen]);
+  }, [preselectedCalendarEvent, isAddDialogOpen, hasAutoOpenedForEvent]);
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +75,7 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
         url,
         meetingDate: new Date(meetingDate).toISOString(),
         noteType,
-        calendarEventId: preselectedCalendarEventId || undefined,
+        calendarEventId: preselectedCalendarEvent?.id || undefined,
       });
       toast.success("Granola note added successfully!");
       setIsAddDialogOpen(false);
@@ -155,19 +168,48 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
             <DialogTitle>Add Granola Note</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddNote} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="note-title">Title *</Label>
-              <Input
-                id="note-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Discovery Call with Sarah"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Give this note a descriptive name so you can identify it later
-              </p>
-            </div>
+            {/* Show meeting info banner when linking from calendar event */}
+            {preselectedCalendarEvent ? (
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <p className="text-sm text-muted-foreground">Linking to meeting:</p>
+                <p className="font-medium">{preselectedCalendarEvent.title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatDateShort(typeof preselectedCalendarEvent.startTime === "string"
+                    ? preselectedCalendarEvent.startTime
+                    : preselectedCalendarEvent.startTime.toISOString())}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="note-title">Title *</Label>
+                  <Input
+                    id="note-title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g., Discovery Call with Sarah"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Give this note a descriptive name so you can identify it later
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="meeting-date">Meeting Date *</Label>
+                  <Input
+                    id="meeting-date"
+                    type="date"
+                    value={meetingDate}
+                    onChange={(e) => setMeetingDate(e.target.value)}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    When did this meeting take place?
+                  </p>
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="note-url">Granola Note URL *</Label>
@@ -181,20 +223,6 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
               />
               <p className="text-xs text-muted-foreground">
                 Copy the URL from your Granola note and paste it here
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="meeting-date">Meeting Date *</Label>
-              <Input
-                id="meeting-date"
-                type="date"
-                value={meetingDate}
-                onChange={(e) => setMeetingDate(e.target.value)}
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                When did this meeting take place?
               </p>
             </div>
 

@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/auth";
 import { getQuarterFromDate, parseISODateSafe } from "@/lib/utils/quarter";
 import { mapPrismaOpportunitiesToOpportunities, mapPrismaOpportunityToOpportunity } from "@/lib/mappers/opportunity";
 import { getVisibleUserIds, isAdmin } from "@/lib/permissions";
-import { triggerAccountResearchGenerationAsync } from "@/lib/ai/background-generation";
+import { triggerAccountResearchGeneration } from "@/lib/inngest/functions/generate-account-research";
 
 export async function GET() {
   try {
@@ -191,15 +191,19 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Trigger async AI research generation in background (fire-and-forget)
+    // Trigger AI research generation via Inngest background job
     // Only trigger if accountName is provided
     if (data.account) {
-      triggerAccountResearchGenerationAsync({
+      // Fire-and-forget: don't await, let Inngest handle it reliably
+      triggerAccountResearchGeneration({
         opportunityId: created.id,
         accountName: data.account,
         companyWebsite: data.accountWebsite,
         stage: data.stage,
         opportunityValue: data.amountArr,
+      }).catch((err) => {
+        // Log but don't fail the opportunity creation
+        console.error("[Inngest] Failed to trigger account research:", err);
       });
     }
 

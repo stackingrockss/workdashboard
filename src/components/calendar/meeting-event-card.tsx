@@ -18,8 +18,8 @@ interface MeetingEventCardProps {
   granolaNotes?: GranolaNote[];
   opportunityId: string;
   onRefresh?: () => void;
-  onAddGongCall?: (eventId: string) => void;
-  onAddGranolaNote?: (eventId: string) => void;
+  onAddGongCall?: (event: CalendarEvent) => void;
+  onAddGranolaNote?: (event: CalendarEvent) => void;
   onViewInsights?: (call: GongCall) => void;
   onParse?: (call: GongCall) => void;
   defaultExpanded?: boolean;
@@ -83,6 +83,9 @@ export function MeetingEventCard({
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               <h3 className="font-semibold text-sm truncate">{event.summary}</h3>
+              {event.source === 'manual' && (
+                <Badge variant="outline" className="text-xs flex-shrink-0">Manual</Badge>
+              )}
             </div>
 
             {/* Date & Time */}
@@ -151,7 +154,7 @@ export function MeetingEventCard({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onAddGongCall(event.id)}
+                  onClick={() => onAddGongCall(event)}
                   className="h-8"
                 >
                   <Plus className="h-4 w-4 mr-1" />
@@ -189,7 +192,7 @@ export function MeetingEventCard({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => onAddGranolaNote(event.id)}
+                  onClick={() => onAddGranolaNote(event)}
                   className="h-8"
                 >
                   <Plus className="h-4 w-4 mr-1" />

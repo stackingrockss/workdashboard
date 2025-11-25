@@ -32,6 +32,12 @@ import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 import type { RiskAssessment } from "@/types/gong-call";
 import type { ConsolidationStatus } from "@/types/opportunity";
 
+interface PreselectedCalendarEvent {
+  id: string;
+  title: string;
+  startTime: string | Date;
+}
+
 interface GongCallsSectionProps {
   opportunityId: string;
   calls: GongCall[];
@@ -43,7 +49,7 @@ interface GongCallsSectionProps {
   consolidationCallCount?: number | null;
   consolidationStatus?: ConsolidationStatus | null;
   // Optional: Preselected calendar event (for linking from calendar)
-  preselectedCalendarEventId?: string | null;
+  preselectedCalendarEvent?: PreselectedCalendarEvent | null;
   onCallAdded?: () => void;
 }
 
@@ -56,7 +62,7 @@ export function GongCallsSection({
   lastConsolidatedAt,
   consolidationCallCount,
   consolidationStatus,
-  preselectedCalendarEventId,
+  preselectedCalendarEvent,
   onCallAdded,
 }: GongCallsSectionProps) {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -70,14 +76,21 @@ export function GongCallsSection({
   const [selectedCallForViewing, setSelectedCallForViewing] = useState<GongCall | null>(null);
   const [autoOpenContactImport, setAutoOpenContactImport] = useState(false);
   const [isConsolidating, setIsConsolidating] = useState(false);
+  const [hasAutoOpenedForEvent, setHasAutoOpenedForEvent] = useState(false);
   const router = useRouter();
 
-  // Auto-open dialog when preselectedCalendarEventId is provided
+  // Auto-open dialog and pre-fill form when preselectedCalendarEvent is provided
   useEffect(() => {
-    if (preselectedCalendarEventId && !isAddDialogOpen) {
+    if (preselectedCalendarEvent && !isAddDialogOpen && !hasAutoOpenedForEvent) {
+      // Pre-fill form fields from calendar event
+      setTitle(preselectedCalendarEvent.title);
+      const eventDate = new Date(preselectedCalendarEvent.startTime);
+      setMeetingDate(eventDate.toISOString().split("T")[0]);
+
       setIsAddDialogOpen(true);
+      setHasAutoOpenedForEvent(true);
     }
-  }, [preselectedCalendarEventId, isAddDialogOpen]);
+  }, [preselectedCalendarEvent, isAddDialogOpen, hasAutoOpenedForEvent]);
 
   // Auto-refresh when any call is in "parsing" state
   useEffect(() => {
@@ -170,7 +183,7 @@ export function GongCallsSection({
         meetingDate: new Date(meetingDate).toISOString(),
         noteType,
         transcriptText: transcriptText.trim() || undefined,
-        calendarEventId: preselectedCalendarEventId || undefined,
+        calendarEventId: preselectedCalendarEvent?.id || undefined,
       });
       const successMessage = transcriptText.trim()
         ? "Call added. Parsing transcript in background..."
@@ -439,19 +452,48 @@ export function GongCallsSection({
             <DialogTitle>Add Gong Call Recording</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddCall} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="call-title">Title *</Label>
-              <Input
-                id="call-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., Q4 Strategy Call with John"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Give this call recording a descriptive name
-              </p>
-            </div>
+            {/* Show meeting info banner when linking from calendar event */}
+            {preselectedCalendarEvent ? (
+              <div className="rounded-lg border bg-muted/50 p-3">
+                <p className="text-sm text-muted-foreground">Linking to meeting:</p>
+                <p className="font-medium">{preselectedCalendarEvent.title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {formatDateShort(typeof preselectedCalendarEvent.startTime === "string"
+                    ? preselectedCalendarEvent.startTime
+                    : preselectedCalendarEvent.startTime.toISOString())}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="call-title">Title *</Label>
+                  <Input
+                    id="call-title"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g., Q4 Strategy Call with John"
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Give this call recording a descriptive name
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="meeting-date">Meeting Date *</Label>
+                  <Input
+                    id="meeting-date"
+                    type="date"
+                    value={meetingDate}
+                    onChange={(e) => setMeetingDate(e.target.value)}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    When did this call take place?
+                  </p>
+                </div>
+              </>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="call-url">Gong Recording URL *</Label>
@@ -465,20 +507,6 @@ export function GongCallsSection({
               />
               <p className="text-xs text-muted-foreground">
                 Copy the URL from your Gong recording and paste it here
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="meeting-date">Meeting Date *</Label>
-              <Input
-                id="meeting-date"
-                type="date"
-                value={meetingDate}
-                onChange={(e) => setMeetingDate(e.target.value)}
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                When did this call take place?
               </p>
             </div>
 

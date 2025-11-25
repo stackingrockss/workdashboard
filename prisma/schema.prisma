@@ -351,9 +351,10 @@ model CalendarSyncState {
 }
 
 model CalendarEvent {
-  id             String         @id @default(cuid())
+  id             String              @id @default(cuid())
   userId         String
-  googleEventId  String
+  googleEventId  String?
+  source         CalendarEventSource @default(google)
   summary        String
   description    String?
   location       String?
@@ -365,18 +366,19 @@ model CalendarEvent {
   meetingUrl     String?
   opportunityId  String?
   accountId      String?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  account        Account?       @relation(fields: [accountId], references: [id])
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  account        Account?            @relation(fields: [accountId], references: [id])
   gongCalls      GongCall[]
   granolaNotes   GranolaNote[]
-  opportunity    Opportunity?   @relation(fields: [opportunityId], references: [id])
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunity    Opportunity?        @relation(fields: [opportunityId], references: [id])
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, googleEventId])
   @@index([userId, startTime])
   @@index([opportunityId])
   @@index([accountId])
+  @@index([source])
   @@schema("opportunity_tracker")
 }
 
@@ -718,6 +720,13 @@ enum TranscriptProcessingStatus {
 enum TaskStatus {
   needsAction
   completed
+
+  @@schema("opportunity_tracker")
+}
+
+enum CalendarEventSource {
+  google
+  manual
 
   @@schema("opportunity_tracker")
 }

@@ -30,6 +30,7 @@ import type { GongCall } from "@/types/gong-call";
 import type { GranolaNote } from "@/types/granola-note";
 import { OrgChartSection } from "@/components/contacts/OrgChartSection";
 import { Separator } from "@/components/ui/separator";
+import { AddManualMeetingDialog } from "@/components/calendar/add-manual-meeting-dialog";
 import {
   InlineTextInput,
   InlineTextarea,
@@ -109,8 +110,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId }:
   const [allGongCalls, setAllGongCalls] = useState<GongCall[]>(opportunity.gongCalls || []);
   const [allGranolaNotes, setAllGranolaNotes] = useState<GranolaNote[]>(opportunity.granolaNotes || []);
   const [loadingCalendar, setLoadingCalendar] = useState(true);
-  const [addGongDialogEventId, setAddGongDialogEventId] = useState<string | null>(null);
-  const [addGranolaDialogEventId, setAddGranolaDialogEventId] = useState<string | null>(null);
+  const [addGongDialogEvent, setAddGongDialogEvent] = useState<{id: string; title: string; startTime: string | Date} | null>(null);
+  const [addGranolaDialogEvent, setAddGranolaDialogEvent] = useState<{id: string; title: string; startTime: string | Date} | null>(null);
   const router = useRouter();
   const { setEntityContext, openSidebarWithSelection } = useCommentSidebar();
 
@@ -333,12 +334,20 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId }:
   };
 
   // Callbacks for adding Gong/Granola calls from calendar events
-  const handleAddGongCall = (eventId: string) => {
-    setAddGongDialogEventId(eventId);
+  const handleAddGongCall = (event: CalendarEvent) => {
+    setAddGongDialogEvent({
+      id: event.id,
+      title: event.summary,
+      startTime: event.startTime,
+    });
   };
 
-  const handleAddGranolaNote = (eventId: string) => {
-    setAddGranolaDialogEventId(eventId);
+  const handleAddGranolaNote = (event: CalendarEvent) => {
+    setAddGranolaDialogEvent({
+      id: event.id,
+      title: event.summary,
+      startTime: event.startTime,
+    });
   };
 
   return (
@@ -642,10 +651,16 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId }:
         <TabsContent value="meetings" className="space-y-6 mt-4">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">External Meetings & Notes</h3>
-              <p className="text-sm text-muted-foreground">
-                Calendar events with attached Gong and Granola notes
-              </p>
+              <div>
+                <h3 className="text-lg font-semibold">External Meetings & Notes</h3>
+                <p className="text-sm text-muted-foreground">
+                  Calendar events with attached Gong and Granola notes
+                </p>
+              </div>
+              <AddManualMeetingDialog
+                opportunityId={opportunity.id}
+                onMeetingAdded={handleRefreshMeetingsData}
+              />
             </div>
 
             {loadingCalendar ? (
@@ -918,8 +933,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId }:
       />
 
       {/* Add Gong Call Dialog (triggered from calendar events) */}
-      {addGongDialogEventId && (
-        <Dialog open={!!addGongDialogEventId} onOpenChange={(open) => !open && setAddGongDialogEventId(null)}>
+      {addGongDialogEvent && (
+        <Dialog open={!!addGongDialogEvent} onOpenChange={(open) => !open && setAddGongDialogEvent(null)}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add Gong Call</DialogTitle>
@@ -927,9 +942,9 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId }:
             <GongCallsSection
               opportunityId={opportunity.id}
               calls={[]}
-              preselectedCalendarEventId={addGongDialogEventId}
+              preselectedCalendarEvent={addGongDialogEvent}
               onCallAdded={() => {
-                setAddGongDialogEventId(null);
+                setAddGongDialogEvent(null);
                 handleRefreshMeetingsData();
               }}
             />
@@ -938,8 +953,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId }:
       )}
 
       {/* Add Granola Note Dialog (triggered from calendar events) */}
-      {addGranolaDialogEventId && (
-        <Dialog open={!!addGranolaDialogEventId} onOpenChange={(open) => !open && setAddGranolaDialogEventId(null)}>
+      {addGranolaDialogEvent && (
+        <Dialog open={!!addGranolaDialogEvent} onOpenChange={(open) => !open && setAddGranolaDialogEvent(null)}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Add Granola Note</DialogTitle>
@@ -947,9 +962,9 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId }:
             <GranolaNotesSection
               opportunityId={opportunity.id}
               notes={[]}
-              preselectedCalendarEventId={addGranolaDialogEventId}
+              preselectedCalendarEvent={addGranolaDialogEvent}
               onNoteAdded={() => {
-                setAddGranolaDialogEventId(null);
+                setAddGranolaDialogEvent(null);
                 handleRefreshMeetingsData();
               }}
             />

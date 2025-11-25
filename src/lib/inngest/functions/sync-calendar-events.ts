@@ -470,6 +470,7 @@ async function syncUserCalendar(userId: string): Promise<{
           meetingUrl: event.meetingUrl,
           opportunityId,
           accountId,
+          source: 'google',
         },
         create: {
           userId,
@@ -485,6 +486,7 @@ async function syncUserCalendar(userId: string): Promise<{
           meetingUrl: event.meetingUrl,
           opportunityId,
           accountId,
+          source: 'google',
         },
       });
       upsertedCount++;

@@ -69,6 +69,26 @@ export const calendarEventLinkSchema = z.object({
   accountId: z.string().cuid().optional(),
 });
 
+// Manual meeting schemas
+export const createManualMeetingSchema = z.object({
+  summary: z.string().min(1, 'Meeting title is required').max(200),
+  description: z.string().max(2000).optional(),
+  startTime: z.string().datetime(),
+  endTime: z.string().datetime(),
+  meetingUrl: z.string().url().optional().nullable(),
+}).refine(
+  (data) => new Date(data.endTime) > new Date(data.startTime),
+  { message: 'End time must be after start time', path: ['endTime'] }
+);
+
+export const updateManualMeetingSchema = z.object({
+  summary: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).optional(),
+  startTime: z.string().datetime().optional(),
+  endTime: z.string().datetime().optional(),
+  meetingUrl: z.string().url().optional().nullable(),
+});
+
 // Type exports
 export type CalendarEventFilterInput = z.infer<
   typeof calendarEventFilterSchema
@@ -80,3 +100,5 @@ export type UpdateCalendarEventInput = z.infer<
   typeof updateCalendarEventSchema
 >;
 export type CalendarEventLinkInput = z.infer<typeof calendarEventLinkSchema>;
+export type CreateManualMeetingInput = z.infer<typeof createManualMeetingSchema>;
+export type UpdateManualMeetingInput = z.infer<typeof updateManualMeetingSchema>;

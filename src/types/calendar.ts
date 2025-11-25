@@ -1,8 +1,12 @@
 import type { GongCall } from './gong-call';
 import type { GranolaNote } from './granola-note';
 
+export type CalendarEventSource = 'google' | 'manual';
+
 export interface CalendarEvent {
   id: string;
+  googleEventId?: string | null;
+  source?: CalendarEventSource;
   summary: string;
   description?: string | null;
   location?: string | null;
@@ -14,6 +18,8 @@ export interface CalendarEvent {
   meetingUrl?: string | null;
   opportunityId?: string | null;
   accountId?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
   // Associated notes (populated when fetching with opportunity context)
   gongCalls?: GongCall[];
   granolaNotes?: GranolaNote[];

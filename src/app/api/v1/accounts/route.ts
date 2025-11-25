@@ -4,6 +4,99 @@ import { accountCreateSchema } from "@/lib/validations/account";
 import { requireAuth } from "@/lib/auth";
 import { z } from "zod";
 
+/**
+ * Extracts the domain from a website URL
+ * @param website - The website URL (with or without protocol)
+ * @returns The normalized domain (lowercase, no www) or null if invalid
+ */
+function extractDomainFromWebsite(website: string): string | null {
+  try {
+    const url = new URL(
+      website.startsWith("http") ? website : `https://${website}`
+    );
+    return url.hostname.replace(/^www\./, "").toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Backfills calendar events that match an account's domain
+ * Links unassociated calendar events to the account based on attendee email domains
+ */
+async function backfillCalendarEventsForAccount(
+  accountId: string,
+  website: string,
+  organizationId: string
+): Promise<number> {
+  const domain = extractDomainFromWebsite(website);
+  if (!domain) {
+    return 0;
+  }
+
+  // Get all user IDs in the organization
+  const orgUsers = await prisma.user.findMany({
+    where: { organizationId },
+    select: { id: true },
+  });
+  const userIds = orgUsers.map((u) => u.id);
+
+  if (userIds.length === 0) {
+    return 0;
+  }
+
+  // Get all unassociated calendar events for org users
+  const unmatchedEvents = await prisma.calendarEvent.findMany({
+    where: {
+      userId: { in: userIds },
+      accountId: null,
+    },
+    select: {
+      id: true,
+      attendees: true,
+    },
+  });
+
+  // Filter events that have attendees matching the account's domain
+  const matchingEvents = unmatchedEvents.filter((event) =>
+    event.attendees.some((email) => {
+      const emailDomain = email.split("@")[1]?.toLowerCase();
+      return emailDomain === domain;
+    })
+  );
+
+  if (matchingEvents.length === 0) {
+    return 0;
+  }
+
+  // Check if account has opportunities for linking
+  const accountWithOpps = await prisma.account.findUnique({
+    where: { id: accountId },
+    include: {
+      opportunities: { select: { id: true, name: true } },
+    },
+  });
+
+  // Determine opportunityId to set (only if exactly 1 opportunity)
+  const opportunityId =
+    accountWithOpps?.opportunities.length === 1
+      ? accountWithOpps.opportunities[0].id
+      : null;
+
+  // Update all matching events
+  await prisma.calendarEvent.updateMany({
+    where: {
+      id: { in: matchingEvents.map((e) => e.id) },
+    },
+    data: {
+      accountId,
+      ...(opportunityId && { opportunityId }),
+    },
+  });
+
+  return matchingEvents.length;
+}
+
 export async function GET() {
   try {
     const user = await requireAuth();
@@ -61,7 +154,27 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ account }, { status: 201 });
+    // Backfill calendar events that match the account's domain
+    let calendarEventsLinked = 0;
+    if (account.website) {
+      try {
+        calendarEventsLinked = await backfillCalendarEventsForAccount(
+          account.id,
+          account.website,
+          user.organization.id
+        );
+        if (calendarEventsLinked > 0) {
+          console.log(
+            `[Account Create] Linked ${calendarEventsLinked} calendar events to account ${account.name}`
+          );
+        }
+      } catch (backfillError) {
+        // Log but don't fail account creation
+        console.error("[Account Create] Calendar backfill failed:", backfillError);
+      }
+    }
+
+    return NextResponse.json({ account, calendarEventsLinked }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
