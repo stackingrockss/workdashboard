@@ -43,10 +43,44 @@ export async function PATCH(
       return NextResponse.json({ error: "Gong call not found" }, { status: 404 });
     }
 
+    // Validate calendarEventId if provided
+    let validCalendarEventId: string | null | undefined = undefined;
+    if (parsed.data.calendarEventId !== undefined) {
+      if (parsed.data.calendarEventId === null) {
+        // Explicitly unlinking - set to null
+        validCalendarEventId = null;
+        console.log('[Gong Call PATCH] Unlinking from calendar event');
+      } else {
+        // Linking to a calendar event - validate it exists
+        console.log('[Gong Call PATCH] Looking up calendarEventId:', parsed.data.calendarEventId);
+
+        const calendarEvent = await prisma.calendarEvent.findUnique({
+          where: { id: parsed.data.calendarEventId },
+        });
+
+        if (calendarEvent) {
+          validCalendarEventId = calendarEvent.id;
+          console.log('[Gong Call PATCH] Calendar event found, linking to:', calendarEvent.summary);
+        } else {
+          console.warn('[Gong Call PATCH] Calendar event NOT FOUND for id:', parsed.data.calendarEventId);
+          return NextResponse.json(
+            { error: "Calendar event not found" },
+            { status: 404 }
+          );
+        }
+      }
+    }
+
+    // Build update data, only including calendarEventId if it was validated
+    const updateData = {
+      ...parsed.data,
+      ...(validCalendarEventId !== undefined && { calendarEventId: validCalendarEventId }),
+    };
+
     // Update the Gong call
     const updatedCall = await prisma.gongCall.update({
       where: { id: callId },
-      data: parsed.data,
+      data: updateData,
     });
 
     // Revalidate the opportunity detail page
