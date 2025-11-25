@@ -82,15 +82,21 @@ export async function POST(
     // Validate calendarEventId if provided
     let validCalendarEventId: string | undefined = undefined;
     if (parsed.data.calendarEventId) {
+      console.log('[Gong Call] Looking up calendarEventId:', parsed.data.calendarEventId);
+
       const calendarEvent = await prisma.calendarEvent.findUnique({
         where: {
           id: parsed.data.calendarEventId,
         },
       });
+
       if (calendarEvent) {
         validCalendarEventId = calendarEvent.id;
+        console.log('[Gong Call] Calendar event found, linking to:', calendarEvent.summary);
+      } else {
+        console.warn('[Gong Call] Calendar event NOT FOUND for id:', parsed.data.calendarEventId);
+        // Continue without linking - user can manually link later
       }
-      // If calendar event doesn't exist, we silently ignore it rather than failing
     }
 
     // Create the call with optional transcript and calendar event association
