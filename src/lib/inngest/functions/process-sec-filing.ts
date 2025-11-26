@@ -50,10 +50,14 @@ export const processSecFilingJob = inngest.createFunction(
       return filing;
     });
 
-    // Step 3: Fetch HTML filing from SEC
-    const htmlContent = await step.run("fetch-sec-filing", async () => {
+    // Step 3: Fetch, extract, and summarize in a single step
+    // Combined to avoid storing large HTML/section data in Inngest step outputs
+    // (10-K filings can be 100+ pages, exceeding Inngest's output_too_large limit)
+    const aiSummary = await step.run("fetch-extract-summarize", async () => {
+      // Fetch HTML filing from SEC
+      let htmlContent: string;
       try {
-        return await fetchSecFiling(
+        htmlContent = await fetchSecFiling(
           filingData.cik,
           filingData.accessionNumber
         );
@@ -62,19 +66,15 @@ export const processSecFilingJob = inngest.createFunction(
           `Failed to fetch filing from SEC: ${error instanceof Error ? error.message : "Unknown error"}`
         );
       }
-    });
 
-    // Step 4: Extract key sections
-    const sections = await step.run("extract-sections", async () => {
-      return extractFilingSections(htmlContent);
-    });
+      // Extract key sections
+      const sections = extractFilingSections(htmlContent);
 
-    // Step 5: Check if extraction was successful
-    if (
-      sections.business === "Extraction failed" ||
-      sections.riskFactors === "Extraction failed"
-    ) {
-      await step.run("update-status-failed-extraction", async () => {
+      // Check if extraction was successful
+      if (
+        sections.business === "Extraction failed" ||
+        sections.riskFactors === "Extraction failed"
+      ) {
         await prisma.secFiling.update({
           where: { id: filingId },
           data: {
@@ -82,13 +82,10 @@ export const processSecFilingJob = inngest.createFunction(
             processingError: "Failed to extract filing sections from HTML",
           },
         });
-      });
+        throw new Error("Filing section extraction failed");
+      }
 
-      throw new Error("Filing section extraction failed");
-    }
-
-    // Step 6: Summarize with Gemini AI
-    const aiSummary = await step.run("summarize-filing", async () => {
+      // Summarize with Gemini AI
       try {
         return await summarizeSecFiling(sections);
       } catch (error) {
@@ -98,7 +95,7 @@ export const processSecFilingJob = inngest.createFunction(
       }
     });
 
-    // Step 7: Save results to database
+    // Step 4: Save results to database
     await step.run("save-results", async () => {
       await prisma.secFiling.update({
         where: { id: filingId },
