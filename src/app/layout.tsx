@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Opportunity Tracker",
+  title: "DealVibes",
   description: "Track deals, next steps, and forecasts in a Kanban view",
 };
 
@@ -35,7 +35,7 @@ export default function RootLayout({
         <CommentSidebarProvider>
           <header className="border-b">
             <div className="mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
-              <Link href="/" className="font-semibold text-lg">Opportunity Tracker</Link>
+              <Link href="/" className="font-semibold text-lg">DealVibes</Link>
               <div className="flex items-center gap-6">
                 <MainNav />
                 <div className="flex items-center gap-2">
