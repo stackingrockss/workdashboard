@@ -54,12 +54,15 @@ export const processSecFilingJob = inngest.createFunction(
     // Combined to avoid storing large HTML/section data in Inngest step outputs
     // (10-K filings can be 100+ pages, exceeding Inngest's output_too_large limit)
     const aiSummary = await step.run("fetch-extract-summarize", async () => {
-      // Fetch HTML filing from SEC
+      // Fetch HTML filing from SEC using primaryDocument if available
+      // primaryDocument contains the actual 10-K HTML filename (e.g., "aapl-20240928.htm")
+      // Without it, we fall back to the .txt SGML submission package which is harder to parse
       let htmlContent: string;
       try {
         htmlContent = await fetchSecFiling(
           filingData.cik,
-          filingData.accessionNumber
+          filingData.accessionNumber,
+          filingData.primaryDocument
         );
       } catch (error) {
         throw new Error(

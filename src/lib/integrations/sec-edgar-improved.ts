@@ -373,19 +373,28 @@ export async function getCompanyFilings(
 
 /**
  * Fetch SEC filing HTML content
+ * @param cik Company CIK
+ * @param accessionNumber Filing accession number
+ * @param primaryDocument Optional primary document filename (e.g., "aapl-20240928.htm")
+ *                        If provided, fetches the actual HTML document instead of the SGML wrapper
  */
 export async function fetchSecFiling(
   cik: string,
-  accessionNumber: string
+  accessionNumber: string,
+  primaryDocument?: string | null
 ): Promise<string> {
   return rateLimiter.schedule(async () => {
     // Remove dashes from accession number for URL path
     const accessionNumberNoDashes = accessionNumber.replace(/-/g, "");
 
-    // Construct filing URL
+    // Construct filing URL - use primary document if available, otherwise fallback to .txt
+    // The primary document is the actual 10-K HTML, while .txt is the full SGML submission package
+    const filename = primaryDocument || `${accessionNumber}.txt`;
     const filingUrl = `${SEC_BASE_URL}/Archives/edgar/data/${parseInt(
       cik
-    )}/${accessionNumberNoDashes}/${accessionNumber}.txt`;
+    )}/${accessionNumberNoDashes}/${filename}`;
+
+    console.log(`Fetching SEC filing from: ${filingUrl}`);
 
     const response = await fetchWithRetry(async () => {
       const res = await fetch(filingUrl, {

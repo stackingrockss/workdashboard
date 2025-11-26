@@ -187,11 +187,14 @@ export async function POST(
         organizationId: user.organization.id,
         filingType: validatedData.filingType,
         filingDate: new Date(targetFiling.filingDate),
-        fiscalYear: validatedData.fiscalYear || new Date(targetFiling.reportDate).getFullYear(),
+        fiscalYear:
+          validatedData.fiscalYear ||
+          new Date(targetFiling.reportDate).getFullYear(),
         fiscalPeriod: validatedData.fiscalPeriod,
         accessionNumber: targetFiling.accessionNumber,
         filingUrl: getFilingViewerUrl(cik, targetFiling.accessionNumber),
         cik,
+        primaryDocument: targetFiling.primaryDocument,
         processingStatus: FilingProcessingStatus.pending,
       },
     });

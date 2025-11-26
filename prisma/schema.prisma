@@ -438,6 +438,7 @@ model SecFiling {
   accessionNumber      String
   filingUrl            String
   cik                  String
+  primaryDocument      String?
   processingStatus     FilingProcessingStatus? @default(pending)
   processedAt          DateTime?
   processingError      String?

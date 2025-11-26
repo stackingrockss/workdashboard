@@ -113,24 +113,20 @@ export const parseGongTranscriptJob = inngest.createFunction(
     // Step 7: Trigger downstream jobs (risk analysis + consolidation check)
     // These are sent as separate events so they run independently and aren't
     // affected by timeouts in this job
-    await step.run("trigger-downstream-jobs", async () => {
-      const events = [
-        {
-          name: "gong/risk.analyze",
-          data: { gongCallId },
+    // NOTE: step.sendEvent must be called directly, not nested inside step.run
+    await step.sendEvent("trigger-downstream-jobs", [
+      {
+        name: "gong/risk.analyze",
+        data: { gongCallId },
+      },
+      {
+        name: "gong/parsing.completed",
+        data: {
+          opportunityId: updatedCall.opportunityId,
+          gongCallId,
         },
-        {
-          name: "gong/parsing.completed",
-          data: {
-            opportunityId: updatedCall.opportunityId,
-            gongCallId,
-          },
-        },
-      ];
-
-      await step.sendEvent("downstream-events", events);
-      return { triggered: ["risk-analysis", "consolidation-check"] };
-    });
+      },
+    ]);
 
     return {
       success: true,
