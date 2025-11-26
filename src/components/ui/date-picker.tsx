@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 import { format, parse, isValid } from "date-fns";
 
 import { cn } from "@/lib/utils";
@@ -130,11 +130,9 @@ export function DatePicker({
     if (isoDate) {
       // Valid complete date - update the parent with ISO format
       onChange(isoDate);
-    } else {
-      // Empty or partial input - clear the parent value to keep UI and state in sync
-      // This prevents the "weird jump" when user deletes digits and then types new ones
-      onChange("");
     }
+    // Don't call onChange("") for partial input - wait for blur to avoid
+    // cascading re-renders that make the input feel jumpy while typing/deleting
   };
 
   // Handle blur to validate the final input
@@ -163,21 +161,40 @@ export function DatePicker({
     setOpen(false);
   };
 
+  // Handle clear button click
+  const handleClear = () => {
+    setInputValue("");
+    onChange("");
+    inputRef.current?.focus();
+  };
+
   return (
     <div className="flex gap-2">
-      <Input
-        ref={inputRef}
-        id={id}
-        type="text"
-        value={inputValue}
-        onChange={handleInputChange}
-        onBlur={handleBlur}
-        placeholder={placeholder}
-        disabled={disabled}
-        required={required}
-        className="flex-1"
-        maxLength={10}
-      />
+      <div className="relative flex-1">
+        <Input
+          ref={inputRef}
+          id={id}
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          onBlur={handleBlur}
+          placeholder={placeholder}
+          disabled={disabled}
+          required={required}
+          className="pr-8"
+          maxLength={10}
+        />
+        {inputValue && !disabled && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            aria-label="Clear date"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
@@ -197,7 +214,7 @@ export function DatePicker({
             mode="single"
             selected={selectedDate}
             onSelect={handleSelect}
-            initialFocus
+            autoFocus
           />
         </PopoverContent>
       </Popover>

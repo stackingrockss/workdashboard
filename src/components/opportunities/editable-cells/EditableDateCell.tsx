@@ -65,7 +65,7 @@ export function EditableDateCell({
               mode="single"
               selected={editValue ? new Date(editValue) : undefined}
               onSelect={handleSave}
-              initialFocus
+              autoFocus
             />
           </PopoverContent>
         </Popover>
