@@ -841,6 +841,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId }:
               name: opportunity.name,
               account: opportunity.account?.name || opportunity.accountName,
               accountTicker: opportunity.account?.ticker,
+              accountWebsite: opportunity.account?.website,
               amountArr: opportunity.amountArr,
               confidenceLevel: opportunity.confidenceLevel,
               nextStep: opportunity.nextStep,

@@ -181,18 +181,20 @@ async function matchEventToOpportunityAndAccount(
       if (domainToAccountsMap.has(domain)) {
         const matchedAccounts = domainToAccountsMap.get(domain)!;
 
-        // Use the first matched account
-        const firstAccount = matchedAccounts[0];
-        matchedAccountId = firstAccount.id;
+        // Prioritize accounts that have opportunities over those that don't
+        const accountsWithOpps = matchedAccounts.filter(a => a.opportunities.length > 0);
+        const accountToUse = accountsWithOpps.length > 0 ? accountsWithOpps[0] : matchedAccounts[0];
+
+        matchedAccountId = accountToUse.id;
 
         // If the account has exactly one opportunity, link to it
-        if (firstAccount.opportunities.length === 1) {
-          matchedOpportunityId = firstAccount.opportunities[0].id;
+        if (accountToUse.opportunities.length === 1) {
+          matchedOpportunityId = accountToUse.opportunities[0].id;
         }
         // If multiple opportunities, try to match by meeting title
-        else if (firstAccount.opportunities.length > 1) {
+        else if (accountToUse.opportunities.length > 1) {
           const meetingTitle = event.summary.toLowerCase();
-          const matchedOpp = firstAccount.opportunities.find(opp =>
+          const matchedOpp = accountToUse.opportunities.find(opp =>
             meetingTitle.includes(opp.name.toLowerCase()) ||
             opp.name.toLowerCase().includes(meetingTitle)
           );
