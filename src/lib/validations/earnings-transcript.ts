@@ -3,7 +3,12 @@ import { z } from "zod";
 export const earningsTranscriptCreateSchema = z.object({
   quarter: z.enum(["Q1", "Q2", "Q3", "Q4"]),
   fiscalYear: z.number().int().min(2000).max(2050),
-  callDate: z.string().datetime().optional(),
+  callDate: z
+    .string()
+    .refine((val) => !val || !isNaN(Date.parse(val)), {
+      message: "Invalid date format",
+    })
+    .optional(),
   title: z.string().min(2).max(200).optional(),
   transcriptText: z.string().min(100).optional(),
   source: z
