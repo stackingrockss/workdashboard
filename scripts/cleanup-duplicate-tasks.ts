@@ -8,7 +8,7 @@ async function cleanupDuplicateTasks() {
     Array<{ userId: string; taskSource: string; count: bigint }>
   >`
     SELECT "userId", "taskSource", COUNT(*) as count
-    FROM "Task"
+    FROM "opportunity_tracker"."Task"
     WHERE "taskSource" IS NOT NULL
     GROUP BY "userId", "taskSource"
     HAVING COUNT(*) > 1
@@ -50,7 +50,7 @@ async function cleanupDuplicateTasks() {
     SELECT COUNT(*) as count
     FROM (
       SELECT "userId", "taskSource", COUNT(*) as c
-      FROM "Task"
+      FROM "opportunity_tracker"."Task"
       WHERE "taskSource" IS NOT NULL
       GROUP BY "userId", "taskSource"
       HAVING COUNT(*) > 1

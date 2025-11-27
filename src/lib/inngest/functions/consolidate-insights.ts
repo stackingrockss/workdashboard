@@ -87,9 +87,26 @@ export const consolidateInsightsJob = inngest.createFunction(
     const deduplicationResult = await step.run(
       "deduplicate-meetings",
       async () => {
+        // Cast to proper types after Inngest serialization
         const result = deduplicateMeetings(
-          gongCalls as Parameters<typeof deduplicateMeetings>[0],
-          granolaNotes as Parameters<typeof deduplicateMeetings>[1]
+          gongCalls as unknown as Array<{
+            id: string;
+            source: 'gong';
+            meetingDate: Date;
+            calendarEventId?: string | null;
+            painPoints?: string[] | null;
+            goals?: string[] | null;
+            riskAssessment?: unknown | null;
+          }>,
+          granolaNotes as unknown as Array<{
+            id: string;
+            source: 'granola';
+            meetingDate: Date;
+            calendarEventId?: string | null;
+            painPoints?: string[] | null;
+            goals?: string[] | null;
+            riskAssessment?: unknown | null;
+          }>
         );
 
         // Log deduplication stats for debugging

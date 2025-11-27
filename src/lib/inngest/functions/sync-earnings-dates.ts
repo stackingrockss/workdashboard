@@ -171,20 +171,17 @@ export const syncEarningsDatesJob = inngest.createFunction(
         // Create task for each user in the organization
         for (const user of account.organization.users) {
           try {
-            // Check if reminder task already exists
+            // Build unique taskSource with account ID and date
+            const earningsDateStr = earningsDate.toISOString().split('T')[0]; // YYYY-MM-DD
+            const taskSource = `earnings-reminder:${account.id}:${earningsDateStr}`;
+
+            // Early duplicate check (BEFORE API call)
             const existingTask = await prisma.task.findFirst({
-              where: {
-                accountId: account.id,
-                userId: user.id,
-                taskSource: "earnings_reminder",
-                due: { gte: new Date() },
-              },
+              where: { userId: user.id, taskSource },
             });
 
             if (existingTask) {
-              console.log(
-                `Reminder already exists for ${account.name} - ${user.name || user.id}`
-              );
+              console.log(`Reminder already exists for ${account.name} - ${user.name || user.id}`);
               continue;
             }
 
@@ -195,12 +192,11 @@ export const syncEarningsDatesJob = inngest.createFunction(
             });
 
             if (!taskList) {
-              console.log(`User ${user.id} has no task list connected`);
+              console.log(`User ${user.id} has no task list`);
               continue;
             }
 
-            // Create task in Google Tasks
-            const googleTasksClient = new GoogleTasksClient();
+            // Prepare task content
             const taskTitle = `Earnings Call: ${account.name}`;
             const taskNotes = `
 Upcoming earnings call for ${account.name} (${account.ticker})
@@ -214,30 +210,65 @@ Prepare for:
 - Prepare questions for management
             `.trim();
 
-            const googleTask = await googleTasksClient.createTask(user.id, taskList.googleListId, {
-              title: taskTitle,
-              notes: taskNotes,
-              due: taskDueDate,
-            });
+            // Create task via Google Tasks API
+            const googleTasksClient = new GoogleTasksClient();
+            let googleTask;
 
-            // Store task in database
-            await prisma.task.create({
-              data: {
-                userId: user.id,
-                taskListId: taskList.id,
-                googleTaskId: googleTask.id,
+            try {
+              googleTask = await googleTasksClient.createTask(user.id, taskList.googleListId, {
                 title: taskTitle,
                 notes: taskNotes,
                 due: taskDueDate,
-                status: "needsAction",
-                position: googleTask.position,
-                accountId: account.id,
-                taskSource: "earnings_reminder",
-              },
-            });
+              });
+            } catch (error) {
+              console.error(`Failed to create Google task for user ${user.id}:`, error);
+              remindersFailed++;
+              continue;
+            }
 
-            remindersCreated++;
-            console.log(`Created earnings reminder for ${account.name} - ${user.name || user.id}`);
+            // Store task in database with UPSERT
+            try {
+              await prisma.task.upsert({
+                where: {
+                  userId_googleTaskId: {
+                    userId: user.id,
+                    googleTaskId: googleTask.id,
+                  },
+                },
+                update: {
+                  title: taskTitle,
+                  notes: taskNotes,
+                  due: taskDueDate,
+                  position: googleTask.position,
+                  taskSource,
+                  updatedAt: new Date(),
+                },
+                create: {
+                  userId: user.id,
+                  taskListId: taskList.id,
+                  googleTaskId: googleTask.id,
+                  title: taskTitle,
+                  notes: taskNotes,
+                  due: taskDueDate,
+                  status: "needsAction",
+                  position: googleTask.position,
+                  accountId: account.id,
+                  taskSource, // REQUIRED for uniqueness (format: earnings-reminder:{accountId}:{date})
+                },
+              });
+
+              remindersCreated++;
+              console.log(`Created earnings reminder for ${account.name} - ${user.name || user.id}`);
+            } catch (error: unknown) {
+              // Handle unique constraint violation
+              const prismaError = error as { code?: string; meta?: { target?: string[] } };
+              if (prismaError.code === 'P2002' && prismaError.meta?.target?.includes('taskSource')) {
+                console.log(`Reminder already exists (race condition): ${account.name} - ${user.id}`);
+                continue;
+              }
+              console.error(`Failed to store task for user ${user.id}:`, error);
+              remindersFailed++;
+            }
           } catch (error) {
             console.error(`Failed to create reminder for user ${user.id}:`, error);
             remindersFailed++;

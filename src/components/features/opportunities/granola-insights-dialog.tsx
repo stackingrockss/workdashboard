@@ -33,8 +33,6 @@ interface GranolaInsightsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   note: GranolaNote;
-  opportunityId?: string; // Optional: For contact import
-  onContactsImported?: () => void; // Callback after contacts imported
 }
 
 // ============================================================================
@@ -45,8 +43,6 @@ export function GranolaInsightsDialog({
   open,
   onOpenChange,
   note,
-  opportunityId,
-  onContactsImported,
 }: GranolaInsightsDialogProps) {
   // Check if parsing is complete
   const hasInsights = note.parsingStatus === 'completed' && (

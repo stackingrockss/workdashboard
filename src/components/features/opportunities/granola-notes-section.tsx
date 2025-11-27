@@ -128,10 +128,6 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
     router.refresh(); // Refresh to show updated parsing status
   };
 
-  const handleContactsImported = () => {
-    router.refresh(); // Refresh to show new contacts
-  };
-
   const handleRetryParsing = async (noteId: string) => {
     try {
       const response = await fetch(`/api/v1/granola-notes/${noteId}/retry-parsing`, {
@@ -291,8 +287,6 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
           open={!!insightsDialogNote}
           onOpenChange={(open) => !open && setInsightsDialogNote(null)}
           note={insightsDialogNote}
-          opportunityId={opportunityId}
-          onContactsImported={handleContactsImported}
         />
       )}
 

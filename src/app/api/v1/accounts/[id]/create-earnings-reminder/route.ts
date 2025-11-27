@@ -50,13 +50,17 @@ export async function POST(
       );
     }
 
-    // Check if reminder task already exists for this earnings date
+    // Build unique taskSource with account ID and date
+    const earningsDate = new Date(account.nextEarningsDate);
+    const earningsDateStr = earningsDate.toISOString().split('T')[0];
+    const taskSource = `earnings-reminder:${account.id}:${earningsDateStr}`;
+
+    // Check if reminder task already exists
     const existingTask = await prisma.task.findFirst({
       where: {
-        accountId: account.id,
         userId: user.id,
-        taskSource: "earnings_reminder",
-        due: { gte: new Date() }, // Only check future tasks
+        taskSource,
+        due: { gte: new Date() }, // Only check future reminders
       },
     });
 
@@ -68,7 +72,6 @@ export async function POST(
     }
 
     // Calculate task due date (X days before earnings)
-    const earningsDate = new Date(account.nextEarningsDate);
     const taskDueDate = new Date(earningsDate);
     taskDueDate.setDate(taskDueDate.getDate() - daysBeforeEarnings);
 
@@ -123,21 +126,46 @@ Prepare for:
       }
     );
 
-    // Store task in database
-    const task = await prisma.task.create({
-      data: {
-        userId: user.id,
-        taskListId: taskList.id,
-        googleTaskId: googleTask.id,
-        title: taskTitle,
-        notes: taskNotesText,
-        due: taskDueDate,
-        status: "needsAction",
-        position: googleTask.position,
-        accountId: account.id,
-        taskSource: "earnings_reminder",
-      },
-    });
+    // Store task in database with UPSERT (handles race conditions)
+    let task;
+    try {
+      task = await prisma.task.upsert({
+        where: {
+          userId_googleTaskId: {
+            userId: user.id,
+            googleTaskId: googleTask.id,
+          },
+        },
+        update: {
+          title: taskTitle,
+          notes: taskNotesText,
+          due: taskDueDate,
+          position: googleTask.position,
+          taskSource,
+          updatedAt: new Date(),
+        },
+        create: {
+          userId: user.id,
+          taskListId: taskList.id,
+          googleTaskId: googleTask.id,
+          title: taskTitle,
+          notes: taskNotesText,
+          due: taskDueDate,
+          status: "needsAction",
+          position: googleTask.position,
+          accountId: account.id,
+          taskSource, // Format: earnings-reminder:{accountId}:{date}
+        },
+      });
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+        return NextResponse.json(
+          { error: "Earnings reminder already exists" },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json({
       success: true,
