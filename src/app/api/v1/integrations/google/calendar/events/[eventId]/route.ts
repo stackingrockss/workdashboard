@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { googleCalendarClient } from '@/lib/integrations/google-calendar';
 import { updateCalendarEventSchema } from '@/lib/validations/calendar';
+import { recalculateNextCallDateForOpportunity } from '@/lib/utils/next-call-date-calculator';
 
 /**
  * PATCH /api/v1/integrations/google/calendar/events/[eventId]
@@ -102,8 +103,9 @@ export async function PATCH(
     );
 
     // Update event in database (Phase 3A: persistent storage)
+    let opportunityId: string | null = null;
     try {
-      await prisma.calendarEvent.updateMany({
+      const updatedRecords = await prisma.calendarEvent.updateMany({
         where: {
           userId: user.id,
           googleEventId: eventId,
@@ -120,10 +122,29 @@ export async function PATCH(
           meetingUrl: updatedEvent.meetingUrl,
         },
       });
+
+      // Get the opportunity ID if event is linked to one
+      if (updatedRecords.count > 0) {
+        const event = await prisma.calendarEvent.findFirst({
+          where: { userId: user.id, googleEventId: eventId },
+          select: { opportunityId: true },
+        });
+        opportunityId = event?.opportunityId || null;
+      }
     } catch (dbError) {
       // Log but don't fail the request if DB update fails
       // (Event is already updated in Google Calendar)
       console.error('Failed to update event in database:', dbError);
+    }
+
+    // Recalculate next call date if event is linked to an opportunity
+    if (opportunityId) {
+      try {
+        await recalculateNextCallDateForOpportunity(opportunityId);
+      } catch (recalcError) {
+        // Log but don't fail - recalculation will happen via background job
+        console.error('[PATCH calendar event] Failed to recalculate next call date:', recalcError);
+      }
     }
 
     return NextResponse.json({ event: updatedEvent });

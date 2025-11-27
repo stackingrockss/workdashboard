@@ -52,6 +52,11 @@ export function mapPrismaOpportunityToOpportunity(
     cbc: opp.cbc
       ? opp.cbc.toISOString().split('T')[0] // Extract date-only part (YYYY-MM-DD)
       : undefined,
+    nextCallDate: opp.nextCallDate?.toISOString() || null,
+    nextCallDateSource: opp.nextCallDateSource || null,
+    nextCallDateManuallySet: opp.nextCallDateManuallySet || false,
+    nextCallDateLastCalculated: opp.nextCallDateLastCalculated?.toISOString() || null,
+    nextCallDateEventId: opp.nextCallDateEventId || null,
     closeDate: opp.closeDate
       ? opp.closeDate.toISOString().split('T')[0] // Extract date-only part (YYYY-MM-DD)
       : undefined,

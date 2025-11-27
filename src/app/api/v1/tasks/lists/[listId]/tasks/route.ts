@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
+import { Prisma } from '@prisma/client';
 import { googleTasksClient } from '@/lib/integrations/google-tasks';
 import { taskCreateSchema, taskFilterSchema } from '@/lib/validations/task';
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from '@/lib/utils/pagination';
+import { paginationQuerySchema } from '@/lib/validations/pagination';
+import { cachedResponse } from '@/lib/cache';
 
 /**
  * GET /api/v1/tasks/lists/[listId]/tasks
@@ -99,36 +107,84 @@ export async function GET(
       }
     }
 
-    // Fetch tasks from database
-    const tasks = await prisma.task.findMany({
-      where: whereClause,
-      orderBy: { position: 'asc' },
-      include: {
-        opportunity: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-      },
+    // Helper to map task to response format
+    const mapTaskToResponse = (
+      task: Prisma.TaskGetPayload<{
+        include: { opportunity: { select: { id: true; name: true } } };
+      }>
+    ) => ({
+      id: task.id,
+      taskListId: task.taskListId,
+      googleTaskId: task.googleTaskId,
+      title: task.title,
+      notes: task.notes,
+      due: task.due?.toISOString() || null,
+      status: task.status,
+      opportunityId: task.opportunityId,
+      opportunity: task.opportunity,
+      createdAt: task.createdAt.toISOString(),
+      updatedAt: task.updatedAt.toISOString(),
+      completedAt: task.completedAt?.toISOString() || null,
     });
 
-    return NextResponse.json({
-      tasks: tasks.map((task) => ({
-        id: task.id,
-        taskListId: task.taskListId,
-        googleTaskId: task.googleTaskId,
-        title: task.title,
-        notes: task.notes,
-        due: task.due?.toISOString() || null,
-        status: task.status,
-        opportunityId: task.opportunityId,
-        opportunity: task.opportunity,
-        createdAt: task.createdAt.toISOString(),
-        updatedAt: task.updatedAt.toISOString(),
-        completedAt: task.completedAt?.toISOString() || null,
-      })),
-    });
+    // Detect if client wants pagination
+    const usePagination = wantsPagination(searchParams);
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 100, // Default to 100
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 100; // Ensure limit is never undefined
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance (count total + fetch page)
+      const [total, tasks] = await Promise.all([
+        prisma.task.count({ where: whereClause }),
+        prisma.task.findMany({
+          where: whereClause,
+          orderBy: { position: 'asc' },
+          include: {
+            opportunity: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const mappedTasks = tasks.map(mapTaskToResponse);
+      return cachedResponse(
+        buildPaginatedResponse(mappedTasks, page, limit, total, 'tasks'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all tasks
+      const tasks = await prisma.task.findMany({
+        where: whereClause,
+        orderBy: { position: 'asc' },
+        include: {
+          opportunity: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      });
+
+      const mappedTasks = tasks.map(mapTaskToResponse);
+      return cachedResponse(
+        buildLegacyResponse(mappedTasks, 'tasks'),
+        'frequent'
+      );
+    }
   } catch (error) {
     console.error('Failed to list tasks:', error);
     return NextResponse.json(

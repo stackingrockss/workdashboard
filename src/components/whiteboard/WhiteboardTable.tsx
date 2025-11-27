@@ -18,6 +18,7 @@ import { ArrowUpDown, ExternalLink } from "lucide-react";
 import { Opportunity, getStageLabel, getReviewStatusLabel, getPlatformTypeLabel, ReviewStatus, PlatformType, OpportunityStage } from "@/types/opportunity";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 import { updateOpportunityField } from "@/lib/api/opportunities";
+import { STAGE_OPTIONS } from "@/lib/constants";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { toast } from "sonner";
 import {
@@ -31,15 +32,8 @@ interface WhiteboardTableProps {
   opportunities: Opportunity[];
 }
 
-const stageOptions = [
-  { value: "discovery", label: "Discovery" },
-  { value: "demo", label: "Demo" },
-  { value: "validateSolution", label: "Validate Solution" },
-  { value: "decisionMakerApproval", label: "Decision Maker Approval" },
-  { value: "contracting", label: "Contracting" },
-  { value: "closedWon", label: "Closed Won" },
-  { value: "closedLost", label: "Closed Lost" },
-];
+// Using centralized stage options from constants
+const stageOptions = STAGE_OPTIONS;
 
 const confidenceLevelOptions = [
   { value: "1", label: "1" },

@@ -275,3 +275,56 @@
 .dark .comment-anchor-icon:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
+
+/* Enhanced Comment Highlight Styles (Google Docs-style inline commenting) */
+.comment-highlight {
+  cursor: pointer;
+  transition: background-color 100ms ease-out, box-shadow 100ms ease-out;
+  border-radius: 2px;
+}
+
+/* Active highlight (when popover is open) */
+.comment-highlight.active {
+  background-color: #facc15 !important;
+  box-shadow: 0 0 0 2px #eab308 !important;
+}
+
+/* Resolved comment highlight */
+.comment-highlight.resolved {
+  background-color: #e5e7eb !important;
+  opacity: 0.5;
+}
+
+.dark .comment-highlight.resolved {
+  background-color: #374151 !important;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .comment-highlight {
+    transition: none !important;
+  }
+
+  .comment-popover,
+  .comment-sheet {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .comment-highlight {
+    border: 2px solid currentColor;
+  }
+
+  .comment-highlight.active {
+    border-width: 3px;
+  }
+}
+
+/* GPU acceleration for popover animations */
+.comment-popover {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}

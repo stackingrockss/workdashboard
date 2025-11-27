@@ -48,6 +48,8 @@ const baseOpportunitySchema = z.object({
   confidenceLevel: z.number().int().min(1).max(5).optional().default(3), // 1-5 scale (replaces probability)
   nextStep: z.string().max(500).optional().nullable().transform(val => val === "" ? null : val),
   cbc: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "CBC date must be in YYYY-MM-DD format").optional().nullable().transform(val => val === "" ? null : val), // Call Between Call date
+  nextCallDate: z.string().datetime().optional().nullable(),
+  nextCallDateManuallySet: z.boolean().optional(),
   quarter: z.string().max(20).optional().nullable().transform(val => val === "" ? null : val),
   stage: z.enum([
     "discovery",

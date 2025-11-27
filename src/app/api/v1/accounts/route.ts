@@ -3,6 +3,13 @@ import { prisma } from "@/lib/db";
 import { accountCreateSchema } from "@/lib/validations/account";
 import { requireAuth } from "@/lib/auth";
 import { z } from "zod";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
 
 /**
  * Extracts the domain from a website URL
@@ -97,31 +104,80 @@ async function backfillCalendarEventsForAccount(
   return matchingEvents.length;
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth();
+    const searchParams = req.nextUrl.searchParams;
 
-    // Get accounts within user's organization
-    const accounts = await prisma.account.findMany({
-      where: {
-        organizationId: user.organization.id,
-      },
-      include: {
-        opportunities: {
-          select: {
-            id: true,
-            name: true,
-            amountArr: true,
-            confidenceLevel: true,
-            stage: true,
+    // Build where clause (scoped to user's organization)
+    const whereClause = {
+      organizationId: user.organization.id,
+    };
+
+    // Detect if client wants pagination
+    const usePagination = wantsPagination(searchParams);
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 100, // Default to 100
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 100; // Ensure limit is never undefined
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance (count total + fetch page)
+      const [total, accounts] = await Promise.all([
+        prisma.account.count({ where: whereClause }),
+        prisma.account.findMany({
+          where: whereClause,
+          include: {
+            opportunities: {
+              select: {
+                id: true,
+                name: true,
+                amountArr: true,
+                confidenceLevel: true,
+                stage: true,
+              },
+            },
+            owner: true,
           },
-        },
-        owner: true,
-      },
-      orderBy: { name: "asc" },
-    });
+          orderBy: { name: "asc" },
+          skip,
+          take: limit,
+        }),
+      ]);
 
-    return NextResponse.json({ accounts }, { status: 200 });
+      return cachedResponse(
+        buildPaginatedResponse(accounts, page, limit, total, 'accounts'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all accounts
+      const accounts = await prisma.account.findMany({
+        where: whereClause,
+        include: {
+          opportunities: {
+            select: {
+              id: true,
+              name: true,
+              amountArr: true,
+              confidenceLevel: true,
+              stage: true,
+            },
+          },
+          owner: true,
+        },
+        orderBy: { name: "asc" },
+      });
+
+      return cachedResponse(
+        buildLegacyResponse(accounts, 'accounts'),
+        'frequent'
+      );
+    }
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

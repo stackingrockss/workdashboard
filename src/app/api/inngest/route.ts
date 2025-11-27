@@ -5,6 +5,8 @@ import { serve } from "inngest/next";
 import { inngest } from "@/lib/inngest/client";
 import { parseGongTranscriptJob } from "@/lib/inngest/functions/parse-gong-transcript";
 import { analyzeCallRiskJob } from "@/lib/inngest/functions/analyze-call-risk";
+import { parseGranolaTranscriptJob } from "@/lib/inngest/functions/parse-granola-transcript";
+import { analyzeGranolaRiskJob } from "@/lib/inngest/functions/analyze-granola-risk";
 import { consolidateInsightsJob } from "@/lib/inngest/functions/consolidate-insights";
 import { checkConsolidationJob } from "@/lib/inngest/functions/check-consolidation";
 import { syncAllCalendarEventsJob } from "@/lib/inngest/functions/sync-calendar-events";
@@ -14,6 +16,7 @@ import { processEarningsTranscriptJob } from "@/lib/inngest/functions/process-ea
 import { refreshSecCacheJob } from "@/lib/inngest/functions/refresh-sec-cache";
 import { syncEarningsDatesJob } from "@/lib/inngest/functions/sync-earnings-dates";
 import { generateAccountResearchJob } from "@/lib/inngest/functions/generate-account-research";
+import { recalculateNextCallDatesJob } from "@/lib/inngest/functions/recalculate-next-call-dates";
 
 // Increase timeout for long-running AI jobs
 // Vercel Pro: 300s (5 min), Hobby: 60s max
@@ -28,6 +31,8 @@ export const { GET, POST, PUT } = serve({
   functions: [
     parseGongTranscriptJob,
     analyzeCallRiskJob,
+    parseGranolaTranscriptJob, // NEW: Granola transcript parsing
+    analyzeGranolaRiskJob, // NEW: Granola risk analysis
     checkConsolidationJob, // Lightweight job to check & trigger consolidation
     consolidateInsightsJob,
     syncAllCalendarEventsJob,
@@ -37,6 +42,7 @@ export const { GET, POST, PUT } = serve({
     refreshSecCacheJob, // SEC company data cache refresh (daily at 2 AM UTC)
     syncEarningsDatesJob, // Earnings dates sync and reminder tasks (daily at 9 AM)
     generateAccountResearchJob, // AI account research generation on opportunity creation
+    recalculateNextCallDatesJob, // Next call date recalculation (daily at 2 AM)
   ],
   signingKey: process.env.INNGEST_SIGNING_KEY,
 });

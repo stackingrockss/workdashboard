@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
         title: parsed.data.title,
         url: parsed.data.url,
         description: parsed.data.description,
+        body: parsed.data.body,
         contentType: parsed.data.contentType,
         createdById: user.id,
         organizationId: user.organization.id,

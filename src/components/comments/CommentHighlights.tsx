@@ -3,9 +3,12 @@
 
 "use client";
 
-import { useEffect } from "react";
-import { useComments, type Comment } from "./useComments";
-import { useCommentSidebar } from "./CommentSidebarContext";
+import { useEffect, useState } from "react";
+import { useComments } from "./useComments";
+import { InlineCommentPopover } from "./InlineCommentPopover";
+import { CommentSheet } from "./CommentSheet";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { BREAKPOINTS } from "@/lib/constants";
 import {
   restoreTextSelection,
   highlightRange,
@@ -19,6 +22,17 @@ interface CommentHighlightsProps {
   organizationId: string;
   pageContext?: string;
   enabled?: boolean;
+  currentUser: {
+    id: string;
+    role: "ADMIN" | "MANAGER" | "REP" | "VIEWER";
+    organizationId: string;
+  };
+  organizationUsers: Array<{
+    id: string;
+    name: string | null;
+    email: string;
+    avatarUrl: string | null;
+  }>;
 }
 
 export function CommentHighlights({
@@ -27,6 +41,8 @@ export function CommentHighlights({
   organizationId,
   pageContext,
   enabled = true,
+  currentUser,
+  organizationUsers,
 }: CommentHighlightsProps) {
   const { comments, isLoading } = useComments({
     entityType,
@@ -37,7 +53,12 @@ export function CommentHighlights({
     enabled,
   });
 
-  const { openSidebar, selectComment } = useCommentSidebar();
+  // State for inline popover/sheet
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+  const [activeElement, setActiveElement] = useState<HTMLElement | null>(null);
+
+  // Detect mobile/desktop using constant
+  const isMobile = useMediaQuery(BREAKPOINTS.MOBILE_MAX_WIDTH);
 
   useEffect(() => {
     if (!enabled || isLoading) return;
@@ -69,21 +90,48 @@ export function CommentHighlights({
         const range = restoreTextSelection(selection);
 
         if (range) {
-          highlightRange(range, {
-            color: "#ffeb3b",
+          const highlightElements = highlightRange(range, {
+            color: "#fef08a",
             className: `comment-highlight comment-highlight-${comment.id}`,
             commentId: comment.id,
             isResolved: comment.isResolved,
             authorId: comment.authorId,
-            onClick: () => {
-              // Open sidebar and scroll to comment
-              openSidebar(entityType, entityId, pageContext);
-              selectComment(comment.id);
+            onClick: (element) => {
+              // Open inline popover/sheet instead of sidebar
+              setActiveCommentId(comment.id);
+              setActiveElement(element);
             },
           });
+
+          // Add hover effect to highlight elements
+          highlightElements.forEach((el) => {
+            el.style.cursor = "pointer";
+            el.style.transition = "background-color 100ms ease-out";
+
+            el.addEventListener("mouseenter", () => {
+              if (activeCommentId !== comment.id) {
+                el.style.backgroundColor = "#fde047"; // Darker yellow on hover
+              }
+            });
+
+            el.addEventListener("mouseleave", () => {
+              if (activeCommentId !== comment.id) {
+                el.style.backgroundColor = "#fef08a"; // Return to default yellow
+              }
+            });
+          });
+
+          // Add active state if this is the active comment
+          if (activeCommentId === comment.id) {
+            highlightElements.forEach((el) => {
+              el.style.backgroundColor = "#facc15"; // Bright yellow
+              el.style.boxShadow = "0 0 0 2px #eab308";
+            });
+          }
         }
-      } catch (error) {
-        console.error("Error rendering highlight for comment:", comment.id, error);
+      } catch {
+        // Silently skip comments that fail to render (e.g., selector no longer valid)
+        // User feedback handled by toast notifications in useCommentActions
       }
     });
 
@@ -91,8 +139,43 @@ export function CommentHighlights({
     return () => {
       clearAllHighlights();
     };
-  }, [comments, isLoading, enabled, entityType, entityId, pageContext, openSidebar, selectComment]);
+  }, [comments, isLoading, enabled, activeCommentId]);
 
-  // This component doesn't render anything visible
-  return null;
+  // Render inline popover (desktop) or bottom sheet (mobile)
+  return (
+    <>
+      {activeCommentId && !isMobile && (
+        <InlineCommentPopover
+          commentId={activeCommentId}
+          isOpen={!!activeCommentId}
+          onClose={() => {
+            setActiveCommentId(null);
+            setActiveElement(null);
+          }}
+          anchorElement={activeElement}
+          entityType={entityType}
+          entityId={entityId}
+          organizationId={organizationId}
+          currentUser={currentUser}
+          organizationUsers={organizationUsers}
+        />
+      )}
+
+      {activeCommentId && isMobile && (
+        <CommentSheet
+          commentId={activeCommentId}
+          isOpen={!!activeCommentId}
+          onClose={() => {
+            setActiveCommentId(null);
+            setActiveElement(null);
+          }}
+          entityType={entityType}
+          entityId={entityId}
+          organizationId={organizationId}
+          currentUser={currentUser}
+          organizationUsers={organizationUsers}
+        />
+      )}
+    </>
+  );
 }

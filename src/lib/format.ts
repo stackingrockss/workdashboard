@@ -54,4 +54,24 @@ export function parseCurrencyInput(value: string): number {
   return isNaN(parsed) ? 0 : Math.floor(parsed);
 }
 
+/**
+ * Format next call date source for display
+ * @param source - The source of the next call date
+ * @returns Human-readable label
+ */
+export function formatNextCallDateSource(
+  source: 'auto_calendar' | 'auto_gong' | 'auto_granola' | 'manual' | null | undefined
+): string {
+  if (!source) return '';
+
+  const labels = {
+    auto_calendar: 'From Calendar',
+    auto_gong: 'From Gong',
+    auto_granola: 'From Granola',
+    manual: 'Manual'
+  };
+
+  return labels[source] || '';
+}
+
 

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { gongCallCreateSchema } from "@/lib/validations/gong-call";
 import { triggerTranscriptParsingAsync } from "@/lib/ai/background-transcript-parsing";
 import { requireAuth } from "@/lib/auth";
+import { recalculateNextCallDateForOpportunity } from "@/lib/utils/next-call-date-calculator";
 
 // GET /api/v1/opportunities/[id]/gong-calls - List all Gong calls for an opportunity
 export async function GET(
@@ -119,6 +120,14 @@ export async function POST(
         gongCallId: call.id,
         transcriptText: parsed.data.transcriptText,
       });
+    }
+
+    // Recalculate next call date for the opportunity
+    try {
+      await recalculateNextCallDateForOpportunity(id);
+    } catch (recalcError) {
+      // Log but don't fail - recalculation will happen via background job
+      console.error('[POST gong-call] Failed to recalculate next call date:', recalcError);
     }
 
     // Revalidate the opportunity detail page to show new call immediately

@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, AlertCircle, CheckCircle } from "lucide-react";
 import Link from "next/link";
 import { ProspectActions } from "@/components/features/prospects/prospect-actions";
+import { ProspectsPageHeader } from "@/components/features/prospects/prospects-page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -41,19 +42,7 @@ export default async function ProspectsPage() {
 
   return (
     <div className="py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Prospects</h1>
-          <p className="text-muted-foreground">
-            Target accounts without active opportunities - build relationships before converting
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-sm">
-            {accounts.length} {accounts.length === 1 ? "prospect" : "prospects"}
-          </Badge>
-        </div>
-      </div>
+      <ProspectsPageHeader accountCount={accounts.length} />
 
       {accounts.length === 0 ? (
         <Card>
@@ -122,7 +111,12 @@ export default async function ProspectsPage() {
 
                 {/* Call-to-action: Convert to Opportunity */}
                 <div className="pt-4 border-t">
-                  <ProspectActions accountId={account.id} accountName={account.name} />
+                  <ProspectActions
+                    accountId={account.id}
+                    accountName={account.name}
+                    opportunityCount={account.opportunities.length}
+                    contactCount={account.contacts.length}
+                  />
                 </div>
               </CardContent>
             </Card>

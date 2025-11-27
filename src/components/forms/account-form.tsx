@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AccountCreateInput, AccountUpdateInput } from "@/lib/validations/account";
+import {
+  AccountCreateInput,
+  AccountUpdateInput,
+  accountCreateSchema,
+  accountUpdateSchema
+} from "@/lib/validations/account";
 import { Account, AccountPriority, AccountHealth } from "@/types/account";
 
 interface AccountFormProps {
@@ -23,54 +30,86 @@ interface AccountFormProps {
 
 export function AccountForm({ account, onSubmit, onCancel, submitLabel }: AccountFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
-    name: account?.name || "",
-    industry: account?.industry || "",
-    priority: account?.priority || "medium",
-    health: account?.health || "good",
-    notes: account?.notes || "",
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+  } = useForm<AccountCreateInput | AccountUpdateInput>({
+    resolver: zodResolver(account ? accountUpdateSchema : accountCreateSchema),
+    defaultValues: account || {
+      name: "",
+      industry: "",
+      website: "",
+      priority: "medium",
+      health: "good",
+      notes: "",
+    },
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const selectedPriority = watch("priority");
+  const selectedHealth = watch("health");
+
+  const handleFormSubmit = async (data: AccountCreateInput | AccountUpdateInput) => {
     setIsSubmitting(true);
 
     try {
-      await onSubmit(formData);
+      await onSubmit(data);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="name">Account Name *</Label>
         <Input
           id="name"
-          required
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          {...register("name")}
           placeholder="Enter account name"
+          disabled={isSubmitting}
         />
+        {errors.name && (
+          <p className="text-sm text-destructive">{errors.name.message}</p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="website">Website</Label>
+        <Input
+          id="website"
+          {...register("website")}
+          placeholder="e.g., company.com or https://company.com"
+          disabled={isSubmitting}
+        />
+        {errors.website && (
+          <p className="text-sm text-destructive">{errors.website.message}</p>
+        )}
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="industry">Industry</Label>
         <Input
           id="industry"
-          value={formData.industry}
-          onChange={(e) => setFormData({ ...formData, industry: e.target.value })}
+          {...register("industry")}
           placeholder="e.g., Technology, Healthcare, Finance"
+          disabled={isSubmitting}
         />
+        {errors.industry && (
+          <p className="text-sm text-destructive">{errors.industry.message}</p>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="priority">Priority</Label>
           <Select
-            value={formData.priority}
-            onValueChange={(value) => setFormData({ ...formData, priority: value as AccountPriority })}
+            value={selectedPriority}
+            onValueChange={(value) => setValue("priority", value as AccountPriority)}
+            disabled={isSubmitting}
           >
             <SelectTrigger id="priority">
               <SelectValue />
@@ -81,13 +120,17 @@ export function AccountForm({ account, onSubmit, onCancel, submitLabel }: Accoun
               <SelectItem value="high">High</SelectItem>
             </SelectContent>
           </Select>
+          {errors.priority && (
+            <p className="text-sm text-destructive">{errors.priority.message}</p>
+          )}
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="health">Health</Label>
           <Select
-            value={formData.health}
-            onValueChange={(value) => setFormData({ ...formData, health: value as AccountHealth })}
+            value={selectedHealth}
+            onValueChange={(value) => setValue("health", value as AccountHealth)}
+            disabled={isSubmitting}
           >
             <SelectTrigger id="health">
               <SelectValue />
@@ -98,6 +141,9 @@ export function AccountForm({ account, onSubmit, onCancel, submitLabel }: Accoun
               <SelectItem value="critical">Critical</SelectItem>
             </SelectContent>
           </Select>
+          {errors.health && (
+            <p className="text-sm text-destructive">{errors.health.message}</p>
+          )}
         </div>
       </div>
 
@@ -105,11 +151,14 @@ export function AccountForm({ account, onSubmit, onCancel, submitLabel }: Accoun
         <Label htmlFor="notes">Notes</Label>
         <textarea
           id="notes"
+          {...register("notes")}
           className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          value={formData.notes}
-          onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
           placeholder="Add any notes about this account"
+          disabled={isSubmitting}
         />
+        {errors.notes && (
+          <p className="text-sm text-destructive">{errors.notes.message}</p>
+        )}
       </div>
 
       <div className="flex justify-end gap-2">

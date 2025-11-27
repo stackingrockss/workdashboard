@@ -14,6 +14,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
@@ -28,6 +29,7 @@ import { OrphanedNotesSection } from "@/components/calendar/orphaned-notes-secti
 import type { CalendarEvent } from "@/types/calendar";
 import type { GongCall } from "@/types/gong-call";
 import type { GranolaNote } from "@/types/granola-note";
+import { STAGE_OPTIONS, FORECAST_LABELS, CONFIDENCE_LEVELS, PRIORITY_LABELS } from "@/lib/constants";
 import { OrgChartSection } from "@/components/contacts/OrgChartSection";
 import { Separator } from "@/components/ui/separator";
 import { AddManualMeetingDialog } from "@/components/calendar/add-manual-meeting-dialog";
@@ -48,7 +50,7 @@ import { SecFilingsSection } from "./sec-filings-section";
 import { EarningsTranscriptsSection } from "./earnings-transcripts-section";
 import { useCommentSidebar } from "@/components/comments/CommentSidebarContext";
 import { useTextSelection } from "@/components/comments/useTextSelection";
-import { CommentHighlights } from "@/components/comments/CommentHighlights";
+import { CommentView } from "@/components/comments/CommentView";
 import { CommentAnchorIcons } from "@/components/comments/CommentAnchorIcons";
 import { CommentScrollbarMarkers } from "@/components/comments/CommentScrollbarMarkers";
 import { SelectionCommentToolbar } from "@/components/comments/SelectionCommentToolbar";
@@ -58,17 +60,21 @@ interface OpportunityDetailClientProps {
   opportunity: Opportunity;
   organizationId: string;
   userId?: string;
+  currentUser: {
+    id: string;
+    role: "ADMIN" | "MANAGER" | "REP" | "VIEWER";
+    organizationId: string;
+  };
+  organizationUsers: Array<{
+    id: string;
+    name: string | null;
+    email: string;
+    avatarUrl: string | null;
+  }>;
 }
 
-const stageOptions = [
-  { value: "discovery", label: "Discovery" },
-  { value: "demo", label: "Demo" },
-  { value: "validateSolution", label: "Validate Solution" },
-  { value: "decisionMakerApproval", label: "Decision Maker Approval" },
-  { value: "contracting", label: "Contracting" },
-  { value: "closedWon", label: "Closed Won" },
-  { value: "closedLost", label: "Closed Lost" },
-];
+// Using centralized stage options from constants
+const stageOptions = STAGE_OPTIONS;
 
 const forecastCategoryOptions = [
   { value: "pipeline", label: "Pipeline" },
@@ -99,7 +105,7 @@ const platformTypeOptions = [
   { value: "isv", label: "ISV" },
 ];
 
-export function OpportunityDetailClient({ opportunity, organizationId, userId }: OpportunityDetailClientProps) {
+export function OpportunityDetailClient({ opportunity, organizationId, userId, currentUser, organizationUsers }: OpportunityDetailClientProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -479,6 +485,32 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId }:
                 onSave={async (value) => handleFieldUpdate("cbc", value)}
                 placeholder="Select next call date"
               />
+              <div className="space-y-1">
+                <label className="text-sm text-muted-foreground">Next Call Date</label>
+                <div className="flex items-center gap-2">
+                  {opportunity.nextCallDate ? (
+                    <>
+                      <span className="text-sm">
+                        {new Date(opportunity.nextCallDate).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </span>
+                      {opportunity.nextCallDateSource && (
+                        <Badge variant={opportunity.nextCallDateSource === 'manual' ? 'secondary' : 'default'} className="text-xs">
+                          {opportunity.nextCallDateSource === 'auto_calendar' && 'Auto from Calendar'}
+                          {opportunity.nextCallDateSource === 'auto_gong' && 'Auto from Gong'}
+                          {opportunity.nextCallDateSource === 'auto_granola' && 'Auto from Granola'}
+                          {opportunity.nextCallDateSource === 'manual' && 'Manual'}
+                        </Badge>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">No upcoming calls</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 
@@ -896,12 +928,15 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId }:
         </DialogContent>
       </Dialog>
 
-      {/* Comment Highlights */}
-      <CommentHighlights
+      {/* Comment System - Inline popovers on desktop, bottom sheet on mobile */}
+      <CommentView
         entityType="opportunity"
         entityId={opportunity.id}
         organizationId={organizationId}
         pageContext={`/opportunities/${opportunity.id}`}
+        currentUser={currentUser}
+        organizationUsers={organizationUsers}
+        mode="inline"
       />
 
       {/* Comment Position Indicators */}

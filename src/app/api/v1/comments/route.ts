@@ -10,6 +10,13 @@ import {
   type CommentCreateInput,
 } from "@/lib/validations/comment";
 import { broadcastCommentEvent, broadcastNotificationEvent } from "@/lib/realtime";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
 
 // GET /api/v1/comments?entityType=opportunity&entityId=abc123
 export async function GET(request: NextRequest) {
@@ -57,89 +64,128 @@ export async function GET(request: NextRequest) {
       where.pageContext = pageContext;
     }
 
-    // Fetch comments with relations
-    const comments = await prisma.comment.findMany({
-      where,
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatarUrl: true,
-          },
+    // Define includes for comment relations (reused in both modes)
+    const includeRelations = {
+      author: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatarUrl: true,
         },
-        resolvedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
+      },
+      resolvedBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
         },
-        replies: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatarUrl: true,
-              },
+      },
+      replies: {
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarUrl: true,
             },
-            mentions: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-            },
-            reactions: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    name: true,
-                  },
+          },
+          mentions: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
                 },
               },
             },
           },
-          orderBy: {
-            createdAt: "asc",
-          },
-        },
-        mentions: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
+          reactions: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                },
               },
             },
           },
         },
-        reactions: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-              },
+        orderBy: {
+          createdAt: "asc" as const,
+        },
+      },
+      mentions: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
             },
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
+      reactions: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
       },
-    });
+    };
 
-    return NextResponse.json({ comments });
+    // Detect if client wants pagination
+    const usePagination = wantsPagination(searchParams);
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50, // Default to 50 (lower than other endpoints due to heavy nesting)
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50; // Ensure limit is never undefined
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance (count total + fetch page)
+      const [total, comments] = await Promise.all([
+        prisma.comment.count({ where }),
+        prisma.comment.findMany({
+          where,
+          include: includeRelations,
+          orderBy: {
+            createdAt: "desc",
+          },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      return cachedResponse(
+        buildPaginatedResponse(comments, page, limit, total, 'comments'),
+        'realtime' // Comments should not be cached (real-time data)
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all comments
+      const comments = await prisma.comment.findMany({
+        where,
+        include: includeRelations,
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      return cachedResponse(
+        buildLegacyResponse(comments, 'comments'),
+        'realtime' // Comments should not be cached (real-time data)
+      );
+    }
   } catch (error) {
     console.error("Error fetching comments:", error);
     return NextResponse.json({ error: "Failed to fetch comments" }, { status: 500 });

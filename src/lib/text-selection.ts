@@ -237,7 +237,7 @@ export function highlightRange(
   range: Range,
   options: {
     color?: string;
-    onClick?: () => void;
+    onClick?: (element: HTMLElement) => void;
     className?: string;
     commentId?: string;
     isResolved?: boolean;
@@ -278,7 +278,7 @@ export function highlightRange(
     }
 
     if (onClick) {
-      wrapper.addEventListener("click", onClick);
+      wrapper.addEventListener("click", () => onClick(wrapper));
       wrapper.addEventListener("mouseenter", () => {
         wrapper.style.backgroundColor = darkenColor(color, 0.1);
       });

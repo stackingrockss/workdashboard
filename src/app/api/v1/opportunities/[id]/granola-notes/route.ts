@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { granolaCreateSchema } from "@/lib/validations/granola-note";
+import { inngest } from "@/lib/inngest/client";
+import { ParsingStatus } from "@prisma/client";
+import { recalculateNextCallDateForOpportunity } from "@/lib/utils/next-call-date-calculator";
 
 // GET /api/v1/opportunities/[id]/granola-notes - List all granola notes for an opportunity
 export async function GET(
@@ -41,6 +44,21 @@ export async function POST(
       return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });
     }
 
+    // Check for duplicate URL
+    const existingNote = await prisma.granolaNote.findFirst({
+      where: {
+        opportunityId: id,
+        url: parsed.data.url,
+      },
+    });
+
+    if (existingNote) {
+      return NextResponse.json(
+        { error: "A Granola note with this URL already exists for this opportunity" },
+        { status: 409 }
+      );
+    }
+
     const note = await prisma.granolaNote.create({
       data: {
         opportunityId: id,
@@ -49,8 +67,26 @@ export async function POST(
         meetingDate: new Date(parsed.data.meetingDate),
         noteType: parsed.data.noteType,
         calendarEventId: parsed.data.calendarEventId,
+        transcriptText: parsed.data.transcriptText,
+        parsingStatus: parsed.data.transcriptText ? ParsingStatus.pending : null,
       },
     });
+
+    // Trigger background parsing if transcript provided
+    if (parsed.data.transcriptText) {
+      await inngest.send({
+        name: "granola/transcript.parse",
+        data: { granolaId: note.id },
+      });
+    }
+
+    // Recalculate next call date for the opportunity
+    try {
+      await recalculateNextCallDateForOpportunity(id);
+    } catch (recalcError) {
+      // Log but don't fail - recalculation will happen via background job
+      console.error('[POST granola-note] Failed to recalculate next call date:', recalcError);
+    }
 
     // Revalidate the opportunity detail page to show new note immediately
     revalidatePath(`/opportunities/${id}`);

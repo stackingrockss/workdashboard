@@ -174,13 +174,13 @@ export function ProspectDetailClient({ account, organizationId }: ProspectDetail
         accountName={account.name}
       />
 
-      {/* Comment Highlights */}
-      <CommentHighlights
+      {/* Comment Highlights - TODO: Add currentUser and organizationUsers props */}
+      {/* <CommentHighlights
         entityType="account"
         entityId={account.id}
         organizationId={organizationId}
         pageContext={`/prospects/${account.id}`}
-      />
+      /> */}
 
       {/* Selection Comment Toolbar - appears when text is selected */}
       <SelectionCommentToolbar

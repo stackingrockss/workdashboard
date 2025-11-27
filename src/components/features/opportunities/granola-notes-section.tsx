@@ -18,11 +18,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ExternalLink, Plus, Trash2 } from "lucide-react";
+import {
+  ExternalLink,
+  Plus,
+  Trash2,
+  Eye,
+  FileText,
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  RotateCcw,
+} from "lucide-react";
 import { GranolaNote, NoteType } from "@/types/granola-note";
 import { createGranolaNote, deleteGranolaNote } from "@/lib/api/granola-notes";
 import { useRouter } from "next/navigation";
 import { formatDateShort } from "@/lib/format";
+import { ParseGranolaTranscriptDialog } from "./parse-granola-transcript-dialog";
+import { GranolaInsightsDialog } from "./granola-insights-dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface PreselectedCalendarEvent {
   id: string;
@@ -46,6 +59,8 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
   const [meetingDate, setMeetingDate] = useState("");
   const [noteType, setNoteType] = useState<NoteType>("customer");
   const [hasAutoOpenedForEvent, setHasAutoOpenedForEvent] = useState(false);
+  const [parseDialogNoteId, setParseDialogNoteId] = useState<string | null>(null);
+  const [insightsDialogNote, setInsightsDialogNote] = useState<GranolaNote | null>(null);
   const router = useRouter();
 
   // Auto-open dialog and pre-fill form when preselectedCalendarEvent is provided
@@ -109,6 +124,58 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
     }
   };
 
+  const handleParsingStarted = () => {
+    router.refresh(); // Refresh to show updated parsing status
+  };
+
+  const handleContactsImported = () => {
+    router.refresh(); // Refresh to show new contacts
+  };
+
+  const handleRetryParsing = async (noteId: string) => {
+    try {
+      const response = await fetch(`/api/v1/granola-notes/${noteId}/retry-parsing`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to retry parsing');
+      }
+
+      toast.success('Parsing restarted!');
+      router.refresh();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to retry parsing');
+    }
+  };
+
+  // Helper to get parsing status badge
+  const getParsingStatusBadge = (note: GranolaNote) => {
+    if (!note.parsingStatus) return null;
+
+    const statusConfig = {
+      pending: { icon: Clock, label: 'Pending', variant: 'secondary' as const },
+      parsing: { icon: Clock, label: 'Parsing...', variant: 'secondary' as const },
+      completed: { icon: CheckCircle2, label: 'Parsed', variant: 'default' as const },
+      failed: { icon: AlertCircle, label: 'Failed', variant: 'destructive' as const },
+    };
+
+    const config = statusConfig[note.parsingStatus];
+    if (!config) return null;
+
+    const Icon = config.icon;
+
+    return (
+      <Badge variant={config.variant} className="gap-1">
+        <Icon className="h-3 w-3" />
+        {config.label}
+      </Badge>
+    );
+  };
+
   return (
     <div className="rounded-lg border p-4 md:col-span-2 lg:col-span-3">
       <div className="flex items-center justify-between mb-3">
@@ -139,26 +206,94 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
                   href={note.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-sm font-medium hover:text-primary flex-1 min-w-0"
+                  className="flex items-center gap-2 text-sm font-medium hover:text-primary flex-shrink-0"
                 >
-                  <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">{note.title}</span>
+                  <ExternalLink className="h-4 w-4" />
                 </a>
+                <span className="truncate text-sm font-medium">{note.title}</span>
                 <span className="text-xs text-muted-foreground whitespace-nowrap">
                   {formatDateShort(note.meetingDate)}
                 </span>
+                {getParsingStatusBadge(note)}
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="opacity-0 group-hover:opacity-100 transition-opacity ml-2"
-                onClick={() => handleDeleteNote(note.id, note.title)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1 ml-2">
+                {/* View Insights button (if parsed) */}
+                {note.parsingStatus === 'completed' && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => setInsightsDialogNote(note)}
+                    title="View insights"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                )}
+
+                {/* Parse/Retry Parse button (if not parsed or failed) */}
+                {(!note.parsingStatus || note.parsingStatus === 'failed') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={() => setParseDialogNoteId(note.id)}
+                    title={note.parsingStatus === 'failed' ? 'Retry parsing' : 'Parse transcript'}
+                  >
+                    {note.parsingStatus === 'failed' ? (
+                      <RotateCcw className="h-4 w-4" />
+                    ) : (
+                      <FileText className="h-4 w-4" />
+                    )}
+                  </Button>
+                )}
+
+                {/* Retry button for failed parsing (visible even when not hovering) */}
+                {note.parsingStatus === 'failed' && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRetryParsing(note.id)}
+                    title="Retry with existing transcript"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </Button>
+                )}
+
+                {/* Delete button */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => handleDeleteNote(note.id, note.title)}
+                  title="Delete note"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>
+      )}
+
+      {/* Parse Transcript Dialog */}
+      {parseDialogNoteId && (
+        <ParseGranolaTranscriptDialog
+          open={!!parseDialogNoteId}
+          onOpenChange={(open) => !open && setParseDialogNoteId(null)}
+          granolaId={parseDialogNoteId}
+          onParsingStarted={handleParsingStarted}
+        />
+      )}
+
+      {/* Insights Dialog */}
+      {insightsDialogNote && (
+        <GranolaInsightsDialog
+          open={!!insightsDialogNote}
+          onOpenChange={(open) => !open && setInsightsDialogNote(null)}
+          note={insightsDialogNote}
+          opportunityId={opportunityId}
+          onContactsImported={handleContactsImported}
+        />
       )}
 
       {/* Add Note Dialog */}

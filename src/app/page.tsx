@@ -3,7 +3,7 @@ import { calculateDashboardStats } from "@/lib/stats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/format";
-import { TrendingUp, Target, DollarSign, Award } from "lucide-react";
+import { Target, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { UpcomingMeetingsWidget } from "@/components/calendar/upcoming-meetings-widget";
 import { UpcomingTasksWidget } from "@/components/tasks/upcoming-tasks-widget";
@@ -65,7 +65,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Opportunities</CardTitle>
@@ -85,30 +85,6 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold" suppressHydrationWarning>{formatCurrencyCompact(stats.totalValue)}</div>
             <p className="text-xs text-muted-foreground">Total ARR in pipeline</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Weighted Value</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold" suppressHydrationWarning>{formatCurrencyCompact(stats.weightedValue)}</div>
-            <p className="text-xs text-muted-foreground">Probability-adjusted ARR</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.winRate.toFixed(1)}%</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.wonOpportunities} won / {stats.wonOpportunities + stats.lostOpportunities} closed
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -136,12 +112,6 @@ export default async function DashboardPage() {
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground">Total Value</span>
                     <span className="font-medium" suppressHydrationWarning>{formatCurrency(quarter.value)}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Weighted Value</span>
-                    <span className="font-medium text-emerald-600 dark:text-emerald-400" suppressHydrationWarning>
-                      {formatCurrency(quarter.weightedValue)}
-                    </span>
                   </div>
                 </div>
               ))}

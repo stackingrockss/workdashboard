@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Opportunity } from "@/types/opportunity";
-import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle, Pin, ExternalLink } from "lucide-react";
+import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle, Pin, ExternalLink, CalendarClock } from "lucide-react";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -154,6 +154,16 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
             )}
           </div>
         </div>
+
+        {opportunity.nextCallDate && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CalendarClock className="h-3 w-3" />
+            <span suppressHydrationWarning>Next call: {formatDateShort(opportunity.nextCallDate)}</span>
+            {opportunity.nextCallDateSource === 'auto_calendar' && (
+              <Badge variant="outline" className="h-4 text-[10px] px-1">Auto</Badge>
+            )}
+          </div>
+        )}
 
         {opportunity.nextStep && (
           <div className="flex items-start gap-2 text-sm">

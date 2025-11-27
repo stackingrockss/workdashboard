@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import { contactUpdateSchema } from "@/lib/validations/contact";
 import { requireAuth } from "@/lib/auth";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/db";
+import { logError } from "@/lib/errors";
 
 // GET /api/v1/opportunities/[id]/contacts/[contactId] - Get a specific contact
 export async function GET(
@@ -73,7 +72,7 @@ export async function GET(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Error fetching contact:", error);
+    logError("API:Opportunities:Contact:GET", error);
     return NextResponse.json(
       { error: "Failed to fetch contact" },
       { status: 500 }
@@ -131,8 +130,13 @@ export async function PATCH(
         );
       }
 
-      const manager = await prisma.contact.findUnique({
-        where: { id: validatedData.managerId },
+      const manager = await prisma.contact.findFirst({
+        where: {
+          id: validatedData.managerId,
+          opportunity: {
+            organizationId: user.organization.id
+          }
+        },
       });
 
       if (!manager || manager.opportunityId !== id) {
@@ -196,7 +200,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.error("Error updating contact:", error);
+    logError("API:Opportunities:Contact:PATCH", error);
 
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
@@ -258,7 +262,7 @@ export async function DELETE(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Error deleting contact:", error);
+    logError("API:Opportunities:Contact:DELETE", error);
     return NextResponse.json(
       { error: "Failed to delete contact" },
       { status: 500 }

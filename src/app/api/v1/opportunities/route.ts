@@ -6,10 +6,18 @@ import { getQuarterFromDate, parseISODateSafe } from "@/lib/utils/quarter";
 import { mapPrismaOpportunitiesToOpportunities, mapPrismaOpportunityToOpportunity } from "@/lib/mappers/opportunity";
 import { getVisibleUserIds, isAdmin } from "@/lib/permissions";
 import { triggerAccountResearchGeneration } from "@/lib/inngest/functions/generate-account-research";
+import { cachedResponse } from "@/lib/cache";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth();
+    const searchParams = req.nextUrl.searchParams;
 
     // Get visible user IDs based on role and direct reports
     const visibleUserIds = getVisibleUserIds(user, user.directReports);
@@ -19,17 +27,56 @@ export async function GET() {
       ? { organizationId: user.organization.id } // Admin sees all in org
       : { ownerId: { in: visibleUserIds } }; // Others see based on visibility
 
-    const opportunitiesFromDB = await prisma.opportunity.findMany({
-      where: whereClause,
-      orderBy: { updatedAt: "desc" },
-      include: {
-        owner: true,
-        account: true,
-      },
-      take: 100,
-    });
-    const opportunities = mapPrismaOpportunitiesToOpportunities(opportunitiesFromDB);
-    return NextResponse.json({ opportunities });
+    // Detect if client wants pagination
+    const usePagination = wantsPagination(searchParams);
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 100, // Default to 100 (matches existing behavior)
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 100; // Ensure limit is never undefined
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance (count total + fetch page)
+      const [total, opportunitiesFromDB] = await Promise.all([
+        prisma.opportunity.count({ where: whereClause }),
+        prisma.opportunity.findMany({
+          where: whereClause,
+          orderBy: { updatedAt: "desc" },
+          include: {
+            owner: true,
+            account: true,
+          },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const opportunities = mapPrismaOpportunitiesToOpportunities(opportunitiesFromDB);
+      return cachedResponse(
+        buildPaginatedResponse(opportunities, page, limit, total, 'opportunities'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return existing behavior
+      const opportunitiesFromDB = await prisma.opportunity.findMany({
+        where: whereClause,
+        orderBy: { updatedAt: "desc" },
+        include: {
+          owner: true,
+          account: true,
+        },
+        take: 100, // Keep existing default
+      });
+      const opportunities = mapPrismaOpportunitiesToOpportunities(opportunitiesFromDB);
+      return cachedResponse(
+        buildLegacyResponse(opportunities, 'opportunities'),
+        'frequent'
+      );
+    }
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

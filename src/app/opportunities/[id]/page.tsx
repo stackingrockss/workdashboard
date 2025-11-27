@@ -42,6 +42,22 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
 
   if (!opportunityFromDB) return notFound();
 
+  // Fetch organization users for comment @mentions
+  const organizationUsers = await prisma.user.findMany({
+    where: {
+      organizationId: user.organization.id,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      avatarUrl: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
   const opportunity = {
     id: opportunityFromDB.id,
     name: opportunityFromDB.name,
@@ -131,7 +147,19 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     updatedAt: opportunityFromDB.updatedAt.toISOString(),
   };
 
-  return <OpportunityDetailClient opportunity={opportunity} organizationId={user.organization.id} userId={user.id} />;
+  return (
+    <OpportunityDetailClient
+      opportunity={opportunity}
+      organizationId={user.organization.id}
+      userId={user.id}
+      currentUser={{
+        id: user.id,
+        role: user.role,
+        organizationId: user.organization.id,
+      }}
+      organizationUsers={organizationUsers}
+    />
+  );
 }
 
 

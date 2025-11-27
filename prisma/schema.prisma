@@ -65,6 +65,8 @@ model Contact {
 
   @@index([opportunityId])
   @@index([accountId])
+  @@index([opportunityId, role])
+  @@index([accountId, role])
   @@schema("opportunity_tracker")
 }
 
@@ -93,6 +95,8 @@ model GongCall {
   @@index([opportunityId])
   @@index([parsingStatus])
   @@index([calendarEventId])
+  @@index([opportunityId, meetingDate])
+  @@index([opportunityId, parsingStatus])
   @@schema("opportunity_tracker")
 }
 
@@ -119,11 +123,21 @@ model GranolaNote {
   meetingDate     DateTime
   noteType        NoteType?      @default(customer)
   calendarEventId String?
+  transcriptText  String?
+  goals           Json?
+  nextSteps       Json?
+  painPoints      Json?
+  parsedAt        DateTime?
+  parsedPeople    Json?
+  parsingError    String?
+  parsingStatus   ParsingStatus?
+  riskAssessment  Json?
   calendarEvent   CalendarEvent? @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
   opportunity     Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
   @@index([calendarEventId])
+  @@index([parsingStatus])
   @@schema("opportunity_tracker")
 }
 
@@ -214,6 +228,7 @@ model Opportunity {
   nextStepsHistory           String?
   painPointsHistory          String?
   parsedGongCallIds          String[]                 @default([])
+  parsedGranolaIds           String[]                 @default([])
   consolidatedGoals          Json?
   consolidatedPainPoints     Json?
   consolidatedRiskAssessment Json?
@@ -221,6 +236,11 @@ model Opportunity {
   lastConsolidatedAt         DateTime?
   consolidationStatus        ConsolidationStatus?     @default(idle)
   cbc                        DateTime?
+  nextCallDate               DateTime?
+  nextCallDateSource         NextCallDateSource?
+  nextCallDateManuallySet    Boolean                  @default(false)
+  nextCallDateLastCalculated DateTime?
+  nextCallDateEventId        String?
   calendarEvents             CalendarEvent[]
   chatMessages               ChatMessage[]
   contacts                   Contact[]
@@ -239,6 +259,8 @@ model Opportunity {
   @@index([columnId])
   @@index([closeDate])
   @@index([pinnedToWhiteboard])
+  @@index([nextCallDate])
+  @@index([organizationId, nextCallDate])
   @@schema("opportunity_tracker")
 }
 
@@ -383,6 +405,9 @@ model CalendarEvent {
   @@index([opportunityId])
   @@index([accountId])
   @@index([source])
+  @@index([accountId, startTime])
+  @@index([opportunityId, startTime])
+  @@index([userId, startTime, isExternal])
   @@schema("opportunity_tracker")
 }
 
@@ -428,6 +453,10 @@ model Task {
   @@index([accountId])
   @@index([taskListId])
   @@index([userId, taskSource])
+  @@index([userId, status, due])
+  // Note: Partial unique index Task_userId_taskSource_key created via raw SQL migration
+  // Enforces uniqueness on (userId, taskSource) when taskSource IS NOT NULL
+  // Allows multiple NULL values for manual tasks created via UI
   @@schema("opportunity_tracker")
 }
 
@@ -461,6 +490,7 @@ model SecFiling {
   @@index([accountId])
   @@index([processingStatus])
   @@index([filingDate])
+  @@index([accountId, processingStatus, filingDate])
   @@schema("opportunity_tracker")
 }
 
@@ -555,6 +585,8 @@ model Comment {
   @@index([parentId])
   @@index([isResolved])
   @@index([createdAt])
+  @@index([entityType, entityId, isResolved, createdAt])
+  @@index([organizationId, createdAt])
   @@schema("opportunity_tracker")
 }
 
@@ -576,6 +608,7 @@ model CommentMention {
   @@index([commentId])
   @@index([organizationId])
   @@index([isRead])
+  @@index([userId, isRead, createdAt])
   @@schema("opportunity_tracker")
 }
 
@@ -701,6 +734,15 @@ enum ConsolidationStatus {
   processing
   completed
   failed
+
+  @@schema("opportunity_tracker")
+}
+
+enum NextCallDateSource {
+  auto_calendar
+  auto_gong
+  auto_granola
+  manual
 
   @@schema("opportunity_tracker")
 }

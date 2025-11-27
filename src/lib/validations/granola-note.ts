@@ -8,9 +8,27 @@ export const granolaCreateSchema = z.object({
     required_error: "Note type is required",
   }).default("customer"),
   calendarEventId: z.string().optional(),
+  // Optional transcript text for parsing
+  transcriptText: z
+    .string()
+    .min(100, "Transcript must be at least 100 characters")
+    .max(100000, "Transcript must not exceed 100,000 characters")
+    .optional(),
 });
 
-export const granolaUpdateSchema = granolaCreateSchema.partial();
+export const granolaUpdateSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  url: z.string().url().optional(),
+  meetingDate: z.string().datetime().optional(),
+  noteType: z.enum(["customer", "internal", "prospect"]).optional(),
+  calendarEventId: z.string().nullable().optional(),
+  transcriptText: z
+    .string()
+    .min(100, "Transcript must be at least 100 characters")
+    .max(100000, "Transcript must not exceed 100,000 characters")
+    .nullable()
+    .optional(),
+});
 
 export type GranolaCreateInput = z.infer<typeof granolaCreateSchema>;
 export type GranolaUpdateInput = z.infer<typeof granolaUpdateSchema>;

@@ -346,13 +346,12 @@ async function createFollowUpTaskForEvent(
 
   const companyName = opportunity.account.name;
 
-  // 3. Check for duplicate task (using taskSource field with event ID)
+  // 3. Early duplicate check (BEFORE Google API call to avoid duplicate API calls)
   const taskSource = `calendar-followup:${event.id}`;
   const existingTask = await prisma.task.findFirst({
     where: {
       userId,
       taskSource, // Check by event ID to prevent duplicates for the same event
-      // Check all tasks (completed or not) to prevent recreation
     },
   });
 
@@ -397,30 +396,61 @@ async function createFollowUpTaskForEvent(
 
   // 7. Create task via Google Tasks API
   const googleTasksClient = new GoogleTasksClient();
-  const createdTask = await googleTasksClient.createTask(userId, taskList.googleListId, {
-    title: `${companyName} follow up email`,
-    notes: `Follow up on meeting that ended ${event.endTime.toLocaleDateString()}.\n\nCalendar event: ${event.summary}`,
-    due: tomorrow,
-  });
+  let createdTask;
 
-  // 8. Store in database with taskSource for duplicate prevention
-  await prisma.task.create({
-    data: {
-      userId,
-      taskListId: taskList.id,
-      googleTaskId: createdTask.id,
-      title: createdTask.title,
-      notes: createdTask.notes,
-      due: createdTask.due,
-      status: 'needsAction',
-      position: createdTask.position,
-      opportunityId: event.opportunityId,
-      accountId: opportunity.account.id,
-      taskSource, // Use event ID for deduplication
-    },
-  });
+  try {
+    createdTask = await googleTasksClient.createTask(userId, taskList.googleListId, {
+      title: `${companyName} follow up email`,
+      notes: `Follow up on meeting that ended ${event.endTime.toLocaleDateString()}.\n\nCalendar event: ${event.summary}`,
+      due: tomorrow,
+    });
+  } catch (error) {
+    console.error(`[Calendar Sync] Failed to create Google task:`, error);
+    return;
+  }
 
-  console.log(`[Calendar Sync] Created follow-up task: "${companyName} follow up email" for user ${userId}`);
+  // 8. Store in database with UPSERT (handles race conditions)
+  try {
+    await prisma.task.upsert({
+      where: {
+        userId_googleTaskId: {
+          userId,
+          googleTaskId: createdTask.id,
+        },
+      },
+      update: {
+        // Update if somehow created between our check and now
+        title: createdTask.title,
+        notes: createdTask.notes,
+        due: createdTask.due,
+        position: createdTask.position,
+        taskSource,
+        updatedAt: new Date(),
+      },
+      create: {
+        userId,
+        taskListId: taskList.id,
+        googleTaskId: createdTask.id,
+        title: createdTask.title,
+        notes: createdTask.notes,
+        due: createdTask.due,
+        status: 'needsAction',
+        position: createdTask.position,
+        opportunityId: event.opportunityId,
+        accountId: opportunity.account.id,
+        taskSource, // REQUIRED for uniqueness constraint
+      },
+    });
+
+    console.log(`[Calendar Sync] Created follow-up task: "${companyName} follow up email" for user ${userId}`);
+  } catch (error: unknown) {
+    // Handle unique constraint violation on taskSource
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
+      console.log(`[Calendar Sync] Task already exists (race condition handled): ${event.id}`);
+      return;
+    }
+    throw error; // Re-throw other errors
+  }
 }
 
 /**

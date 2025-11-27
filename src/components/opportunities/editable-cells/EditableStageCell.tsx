@@ -10,16 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { type OpportunityStage } from "@/types/opportunity";
-
-const STAGES: { value: OpportunityStage; label: string }[] = [
-  { value: "discovery", label: "Discovery" },
-  { value: "demo", label: "Demo" },
-  { value: "validateSolution", label: "Validate Solution" },
-  { value: "decisionMakerApproval", label: "Decision Maker Approval" },
-  { value: "contracting", label: "Contracting" },
-  { value: "closedWon", label: "Closed Won" },
-  { value: "closedLost", label: "Closed Lost" },
-];
+import { STAGE_OPTIONS } from "@/lib/constants";
 
 interface EditableStageCellProps {
   value: OpportunityStage;
@@ -29,7 +20,7 @@ interface EditableStageCellProps {
 
 export function EditableStageCell({ value, onSave, className }: EditableStageCellProps) {
   const formatStageLabel = (stage: OpportunityStage) => {
-    return STAGES.find((s) => s.value === stage)?.label || stage;
+    return STAGE_OPTIONS.find((s) => s.value === stage)?.label || stage;
   };
 
   return (
@@ -48,7 +39,7 @@ export function EditableStageCell({ value, onSave, className }: EditableStageCel
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STAGES.map((stage) => (
+            {STAGE_OPTIONS.map((stage) => (
               <SelectItem key={stage.value} value={stage.value}>
                 {stage.label}
               </SelectItem>

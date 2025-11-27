@@ -47,6 +47,16 @@ export const AI_MODELS = {
 } as const;
 
 // ============================================================================
+// UI Breakpoints
+// ============================================================================
+
+export const BREAKPOINTS = {
+  MOBILE_MAX_WIDTH: "(max-width: 767px)", // Matches Tailwind's md breakpoint (768px)
+  TABLET_MIN_WIDTH: "(min-width: 768px)",
+  DESKTOP_MIN_WIDTH: "(min-width: 1024px)",
+} as const;
+
+// ============================================================================
 // Forecast Categories
 // ============================================================================
 
@@ -110,3 +120,25 @@ export const PRIORITY_LABELS = {
 } as const;
 
 export type Priority = keyof typeof PRIORITY_LABELS;
+
+// ============================================================================
+// Opportunity Stages
+// ============================================================================
+
+export const STAGE_LABELS = {
+  discovery: "Discovery",
+  demo: "Demo",
+  validateSolution: "Validate Solution",
+  decisionMakerApproval: "Decision Maker Approval",
+  contracting: "Contracting",
+  closedWon: "Closed Won",
+  closedLost: "Closed Lost",
+} as const;
+
+export type OpportunityStage = keyof typeof STAGE_LABELS;
+
+// Helper to convert to options array for dropdowns
+export const STAGE_OPTIONS = Object.entries(STAGE_LABELS).map(([value, label]) => ({
+  value: value as OpportunityStage,
+  label,
+}));

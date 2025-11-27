@@ -136,20 +136,6 @@ export function CurrentQuarterView({
   // Calculate summary stats
   const stats = useMemo(() => {
     const totalArr = currentQuarterOpps.reduce((sum, opp) => sum + opp.amountArr, 0);
-    const weightedArr = currentQuarterOpps.reduce(
-      (sum, opp) => sum + opp.amountArr * (opp.confidenceLevel / 5),
-      0
-    );
-    const avgConfidence =
-      currentQuarterOpps.length > 0
-        ? currentQuarterOpps.reduce((sum, opp) => sum + opp.confidenceLevel, 0) /
-          currentQuarterOpps.length
-        : 0;
-    const atRiskCount = currentQuarterOpps.filter((opp) => opp.riskNotes).length;
-    const overdueCount = currentQuarterOpps.filter((opp) => {
-      if (!opp.closeDate) return false;
-      return new Date(opp.closeDate) < new Date();
-    }).length;
 
     // Group by forecast category
     const forecastStats = {
@@ -168,11 +154,7 @@ export function CurrentQuarterView({
 
     return {
       totalArr,
-      weightedArr,
       count: currentQuarterOpps.length,
-      avgConfidence,
-      atRiskCount,
-      overdueCount,
       forecastStats,
     };
   }, [currentQuarterOpps]);
@@ -237,34 +219,14 @@ export function CurrentQuarterView({
       </div>
 
       {/* Summary Stats Bar */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <Card className="p-4">
           <div className="text-sm text-muted-foreground">Total ARR</div>
           <div className="text-2xl font-bold">{formatCurrencyCompact(stats.totalArr)}</div>
         </Card>
         <Card className="p-4">
-          <div className="text-sm text-muted-foreground">Weighted ARR</div>
-          <div className="text-2xl font-bold">{formatCurrencyCompact(stats.weightedArr)}</div>
-        </Card>
-        <Card className="p-4">
           <div className="text-sm text-muted-foreground">Count</div>
           <div className="text-2xl font-bold">{stats.count}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-sm text-muted-foreground">Avg Confidence</div>
-          <div className="text-2xl font-bold">{stats.avgConfidence.toFixed(1)}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-sm text-muted-foreground">At Risk</div>
-          <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-500">
-            {stats.atRiskCount}
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-sm text-muted-foreground">Overdue</div>
-          <div className="text-2xl font-bold text-red-600 dark:text-red-500">
-            {stats.overdueCount}
-          </div>
         </Card>
       </div>
 

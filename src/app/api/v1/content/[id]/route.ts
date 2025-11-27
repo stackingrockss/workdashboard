@@ -60,6 +60,7 @@ export async function PATCH(
         ...(parsed.data.description !== undefined && {
           description: parsed.data.description,
         }),
+        ...(parsed.data.body !== undefined && { body: parsed.data.body }),
         ...(parsed.data.contentType && { contentType: parsed.data.contentType }),
       },
       include: {

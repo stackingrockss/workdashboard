@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useState } from "react";
 import { Opportunity, OpportunityStage } from "@/types/opportunity";
@@ -78,15 +78,15 @@ export function KanbanBoard({
     return opportunities.find((opp) => opp.id === activeId);
   }, [activeId, opportunities]);
 
-  const handleOpen = (id: string) => {
+  const handleOpen = useCallback((id: string) => {
     window.location.href = `/opportunities/${id}`;
-  };
+  }, []);
 
-  const handleDragStart = (event: DragStartEvent) => {
+  const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string);
-  };
+  }, []);
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
@@ -151,7 +151,7 @@ export function KanbanBoard({
         await onColumnChange(opportunityId, newColumnId);
       }
     }
-  };
+  }, [opportunities, columns, isVirtualMode, fiscalYearStartMonth, onColumnChange]);
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>

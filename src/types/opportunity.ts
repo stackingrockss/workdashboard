@@ -98,6 +98,11 @@ export interface Opportunity {
   confidenceLevel: number; // 1-5 scale (replaces probability)
   nextStep?: string;
   cbc?: string | null; // Call Between Call date (ISO date string)
+  nextCallDate?: string | null; // Next call date (ISO datetime string) - auto-populated or manual
+  nextCallDateSource?: 'auto_calendar' | 'auto_gong' | 'auto_granola' | 'manual' | null;
+  nextCallDateManuallySet?: boolean;
+  nextCallDateLastCalculated?: string | null; // ISO datetime string
+  nextCallDateEventId?: string | null;
   closeDate?: string; // ISO date string
   quarter?: string; // e.g., "Q1 2025", "Q2 2025"
   stage: OpportunityStage;

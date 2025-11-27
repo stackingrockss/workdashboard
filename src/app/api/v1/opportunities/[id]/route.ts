@@ -157,6 +157,14 @@ export async function PATCH(
       const cbcDateObj = data.cbc ? parseISODateSafe(data.cbc) : null;
       updateData.cbc = cbcDateObj;
     }
+    if (data.nextCallDate !== undefined) {
+      // Convert nextCallDate string to Date object for Prisma
+      updateData.nextCallDate = data.nextCallDate ? new Date(data.nextCallDate) : null;
+      updateData.nextCallDateSource = 'manual';
+      updateData.nextCallDateManuallySet = true;
+      updateData.nextCallDateLastCalculated = new Date();
+      updateData.nextCallDateEventId = null; // Clear event reference for manual dates
+    }
     if (data.closeDate !== undefined) {
       // Convert closeDate string to Date object for Prisma
       const closeDateObj = data.closeDate ? parseISODateSafe(data.closeDate) : null;

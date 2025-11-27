@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
 import { contactCreateSchema } from "@/lib/validations/contact";
 import { requireAuth } from "@/lib/auth";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/db";
+import { logError } from "@/lib/errors";
 
 // GET /api/v1/accounts/[id]/contacts - List all contacts for an account
 export async function GET(
@@ -70,7 +69,7 @@ export async function GET(
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Error fetching contacts:", error);
+    logError("API:Accounts:Contacts:GET", error);
     return NextResponse.json(
       { error: "Failed to fetch contacts" },
       { status: 500 }
@@ -108,8 +107,13 @@ export async function POST(
 
     // If managerId is provided, verify the manager exists and belongs to the same account
     if (validatedData.managerId) {
-      const manager = await prisma.contact.findUnique({
-        where: { id: validatedData.managerId },
+      const manager = await prisma.contact.findFirst({
+        where: {
+          id: validatedData.managerId,
+          account: {
+            organizationId: user.organization.id
+          }
+        },
       });
 
       if (!manager || manager.accountId !== id) {
@@ -162,7 +166,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.error("Error creating contact:", error);
+    logError("API:Accounts:Contacts:POST", error);
 
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(

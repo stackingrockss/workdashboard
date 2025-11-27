@@ -1,15 +1,23 @@
 // src/lib/inngest/functions/consolidate-insights.ts
-// Inngest background job for consolidating insights from multiple Gong calls
+// Inngest background job for consolidating insights from multiple Gong calls AND Granola notes
 
 import { inngest } from "@/lib/inngest/client";
 import { consolidateCallInsights } from "@/lib/ai/consolidate-call-insights";
 import { prisma } from "@/lib/db";
 import { ParsingStatus } from "@prisma/client";
 import type { RiskAssessment } from "@/types/gong-call";
+import {
+  deduplicateMeetings,
+  logDeduplicationStats,
+} from "@/lib/utils/deduplicate-meetings";
 
 /**
- * Background job that consolidates insights from all parsed Gong calls for an opportunity
- * Triggered after a call is successfully parsed (when 2+ calls exist)
+ * Background job that consolidates insights from all parsed Gong calls AND Granola notes
+ * Triggered after a call/note is successfully parsed (when 2+ meetings exist)
+ *
+ * Smart deduplication:
+ * - Matches meetings by calendar event ID (exact) or date/time (1-hour window)
+ * - When duplicates found, always prioritizes Gong over Granola
  */
 export const consolidateInsightsJob = inngest.createFunction(
   {
@@ -29,31 +37,72 @@ export const consolidateInsightsJob = inngest.createFunction(
       });
     });
 
-    // Step 1: Fetch all parsed calls for the opportunity
-    const calls = await step.run("fetch-parsed-calls", async () => {
-      const parsedCalls = await prisma.gongCall.findMany({
-        where: {
-          opportunityId,
-          parsingStatus: ParsingStatus.completed,
-          parsedAt: { not: null },
-        },
-        select: {
-          id: true,
-          meetingDate: true,
-          painPoints: true,
-          goals: true,
-          riskAssessment: true,
-        },
-        orderBy: {
-          meetingDate: "asc", // Order by date for temporal analysis
-        },
-      });
+    // Step 1: Fetch all parsed Gong calls AND Granola notes for the opportunity
+    const { gongCalls, granolaNotes } = await step.run(
+      "fetch-parsed-meetings",
+      async () => {
+        const [parsedGongCalls, parsedGranolaNotes] = await Promise.all([
+          // Fetch Gong calls
+          prisma.gongCall.findMany({
+            where: {
+              opportunityId,
+              parsingStatus: ParsingStatus.completed,
+              parsedAt: { not: null },
+            },
+            select: {
+              id: true,
+              meetingDate: true,
+              calendarEventId: true,
+              painPoints: true,
+              goals: true,
+              riskAssessment: true,
+            },
+          }),
+          // Fetch Granola notes
+          prisma.granolaNote.findMany({
+            where: {
+              opportunityId,
+              parsingStatus: ParsingStatus.completed,
+              parsedAt: { not: null },
+            },
+            select: {
+              id: true,
+              meetingDate: true,
+              calendarEventId: true,
+              painPoints: true,
+              goals: true,
+              riskAssessment: true,
+            },
+          }),
+        ]);
 
-      return parsedCalls;
-    });
+        return {
+          gongCalls: parsedGongCalls.map((call) => ({ ...call, source: 'gong' as const })),
+          granolaNotes: parsedGranolaNotes.map((note) => ({ ...note, source: 'granola' as const })),
+        };
+      }
+    );
 
-    // Check if we have at least 2 calls to consolidate
-    if (calls.length < 2) {
+    // Step 2: Deduplicate meetings (Gong priority)
+    const deduplicationResult = await step.run(
+      "deduplicate-meetings",
+      async () => {
+        const result = deduplicateMeetings(
+          gongCalls as Parameters<typeof deduplicateMeetings>[0],
+          granolaNotes as Parameters<typeof deduplicateMeetings>[1]
+        );
+
+        // Log deduplication stats for debugging
+        logDeduplicationStats(opportunityId, result);
+
+        return result;
+      }
+    );
+
+    const uniqueMeetings = deduplicationResult.uniqueMeetings;
+
+    // Check if we have at least 2 unique meetings to consolidate
+    if (uniqueMeetings.length < 2) {
       await step.run("set-idle-status", async () => {
         return await prisma.opportunity.update({
           where: { id: opportunityId },
@@ -63,30 +112,32 @@ export const consolidateInsightsJob = inngest.createFunction(
 
       return {
         success: false,
-        message: `Consolidation requires at least 2 parsed calls. Found: ${calls.length}`,
+        message: `Consolidation requires at least 2 unique meetings. Found: ${uniqueMeetings.length} (${gongCalls.length} Gong, ${granolaNotes.length} Granola, ${deduplicationResult.duplicatesRemoved} duplicates removed)`,
         opportunityId,
       };
     }
 
-    // Step 2: Transform data for consolidation AI
-    const callInsights = calls.map((call) => {
-      // Convert meetingDate to ISO string (Prisma returns Date objects)
-      const meetingDate = new Date(call.meetingDate).toISOString();
+    // Step 3: Transform deduplicated meetings for consolidation AI
+    const callInsights = uniqueMeetings.map((meeting) => {
+      // Convert meetingDate to ISO string
+      const meetingDate = new Date(meeting.meetingDate).toISOString();
 
       return {
-        callId: call.id,
+        callId: meeting.id,
         meetingDate,
-        painPoints: Array.isArray(call.painPoints)
-          ? (call.painPoints as string[])
+        painPoints: Array.isArray(meeting.painPoints)
+          ? (meeting.painPoints as string[])
           : [],
-        goals: Array.isArray(call.goals) ? (call.goals as string[]) : [],
-        riskAssessment: call.riskAssessment
-          ? (call.riskAssessment as unknown as RiskAssessment)
+        goals: Array.isArray(meeting.goals)
+          ? (meeting.goals as string[])
+          : [],
+        riskAssessment: meeting.riskAssessment
+          ? (meeting.riskAssessment as unknown as RiskAssessment)
           : null,
       };
     });
 
-    // Step 3: Consolidate insights using AI
+    // Step 4: Consolidate insights using AI
     const consolidationResult = await step.run(
       "consolidate-with-ai",
       async () => {
@@ -95,7 +146,7 @@ export const consolidateInsightsJob = inngest.createFunction(
       }
     );
 
-    // Step 4: Handle consolidation result
+    // Step 5: Handle consolidation result
     if (!consolidationResult.success || !consolidationResult.data) {
       await step.run("set-failed-status", async () => {
         return await prisma.opportunity.update({
@@ -117,7 +168,7 @@ export const consolidateInsightsJob = inngest.createFunction(
       );
     }
 
-    // Step 5: Save consolidated results to opportunity
+    // Step 6: Save consolidated results to opportunity
     const updatedOpportunity = await step.run(
       "save-consolidated-results",
       async () => {
@@ -134,7 +185,7 @@ export const consolidateInsightsJob = inngest.createFunction(
               JSON.stringify(consolidationResult.data!.riskAssessment)
             ),
             lastConsolidatedAt: new Date(),
-            consolidationCallCount: calls.length,
+            consolidationCallCount: uniqueMeetings.length, // Count unique meetings (after deduplication)
             consolidationStatus: "completed",
           },
           select: {
@@ -153,7 +204,11 @@ export const consolidateInsightsJob = inngest.createFunction(
     return {
       success: true,
       opportunityId,
-      callsConsolidated: calls.length,
+      totalMeetings: gongCalls.length + granolaNotes.length,
+      uniqueMeetings: uniqueMeetings.length,
+      duplicatesRemoved: deduplicationResult.duplicatesRemoved,
+      gongPrioritized: deduplicationResult.gongPrioritized,
+      callsConsolidated: uniqueMeetings.length,
       painPointsCount: consolidationResult.data.painPoints.length,
       goalsCount: consolidationResult.data.goals.length,
       riskLevel: consolidationResult.data.riskAssessment.riskLevel,
