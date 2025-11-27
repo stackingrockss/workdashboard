@@ -253,6 +253,7 @@ export async function POST(
       {
         task: {
           id: task.id,
+          taskListId: task.taskListId,
           googleTaskId: task.googleTaskId,
           title: task.title,
           notes: task.notes,

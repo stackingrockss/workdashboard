@@ -291,6 +291,7 @@ model User {
   role                    UserRole             @default(REP)
   annualQuota             Int?
   autoCreateFollowupTasks Boolean              @default(true)
+  taskFilterPreference    String               @default("thisWeekOrNoDueDate")
   ownedAccounts           Account[]            @relation("AccountOwner")
   calendarEvents          CalendarEvent[]
   calendarSyncStates      CalendarSyncState[]

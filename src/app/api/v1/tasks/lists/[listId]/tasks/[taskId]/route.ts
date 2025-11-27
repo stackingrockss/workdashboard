@@ -58,6 +58,7 @@ export async function GET(
     return NextResponse.json({
       task: {
         id: task.id,
+        taskListId: task.taskListId,
         googleTaskId: task.googleTaskId,
         title: task.title,
         notes: task.notes,
@@ -213,6 +214,7 @@ export async function PATCH(
     return NextResponse.json({
       task: {
         id: updatedDbTask.id,
+        taskListId: updatedDbTask.taskListId,
         googleTaskId: updatedDbTask.googleTaskId,
         title: updatedDbTask.title,
         notes: updatedDbTask.notes,

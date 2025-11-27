@@ -14,8 +14,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ListTodo, Settings, AlertCircle, Calendar, RefreshCw } from "lucide-react";
 import { TaskCard } from "./task-card";
+import { TaskFilterControl } from "./task-filter-control";
 import { toast } from "sonner";
 import type { TaskWithRelations } from "@/types/task";
+import { filterTasksByPreference, type TaskFilterPreference } from "@/lib/utils/task-filtering";
 
 /**
  * Groups tasks by timeframe relative to today
@@ -83,6 +85,10 @@ export function UpcomingTasksWidget() {
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<TaskWithRelations[]>([]);
   const [notConnected, setNotConnected] = useState(false);
+
+  // Filter preference state
+  const [filterPreference, setFilterPreference] = useState<TaskFilterPreference>('thisWeekOrNoDueDate');
+  const [loadingPreferences, setLoadingPreferences] = useState(true);
 
   const loadTasks = async () => {
     setLoading(true);
@@ -163,6 +169,59 @@ export function UpcomingTasksWidget() {
     }
   };
 
+  // Load user preferences
+  const loadPreferences = async () => {
+    try {
+      const response = await fetch('/api/v1/users/preferences');
+      if (response.ok) {
+        const data = await response.json();
+        setFilterPreference(data.preferences.taskFilterPreference || 'thisWeekOrNoDueDate');
+      }
+    } catch (error) {
+      console.error('Failed to load preferences:', error);
+      // Use default on error
+    } finally {
+      setLoadingPreferences(false);
+    }
+  };
+
+  // Save filter preference
+  const handleFilterChange = async (newFilter: TaskFilterPreference) => {
+    // Optimistic update
+    const previousFilter = filterPreference;
+    setFilterPreference(newFilter);
+
+    try {
+      const response = await fetch('/api/v1/users/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskFilterPreference: newFilter }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save preference');
+      }
+
+      toast.success('Filter preference saved');
+    } catch (error) {
+      console.error('Failed to save filter preference:', error);
+      // Rollback on error
+      setFilterPreference(previousFilter);
+      toast.error('Failed to save filter preference');
+    }
+  };
+
+  // Handle due date changes with optimistic update
+  const handleTaskDueDateChange = (taskId: string, newDue: string | null) => {
+    setTasks(prevTasks => {
+      return prevTasks.map(task =>
+        task.id === taskId
+          ? { ...task, due: newDue ? new Date(newDue) : null }
+          : task
+      );
+    });
+  };
+
   const handleSync = async () => {
     setSyncing(true);
     try {
@@ -191,6 +250,7 @@ export function UpcomingTasksWidget() {
   };
 
   useEffect(() => {
+    loadPreferences();
     loadTasks();
 
     // Auto-refresh every 5 minutes
@@ -204,10 +264,16 @@ export function UpcomingTasksWidget() {
     setTasks((prevTasks) => prevTasks.filter((t) => t.id !== taskId));
   };
 
-  // Group tasks by timeframe
+  // Filter tasks based on preference before grouping
+  const filteredTasks = useMemo(
+    () => filterTasksByPreference(tasks, filterPreference),
+    [tasks, filterPreference]
+  );
+
+  // Group filtered tasks by timeframe
   const groupedTasks = useMemo(
-    () => groupTasksByTimeframe(tasks),
-    [tasks]
+    () => groupTasksByTimeframe(filteredTasks),
+    [filteredTasks]
   );
 
   // Define display order for timeframe groups
@@ -244,6 +310,17 @@ export function UpcomingTasksWidget() {
       </CardHeader>
 
       <CardContent>
+        {/* Filter control */}
+        {!loading && !notConnected && !error && (
+          <div className="mb-4">
+            <TaskFilterControl
+              currentFilter={filterPreference}
+              onFilterChange={handleFilterChange}
+              disabled={loadingPreferences}
+            />
+          </div>
+        )}
+
         {/* Loading state */}
         {loading && (
           <div className="space-y-3">
@@ -283,10 +360,10 @@ export function UpcomingTasksWidget() {
         )}
 
         {/* Empty state */}
-        {!loading && !notConnected && !error && tasks.length === 0 && (
+        {!loading && !notConnected && !error && filteredTasks.length === 0 && (
           <div className="text-center py-8">
             <CardDescription className="mb-4">
-              No pending tasks found.
+              No tasks match the current filter.
             </CardDescription>
             <Button onClick={handleSync} variant="outline" disabled={syncing}>
               <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
@@ -296,7 +373,7 @@ export function UpcomingTasksWidget() {
         )}
 
         {/* Success state - grouped tasks */}
-        {!loading && !notConnected && !error && tasks.length > 0 && (
+        {!loading && !notConnected && !error && filteredTasks.length > 0 && (
           <div className="space-y-4">
             {groupOrder.map((groupLabel) => {
               const groupTasks = groupedTasks[groupLabel];
@@ -313,6 +390,7 @@ export function UpcomingTasksWidget() {
                         key={task.id}
                         task={task}
                         onComplete={handleTaskComplete}
+                        onDueDateChange={handleTaskDueDateChange}
                       />
                     ))}
                   </div>

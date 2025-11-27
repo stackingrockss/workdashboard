@@ -5,14 +5,15 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Clock, CheckCircle } from "lucide-react";
-import { formatDateShort } from "@/lib/format";
+import { CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { TaskWithRelations } from "@/types/task";
+import { InlineDueDateEditor } from "./inline-due-date-editor";
 
 interface TaskCardProps {
   task: TaskWithRelations;
   onComplete?: (taskId: string) => void;
+  onDueDateChange?: (taskId: string, newDue: string | null) => void;
 }
 
 /**
@@ -41,13 +42,17 @@ function getDueDateVariant(
  * TaskCard - Displays a single task with quick actions
  *
  * Features:
- * - Color-coded due date badge
+ * - Color-coded due date badge with inline editing
  * - Linked opportunity badge (if task is linked)
  * - Mark complete button
  * - Hover effect
  */
-export function TaskCard({ task, onComplete }: TaskCardProps) {
+export function TaskCard({ task, onComplete, onDueDateChange }: TaskCardProps) {
   const [isCompleting, setIsCompleting] = useState(false);
+
+  const handleDueDateChange = (newDue: string | null) => {
+    onDueDateChange?.(task.id, newDue);
+  };
 
   const handleMarkComplete = async () => {
     if (isCompleting) return;
@@ -87,19 +92,13 @@ export function TaskCard({ task, onComplete }: TaskCardProps) {
 
           {/* Due date and opportunity */}
           <div className="flex items-center gap-2 flex-wrap">
-            {task.due && (
-              <Badge
-                variant={getDueDateVariant(task.due)}
-                className="text-xs"
-              >
-                <Clock className="h-3 w-3 mr-1" />
-                {formatDateShort(
-                  typeof task.due === "string"
-                    ? task.due
-                    : task.due.toISOString()
-                )}
-              </Badge>
-            )}
+            <InlineDueDateEditor
+              taskId={task.id}
+              listId={task.taskListId}
+              currentDue={task.due || null}
+              onDueChange={handleDueDateChange}
+              variant={getDueDateVariant(task.due)}
+            />
 
             {task.opportunity && (
               <Link href={`/opportunities/${task.opportunityId}`}>

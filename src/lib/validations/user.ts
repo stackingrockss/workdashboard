@@ -4,6 +4,18 @@ import { UserRole } from '@prisma/client';
 // User role enum schema
 export const userRoleSchema = z.nativeEnum(UserRole);
 
+// Task filter preference schema
+export const taskPreferencesUpdateSchema = z.object({
+  taskFilterPreference: z.enum([
+    'thisWeekOrNoDueDate',
+    'thisWeek',
+    'all',
+    'overdue'
+  ]),
+});
+
+export type TaskPreferencesUpdateInput = z.infer<typeof taskPreferencesUpdateSchema>;
+
 // User update schema
 export const userUpdateSchema = z.object({
   name: z.string().min(1, 'Name is required').optional(),
@@ -13,6 +25,12 @@ export const userUpdateSchema = z.object({
   managerId: z.string().nullable().optional(),
   annualQuota: z.number().int().positive('Quota must be a positive number').nullable().optional(),
   autoCreateFollowupTasks: z.boolean().optional(),
+  taskFilterPreference: z.enum([
+    'thisWeekOrNoDueDate',
+    'thisWeek',
+    'all',
+    'overdue'
+  ]).optional(),
 });
 
 export type UserUpdateInput = z.infer<typeof userUpdateSchema>;
