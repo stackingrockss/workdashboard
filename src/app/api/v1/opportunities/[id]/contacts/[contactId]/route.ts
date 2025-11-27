@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { contactUpdateSchema } from "@/lib/validations/contact";
+import { requireAuth } from "@/lib/auth";
 
 const prisma = new PrismaClient();
 
@@ -10,7 +11,23 @@ export async function GET(
   { params }: { params: Promise<{ id: string; contactId: string }> }
 ) {
   try {
+    const user = await requireAuth();
     const { id, contactId } = await params;
+
+    // Verify opportunity exists and belongs to user's organization
+    const opportunity = await prisma.opportunity.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id,
+      },
+    });
+
+    if (!opportunity) {
+      return NextResponse.json(
+        { error: "Opportunity not found" },
+        { status: 404 }
+      );
+    }
 
     const contact = await prisma.contact.findUnique({
       where: { id: contactId },
@@ -53,6 +70,9 @@ export async function GET(
 
     return NextResponse.json(transformedContact);
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     console.error("Error fetching contact:", error);
     return NextResponse.json(
       { error: "Failed to fetch contact" },
@@ -67,8 +87,24 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string; contactId: string }> }
 ) {
   try {
+    const user = await requireAuth();
     const { id, contactId } = await params;
     const body = await request.json();
+
+    // Verify opportunity belongs to user's organization
+    const opportunity = await prisma.opportunity.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id,
+      },
+    });
+
+    if (!opportunity) {
+      return NextResponse.json(
+        { error: "Opportunity not found" },
+        { status: 404 }
+      );
+    }
 
     // Verify contact exists and belongs to this opportunity
     const existingContact = await prisma.contact.findUnique({
@@ -156,6 +192,10 @@ export async function PATCH(
 
     return NextResponse.json(transformedContact);
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     console.error("Error updating contact:", error);
 
     if (error instanceof Error && error.name === "ZodError") {
@@ -178,7 +218,23 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string; contactId: string }> }
 ) {
   try {
+    const user = await requireAuth();
     const { id, contactId } = await params;
+
+    // Verify opportunity belongs to user's organization
+    const opportunity = await prisma.opportunity.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id,
+      },
+    });
+
+    if (!opportunity) {
+      return NextResponse.json(
+        { error: "Opportunity not found" },
+        { status: 404 }
+      );
+    }
 
     // Verify contact exists and belongs to this opportunity
     const contact = await prisma.contact.findUnique({
@@ -199,6 +255,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     console.error("Error deleting contact:", error);
     return NextResponse.json(
       { error: "Failed to delete contact" },

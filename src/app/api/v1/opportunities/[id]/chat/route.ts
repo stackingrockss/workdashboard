@@ -6,11 +6,12 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { chatRequestSchema } from "@/lib/validations/chat";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { ZodError } from "zod";
+import { generateContentSuggestionsForOpportunity } from "@/lib/ai/content-suggestion";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // Use stable model by default, allow override via env variable
-const GEMINI_MODEL = process.env.GEMINI_CHAT_MODEL || "gemini-1.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_CHAT_MODEL || "gemini-3-pro-preview";
 
 // Streaming timeout (60 seconds)
 const STREAM_TIMEOUT_MS = 60 * 1000;
@@ -32,6 +33,28 @@ const SYSTEM_INSTRUCTION = `You are a knowledgeable sales assistant for Verifiab
 - Use bullet points for lists and actionable items
 
 The context provided includes all available information about this opportunity. If something isn't in the context, it hasn't been captured in the system yet.`;
+
+/**
+ * Detect if user message is requesting content suggestions
+ */
+function isContentSuggestionRequest(message: string): boolean {
+  const triggers = [
+    "suggest content",
+    "recommend content",
+    "what content",
+    "share with them",
+    "send them",
+    "collateral",
+    "case study",
+    "whitepaper",
+    "blog post",
+    "video",
+    "content to share",
+    "materials to send",
+  ];
+  const lowerMessage = message.toLowerCase();
+  return triggers.some((trigger) => lowerMessage.includes(trigger));
+}
 
 export async function POST(
   request: NextRequest,
@@ -129,6 +152,82 @@ export async function POST(
       return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });
     }
 
+    // Check if this is a content suggestion request
+    if (isContentSuggestionRequest(message)) {
+      // Generate content suggestions
+      const result = await generateContentSuggestionsForOpportunity(
+        opportunityId,
+        user.organizationId,
+        message
+      );
+
+      if (result.error) {
+        return NextResponse.json({ error: result.error }, { status: 500 });
+      }
+
+      // Format response with embedded content cards
+      let formattedResponse = result.summary + "\n\n";
+
+      for (const suggestion of result.suggestions) {
+        const cardJson = JSON.stringify({
+          source: suggestion.source,
+          ...(suggestion.id && { id: suggestion.id }),
+          title: suggestion.title,
+          url: suggestion.url,
+          contentType: suggestion.contentType,
+          ...(suggestion.description && { description: suggestion.description }),
+          relevanceReason: suggestion.relevanceReason,
+        });
+        formattedResponse += `[CONTENT_CARD]${cardJson}[/CONTENT_CARD]\n\n`;
+      }
+
+      // Create streaming response (simplified for content suggestions)
+      const stream = new ReadableStream({
+        start(controller) {
+          // Stream the formatted response
+          controller.enqueue(new TextEncoder().encode(formattedResponse));
+          controller.close();
+        },
+      });
+
+      // Save conversation to database
+      try {
+        await prisma.$transaction([
+          prisma.chatMessage.create({
+            data: {
+              opportunityId,
+              userId: user.id,
+              role: "user",
+              content: message,
+              contextSize: 0,
+            },
+          }),
+          prisma.chatMessage.create({
+            data: {
+              opportunityId,
+              userId: user.id,
+              role: "assistant",
+              content: formattedResponse,
+            },
+          }),
+        ]);
+      } catch (dbError) {
+        console.error("[Chat API] Failed to save content suggestion messages:", dbError);
+      }
+
+      // Return streaming response
+      return new Response(stream, {
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Transfer-Encoding": "chunked",
+          "X-RateLimit-Limit": String(rateLimit.limit),
+          "X-RateLimit-Remaining": String(rateLimit.remaining),
+          "X-RateLimit-Reset": String(rateLimit.resetAt),
+        },
+      });
+    }
+
+    // Regular chat flow (existing code)
     // Build context
     const { context, size } = await buildOpportunityContext(
       opportunityId,

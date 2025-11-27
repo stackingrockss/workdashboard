@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { ChatMessageContent } from "./chat-message-content";
+import { ContentSuggestion } from "@/types/content-suggestion";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -31,6 +33,8 @@ export function ChatModal({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [savedUrls, setSavedUrls] = useState<Set<string>>(new Set());
+  const [savingUrls, setSavingUrls] = useState<Set<string>>(new Set());
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -163,6 +167,46 @@ export function ChatModal({
     }
   };
 
+  const handleSaveContent = async (suggestion: ContentSuggestion) => {
+    setSavingUrls((prev) => new Set(prev).add(suggestion.url));
+
+    try {
+      const response = await fetch("/api/v1/content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: suggestion.title,
+          url: suggestion.url,
+          description: suggestion.description || null,
+          contentType: suggestion.contentType,
+        }),
+      });
+
+      if (response.status === 409) {
+        // Already exists - mark as saved
+        setSavedUrls((prev) => new Set(prev).add(suggestion.url));
+        toast.info("This content is already in your library");
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error("Failed to save content");
+      }
+
+      setSavedUrls((prev) => new Set(prev).add(suggestion.url));
+      toast.success("Content saved to library");
+    } catch (error) {
+      console.error("Save content error:", error);
+      toast.error("Failed to save content");
+    } finally {
+      setSavingUrls((prev) => {
+        const next = new Set(prev);
+        next.delete(suggestion.url);
+        return next;
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl h-[600px] p-0 flex flex-col">
@@ -212,7 +256,16 @@ export function ChatModal({
                         : "bg-muted"
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    {message.role === "user" ? (
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    ) : (
+                      <ChatMessageContent
+                        content={message.content}
+                        onSaveContent={handleSaveContent}
+                        savedUrls={savedUrls}
+                        savingUrls={savingUrls}
+                      />
+                    )}
                   </div>
                 </div>
               ))}

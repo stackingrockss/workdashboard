@@ -8,12 +8,16 @@ const DATE_REGEX = /^(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[01])\/\d{4}$/;
 
 /**
  * Format a Date object or string to US date format (MM/DD/YYYY)
+ * Uses UTC methods to avoid timezone issues when parsing ISO date strings
  */
 export function formatDateUS(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  const year = d.getFullYear();
+  // Use UTC methods to avoid timezone issues
+  // When parsing ISO strings like "2025-10-25T00:00:00.000Z", local methods
+  // can return the previous day depending on timezone
+  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  const year = d.getUTCFullYear();
   return `${month}/${day}/${year}`;
 }
 
@@ -113,12 +117,12 @@ export function formatHistoryEntries(
     parts.push(""); // blank line
   }
 
-  // Add divider if there are entries (or manual notes)
+  // Add divider and entries
   if (entries.length > 0) {
-    if (manualNotes && manualNotes.trim()) {
-      parts.push(AUTO_GENERATED_DIVIDER);
-      parts.push(""); // blank line
-    }
+    // Always add divider before auto-generated entries
+    // This ensures proper parsing when new entries are added later
+    parts.push(AUTO_GENERATED_DIVIDER);
+    parts.push(""); // blank line
 
     // Add each entry
     entries.forEach((entry, index) => {

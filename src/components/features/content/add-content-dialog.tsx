@@ -39,6 +39,7 @@ export function AddContentDialog({
   const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
+  const [body, setBody] = useState("");
   const [contentType, setContentType] = useState<ContentType>("blog_post");
 
   const isEditing = !!editingContent;
@@ -48,11 +49,13 @@ export function AddContentDialog({
       setTitle(editingContent.title);
       setUrl(editingContent.url);
       setDescription(editingContent.description || "");
+      setBody((editingContent as Content & { body?: string }).body || "");
       setContentType(editingContent.contentType);
     } else {
       setTitle("");
       setUrl("");
       setDescription("");
+      setBody("");
       setContentType("blog_post");
     }
   }, [editingContent, open]);
@@ -72,6 +75,7 @@ export function AddContentDialog({
           title,
           url,
           description: description || undefined,
+          body: body || undefined,
           contentType,
         });
         toast.success("Content updated successfully!");
@@ -80,6 +84,7 @@ export function AddContentDialog({
           title,
           url,
           description: description || undefined,
+          body: body || undefined,
           contentType,
         });
         toast.success("Content added successfully!");
@@ -150,6 +155,21 @@ export function AddContentDialog({
               placeholder="Brief description of this content..."
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="content-body">Content Text (optional)</Label>
+            <Textarea
+              id="content-body"
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Paste the full text content here for better AI matching..."
+              rows={8}
+              className="font-mono text-xs"
+            />
+            <p className="text-xs text-muted-foreground">
+              Copy and paste the article/whitepaper text to help AI understand the content better.
+            </p>
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

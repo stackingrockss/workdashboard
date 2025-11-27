@@ -280,34 +280,35 @@ model OrganizationSettings {
 }
 
 model User {
-  id                 String               @id @default(cuid())
-  email              String               @unique
-  name               String?
-  avatarUrl          String?
-  createdAt          DateTime             @default(now())
-  supabaseId         String?              @unique
-  managerId          String?
-  organizationId     String?
-  role               UserRole             @default(REP)
-  annualQuota        Int?
-  ownedAccounts      Account[]            @relation("AccountOwner")
-  calendarEvents     CalendarEvent[]
-  calendarSyncStates CalendarSyncState[]
-  chatMessages       ChatMessage[]
-  authoredComments   Comment[]            @relation("AuthoredComments")
-  createdContents    Content[]            @relation("ContentCreatedBy")
-  resolvedComments   Comment[]            @relation("ResolvedComments")
-  mentions           CommentMention[]     @relation("UserMentions")
-  reactions          CommentReaction[]    @relation("UserReactions")
-  invitations        Invitation[]
-  kanbanViews        KanbanView[]
-  oauthTokens        OAuthToken[]
-  opportunities      Opportunity[]
-  tasks              Task[]
-  taskLists          TaskList[]
-  manager            User?                @relation("ManagerReps", fields: [managerId], references: [id])
-  directReports      User[]               @relation("ManagerReps")
-  organization       Organization?        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                      String               @id @default(cuid())
+  email                   String               @unique
+  name                    String?
+  avatarUrl               String?
+  createdAt               DateTime             @default(now())
+  supabaseId              String?              @unique
+  managerId               String?
+  organizationId          String?
+  role                    UserRole             @default(REP)
+  annualQuota             Int?
+  autoCreateFollowupTasks Boolean              @default(true)
+  ownedAccounts           Account[]            @relation("AccountOwner")
+  calendarEvents          CalendarEvent[]
+  calendarSyncStates      CalendarSyncState[]
+  chatMessages            ChatMessage[]
+  authoredComments        Comment[]            @relation("AuthoredComments")
+  createdContents         Content[]            @relation("ContentCreatedBy")
+  resolvedComments        Comment[]            @relation("ResolvedComments")
+  mentions                CommentMention[]     @relation("UserMentions")
+  reactions               CommentReaction[]    @relation("UserReactions")
+  invitations             Invitation[]
+  kanbanViews             KanbanView[]
+  oauthTokens             OAuthToken[]
+  opportunities           Opportunity[]
+  tasks                   Task[]
+  taskLists               TaskList[]
+  manager                 User?                @relation("ManagerReps", fields: [managerId], references: [id])
+  directReports           User[]               @relation("ManagerReps")
+  organization            Organization?        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([managerId])
@@ -425,6 +426,7 @@ model Task {
   @@index([opportunityId])
   @@index([accountId])
   @@index([taskListId])
+  @@index([userId, taskSource])
   @@schema("opportunity_tracker")
 }
 
@@ -752,6 +754,7 @@ model Content {
   title          String
   url            String
   description    String?
+  body           String?      @db.Text
   contentType    ContentType
   createdById    String
   organizationId String

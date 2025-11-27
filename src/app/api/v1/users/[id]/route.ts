@@ -95,10 +95,38 @@ export async function PATCH(
     const { id } = await params;
     const user = await requireAuth();
 
-    // Check permission to manage users
-    if (!canManageUsers(user)) {
+    // Parse and validate request body first
+    const body = await request.json();
+    const parsed = userUpdateSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const data = parsed.data;
+    const isUpdatingSelf = id === user.id;
+
+    // Users can update their own preferences (autoCreateFollowupTasks)
+    // But need admin/manager permission to update other fields
+    const isOnlyUpdatingPreferences =
+      Object.keys(data).length === 1 &&
+      data.autoCreateFollowupTasks !== undefined;
+
+    // Check permission to manage users (unless updating own preferences)
+    if (!isUpdatingSelf && !canManageUsers(user)) {
       return NextResponse.json(
         { error: "Forbidden: Insufficient permissions to manage users" },
+        { status: 403 }
+      );
+    }
+
+    // If updating someone else or updating more than just preferences, need permissions
+    if (isUpdatingSelf && !isOnlyUpdatingPreferences && !canManageUsers(user)) {
+      return NextResponse.json(
+        { error: "Forbidden: You can only update your own preferences. Contact an administrator to change other settings." },
         { status: 403 }
       );
     }
@@ -114,19 +142,6 @@ export async function PATCH(
     if (!targetUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-
-    // Parse and validate request body
-    const body = await request.json();
-    const parsed = userUpdateSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.flatten() },
-        { status: 400 }
-      );
-    }
-
-    const data = parsed.data;
 
     // Only ADMIN can change roles
     if (data.role !== undefined && !isAdmin(user)) {
@@ -179,6 +194,9 @@ export async function PATCH(
         }),
         ...(data.name !== undefined && { name: data.name }),
         ...(data.annualQuota !== undefined && { annualQuota: data.annualQuota }),
+        ...(data.autoCreateFollowupTasks !== undefined && {
+          autoCreateFollowupTasks: data.autoCreateFollowupTasks,
+        }),
       },
       include: {
         manager: {
@@ -215,6 +233,7 @@ export async function PATCH(
       role: updatedUser.role,
       managerId: updatedUser.managerId,
       annualQuota: updatedUser.annualQuota,
+      autoCreateFollowupTasks: updatedUser.autoCreateFollowupTasks,
       manager: updatedUser.manager,
       directReports: updatedUser.directReports,
       opportunityCount: updatedUser._count.opportunities,

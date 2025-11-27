@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       response: result.text,
-      model: model || "gemini-1.5-flash",
+      model: model || "gemini-3-pro-preview",
     });
   } catch (error) {
     console.error("Test endpoint error:", error);

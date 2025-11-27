@@ -169,7 +169,7 @@ Return ONLY valid JSON matching this exact structure:
  * - Minimum transcript length: 100 characters
  * - Maximum transcript length: 80,000 characters (to stay within API limits)
  * - Never throws errors - returns error in result object instead
- * - Uses gemini-2.5-pro model by default
+ * - Uses gemini-3-pro-preview model by default
  *
  * @see {@link RiskAnalysisResult} for return type
  * @see {@link RiskAssessment} for data structure
@@ -205,7 +205,7 @@ Return your risk assessment as JSON only.`;
     const response = await generateWithSystemInstruction(
       prompt,
       SYSTEM_INSTRUCTION,
-      "gemini-2.5-pro" // Use Pro model for superior reasoning and nuance detection
+      "gemini-3-pro-preview" // Use Pro model for superior reasoning and nuance detection
     );
 
     if (response.error || !response.text) {

@@ -102,10 +102,14 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth();
     const { id } = await params;
 
-    const account = await prisma.account.findUnique({
-      where: { id },
+    const account = await prisma.account.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id,
+      },
       include: {
         opportunities: {
           include: {
@@ -125,6 +129,9 @@ export async function GET(
 
     return NextResponse.json({ account }, { status: 200 });
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     console.error("Error fetching account:", error);
     return NextResponse.json(
       { error: "Failed to fetch account" },
@@ -229,11 +236,30 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth();
     const { id } = await params;
+
+    // Verify account belongs to user's organization
+    const account = await prisma.account.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id,
+      },
+    });
+
+    if (!account) {
+      return NextResponse.json(
+        { error: "Account not found" },
+        { status: 404 }
+      );
+    }
 
     // Check if account has opportunities
     const opportunityCount = await prisma.opportunity.count({
-      where: { accountId: id },
+      where: {
+        accountId: id,
+        organizationId: user.organization.id,
+      },
     });
 
     if (opportunityCount > 0) {
@@ -249,6 +275,9 @@ export async function DELETE(
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     console.error("Error deleting account:", error);
     return NextResponse.json(
       { error: "Failed to delete account" },

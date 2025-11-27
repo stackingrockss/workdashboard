@@ -1,6 +1,14 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  flexRender,
+  type SortingState,
+  type VisibilityState,
+} from "@tanstack/react-table";
 import { type Opportunity } from "@/types/opportunity";
 import { formatCurrencyCompact } from "@/lib/format";
 import {
@@ -12,21 +20,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
-import { ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
 import {
-  EditableStageCell,
-  EditableForecastCell,
-  EditableConfidenceCell,
-  EditableDateCell,
-  EditableArrCell,
-  EditableTextCell,
-} from "./editable-cells";
-import {
-  ColumnVisibilityDropdown,
-  type ColumnVisibility,
-  DEFAULT_COLUMN_VISIBILITY,
-} from "./ColumnVisibilityDropdown";
+  createCurrentQuarterColumns,
+  DEFAULT_COLUMN_ORDER,
+  COLUMN_CONFIGS,
+  type CurrentQuarterColumnId,
+} from "@/lib/config/current-quarter-columns";
+import { ColumnVisibilityDropdown } from "./ColumnVisibilityDropdown";
+import { ColumnOrderingDropdown } from "./ColumnOrderingDropdown";
 
 interface CurrentQuarterViewProps {
   opportunities: Opportunity[];
@@ -34,17 +36,15 @@ interface CurrentQuarterViewProps {
   onOpportunityUpdate: (id: string, updates: Partial<Opportunity>) => Promise<void>;
 }
 
-type SortField = "name" | "account" | "stage" | "forecastCategory" | "amountArr" | "confidenceLevel" | "closeDate" | "owner";
-type SortDirection = "asc" | "desc";
-
 export function CurrentQuarterView({
   opportunities,
   fiscalYearStartMonth,
   onOpportunityUpdate,
 }: CurrentQuarterViewProps) {
-  const [sortField, setSortField] = useState<SortField>("closeDate");
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
-  const [columnVisibility, setColumnVisibility] = useState<ColumnVisibility>(DEFAULT_COLUMN_VISIBILITY);
+  // TanStack Table state
+  const [sorting, setSorting] = useState<SortingState>([{ id: "closeDate", desc: false }]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+  const [columnOrder, setColumnOrder] = useState<string[]>(DEFAULT_COLUMN_ORDER);
 
   // Load column visibility from localStorage on mount
   useEffect(() => {
@@ -67,6 +67,31 @@ export function CurrentQuarterView({
     }
   }, [columnVisibility]);
 
+  // Load column order from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('current-quarter-column-order');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          // Validate that all keys are present
+          if (Array.isArray(parsed) && parsed.length === DEFAULT_COLUMN_ORDER.length) {
+            setColumnOrder(parsed);
+          }
+        } catch (error) {
+          console.error('Failed to parse column order:', error);
+        }
+      }
+    }
+  }, []);
+
+  // Save column order to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('current-quarter-column-order', JSON.stringify(columnOrder));
+    }
+  }, [columnOrder]);
+
   // Calculate current fiscal quarter
   const currentQuarter = useMemo(() => {
     return getQuarterFromDate(new Date(), fiscalYearStartMonth);
@@ -77,57 +102,36 @@ export function CurrentQuarterView({
     return opportunities.filter((opp) => opp.quarter === currentQuarter);
   }, [opportunities, currentQuarter]);
 
-  // Sort opportunities
-  const sortedOpportunities = useMemo(() => {
-    const sorted = [...currentQuarterOpps];
-    sorted.sort((a, b) => {
-      let aValue: string | number;
-      let bValue: string | number;
+  // Helper function for getDaysUntilClose (used by column definition)
+  const getDaysUntilClose = (closeDate: string | null | undefined) => {
+    if (!closeDate) return null;
+    const close = new Date(closeDate);
+    const today = new Date();
+    const diffTime = close.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
 
-      switch (sortField) {
-        case "name":
-          aValue = a.name.toLowerCase();
-          bValue = b.name.toLowerCase();
-          break;
-        case "account":
-          aValue = a.account?.name.toLowerCase() || "";
-          bValue = b.account?.name.toLowerCase() || "";
-          break;
-        case "stage":
-          aValue = a.stage;
-          bValue = b.stage;
-          break;
-        case "forecastCategory":
-          aValue = a.forecastCategory || "";
-          bValue = b.forecastCategory || "";
-          break;
-        case "amountArr":
-          aValue = a.amountArr;
-          bValue = b.amountArr;
-          break;
-        case "confidenceLevel":
-          aValue = a.confidenceLevel;
-          bValue = b.confidenceLevel;
-          break;
-        case "closeDate":
-          aValue = a.closeDate ? new Date(a.closeDate).getTime() : 0;
-          bValue = b.closeDate ? new Date(b.closeDate).getTime() : 0;
-          break;
-        case "owner":
-          aValue = a.owner?.name.toLowerCase() || "";
-          bValue = b.owner?.name.toLowerCase() || "";
-          break;
-        default:
-          return 0;
-      }
+  // Create TanStack Table instance
+  const columns = useMemo(
+    () => createCurrentQuarterColumns(onOpportunityUpdate, getDaysUntilClose),
+    [onOpportunityUpdate]
+  );
 
-      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
-      return 0;
-    });
-
-    return sorted;
-  }, [currentQuarterOpps, sortField, sortDirection]);
+  const table = useReactTable({
+    data: currentQuarterOpps,
+    columns,
+    state: {
+      sorting,
+      columnVisibility,
+      columnOrder,
+    },
+    onSortingChange: setSorting,
+    onColumnVisibilityChange: setColumnVisibility,
+    onColumnOrderChange: setColumnOrder,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  });
 
   // Calculate summary stats
   const stats = useMemo(() => {
@@ -147,6 +151,21 @@ export function CurrentQuarterView({
       return new Date(opp.closeDate) < new Date();
     }).length;
 
+    // Group by forecast category
+    const forecastStats = {
+      pipeline: { arr: 0, count: 0 },
+      bestCase: { arr: 0, count: 0 },
+      commit: { arr: 0, count: 0 },
+    };
+
+    currentQuarterOpps.forEach((opp) => {
+      const category = opp.forecastCategory ?? 'pipeline';
+      if (category === 'pipeline' || category === 'bestCase' || category === 'commit') {
+        forecastStats[category].arr += opp.amountArr;
+        forecastStats[category].count += 1;
+      }
+    });
+
     return {
       totalArr,
       weightedArr,
@@ -154,40 +173,9 @@ export function CurrentQuarterView({
       avgConfidence,
       atRiskCount,
       overdueCount,
+      forecastStats,
     };
   }, [currentQuarterOpps]);
-
-  // Handle column header click for sorting
-  const handleSort = (field: SortField) => {
-    if (sortField === field) {
-      // Toggle direction if same field
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
-    } else {
-      // New field, default to ascending
-      setSortField(field);
-      setSortDirection("asc");
-    }
-  };
-
-  // Render sort indicator
-  const SortIndicator = ({ field }: { field: SortField }) => {
-    if (sortField !== field) return null;
-    return sortDirection === "asc" ? (
-      <ArrowUp className="ml-1 h-3 w-3 inline" />
-    ) : (
-      <ArrowDown className="ml-1 h-3 w-3 inline" />
-    );
-  };
-
-  // Calculate days until close
-  const getDaysUntilClose = (closeDate: string | null | undefined) => {
-    if (!closeDate) return null;
-    const close = new Date(closeDate);
-    const today = new Date();
-    const diffTime = close.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
 
   // Get urgency color based on days left
   const getUrgencyColor = (daysLeft: number | null) => {
@@ -198,17 +186,54 @@ export function CurrentQuarterView({
     return "";
   };
 
-  // Calculate visible column count (Opportunity is always visible + conditional columns)
-  const visibleColumnCount = 1 + Object.values(columnVisibility).filter(Boolean).length;
-
   return (
     <div className="space-y-4">
-      {/* Column Visibility Controls */}
-      <div className="flex justify-end">
+      {/* Column Controls */}
+      <div className="flex justify-end gap-2">
         <ColumnVisibilityDropdown
+          columns={columnOrder as CurrentQuarterColumnId[]}
+          columnConfigs={COLUMN_CONFIGS}
           visibility={columnVisibility}
           onVisibilityChange={setColumnVisibility}
         />
+        <ColumnOrderingDropdown
+          columns={columnOrder}
+          columnConfigs={COLUMN_CONFIGS}
+          onReorder={setColumnOrder}
+        />
+      </div>
+
+      {/* Forecast Category Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="p-4 border-l-4 border-slate-400">
+          <div className="text-sm text-muted-foreground">Pipeline</div>
+          <div className="text-2xl font-bold">
+            {formatCurrencyCompact(stats.forecastStats.pipeline.arr)}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {stats.forecastStats.pipeline.count} opportunities
+          </div>
+        </Card>
+
+        <Card className="p-4 border-l-4 border-blue-500">
+          <div className="text-sm text-muted-foreground">Best Case</div>
+          <div className="text-2xl font-bold">
+            {formatCurrencyCompact(stats.forecastStats.bestCase.arr)}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {stats.forecastStats.bestCase.count} opportunities
+          </div>
+        </Card>
+
+        <Card className="p-4 border-l-4 border-emerald-500">
+          <div className="text-sm text-muted-foreground">Commit</div>
+          <div className="text-2xl font-bold">
+            {formatCurrencyCompact(stats.forecastStats.commit.arr)}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {stats.forecastStats.commit.count} opportunities
+          </div>
+        </Card>
       </div>
 
       {/* Summary Stats Bar */}
@@ -248,204 +273,44 @@ export function CurrentQuarterView({
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead
-                  className="cursor-pointer hover:bg-muted/50"
-                  onClick={() => handleSort("name")}
-                >
-                  Opportunity
-                  <SortIndicator field="name" />
-                </TableHead>
-                {columnVisibility.account && (
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("account")}
-                  >
-                    Account
-                    <SortIndicator field="account" />
-                  </TableHead>
-                )}
-                {columnVisibility.owner && (
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("owner")}
-                  >
-                    Owner
-                    <SortIndicator field="owner" />
-                  </TableHead>
-                )}
-                {columnVisibility.stage && (
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("stage")}
-                  >
-                    Stage
-                    <SortIndicator field="stage" />
-                  </TableHead>
-                )}
-                {columnVisibility.forecastCategory && (
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("forecastCategory")}
-                  >
-                    Forecast
-                    <SortIndicator field="forecastCategory" />
-                  </TableHead>
-                )}
-                {columnVisibility.amountArr && (
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50 text-right"
-                    onClick={() => handleSort("amountArr")}
-                  >
-                    ARR
-                    <SortIndicator field="amountArr" />
-                  </TableHead>
-                )}
-                {columnVisibility.confidenceLevel && (
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50 text-center"
-                    onClick={() => handleSort("confidenceLevel")}
-                  >
-                    Confidence
-                    <SortIndicator field="confidenceLevel" />
-                  </TableHead>
-                )}
-                {columnVisibility.closeDate && (
-                  <TableHead
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => handleSort("closeDate")}
-                  >
-                    Close Date
-                    <SortIndicator field="closeDate" />
-                  </TableHead>
-                )}
-                {columnVisibility.daysLeft && (
-                  <TableHead className="text-center">Days Left</TableHead>
-                )}
-                {columnVisibility.nextStep && (
-                  <TableHead>Next Step</TableHead>
-                )}
-              </TableRow>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      className={header.column.columnDef.meta?.className}
+                    >
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
             </TableHeader>
             <TableBody>
-              {sortedOpportunities.length === 0 ? (
+              {table.getRowModel().rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={visibleColumnCount} className="text-center text-muted-foreground py-8">
+                  <TableCell
+                    colSpan={table.getAllColumns().length}
+                    className="text-center text-muted-foreground py-8"
+                  >
                     No opportunities closing in {currentQuarter}
                   </TableCell>
                 </TableRow>
               ) : (
-                sortedOpportunities.map((opp) => {
-                  const daysLeft = getDaysUntilClose(opp.closeDate);
+                table.getRowModel().rows.map((row) => {
+                  const daysLeft = getDaysUntilClose(row.original.closeDate);
                   const urgencyClass = getUrgencyColor(daysLeft);
 
                   return (
-                    <TableRow key={opp.id} className={urgencyClass}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          {opp.riskNotes && (
-                            <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />
-                          )}
-                          <span className="truncate max-w-[200px]">{opp.name}</span>
-                        </div>
-                      </TableCell>
-                      {columnVisibility.account && (
-                        <TableCell>
-                          <span className="truncate max-w-[150px] block">
-                            {opp.account?.name || "-"}
-                          </span>
+                    <TableRow key={row.id} className={urgencyClass}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className={cell.column.columnDef.meta?.className}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
-                      )}
-                      {columnVisibility.owner && (
-                        <TableCell>
-                          <span className="truncate max-w-[120px] block">
-                            {opp.owner?.name || "-"}
-                          </span>
-                        </TableCell>
-                      )}
-                      {columnVisibility.stage && (
-                        <TableCell>
-                          <EditableStageCell
-                            value={opp.stage}
-                            onSave={async (value) => {
-                              await onOpportunityUpdate(opp.id, { stage: value });
-                            }}
-                          />
-                        </TableCell>
-                      )}
-                      {columnVisibility.forecastCategory && (
-                        <TableCell>
-                          <EditableForecastCell
-                            value={opp.forecastCategory ?? null}
-                            onSave={async (value) => {
-                              await onOpportunityUpdate(opp.id, { forecastCategory: value });
-                            }}
-                          />
-                        </TableCell>
-                      )}
-                      {columnVisibility.amountArr && (
-                        <TableCell className="text-right">
-                          <EditableArrCell
-                            value={opp.amountArr}
-                            onSave={async (value) => {
-                              await onOpportunityUpdate(opp.id, { amountArr: value });
-                            }}
-                          />
-                        </TableCell>
-                      )}
-                      {columnVisibility.confidenceLevel && (
-                        <TableCell className="text-center">
-                          <EditableConfidenceCell
-                            value={opp.confidenceLevel}
-                            onSave={async (value) => {
-                              await onOpportunityUpdate(opp.id, { confidenceLevel: value });
-                            }}
-                          />
-                        </TableCell>
-                      )}
-                      {columnVisibility.closeDate && (
-                        <TableCell>
-                          <EditableDateCell
-                            value={opp.closeDate ?? null}
-                            onSave={async (value) => {
-                              await onOpportunityUpdate(opp.id, { closeDate: value ?? undefined });
-                            }}
-                          />
-                        </TableCell>
-                      )}
-                      {columnVisibility.daysLeft && (
-                        <TableCell className="text-center">
-                          {daysLeft !== null ? (
-                            <span
-                              className={
-                                daysLeft < 0
-                                  ? "text-red-600 dark:text-red-500 font-semibold"
-                                  : daysLeft <= 7
-                                  ? "text-red-600 dark:text-red-500"
-                                  : daysLeft <= 14
-                                  ? "text-yellow-600 dark:text-yellow-500"
-                                  : "text-muted-foreground"
-                              }
-                            >
-                              {daysLeft < 0 ? `${Math.abs(daysLeft)}d ago` : `${daysLeft}d`}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                      )}
-                      {columnVisibility.nextStep && (
-                        <TableCell>
-                          <EditableTextCell
-                            value={opp.nextStep}
-                            onSave={async (value) => {
-                              await onOpportunityUpdate(opp.id, { nextStep: value ?? undefined });
-                            }}
-                            placeholder="Add next step..."
-                            multiline={false}
-                          />
-                        </TableCell>
-                      )}
+                      ))}
                     </TableRow>
                   );
                 })

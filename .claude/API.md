@@ -66,37 +66,13 @@
 #### `POST /api/v1/opportunities`
 **Description:** Create a new opportunity
 
-**Request Body:**
-```json
-{
-  "name": "Acme Corp Expansion",
-  "amountArr": 150000,
-  "confidenceLevel": 3,
-  "stage": "discovery",
-  "closeDate": "2025-03-15",
-  "accountId": "cuid", // OR "account": "Acme Corp" (will create/link account)
-  "accountWebsite": "https://acme.com",
-  "nextStep": "Schedule discovery call",
-  "forecastCategory": "pipeline",
-  "notes": "Referred by existing customer",
-  "ownerId": "cuid" // Optional, defaults to current user
-}
-```
+**Request Body:** See `opportunityCreateSchema` in `/src/lib/validations/opportunity.ts`
+- Required: `name`, `amountArr`, `confidenceLevel`, `stage`, `closeDate`
+- Optional: `accountId`, `nextStep`, `forecastCategory`, `notes`, `ownerId` (defaults to current user)
 
-**Validation:** Uses `opportunityCreateSchema` from `/src/lib/validations/opportunity.ts`
+**Response:** `201` with `{ opportunity: { ... } }`
 
-**Response:**
-```json
-{
-  "opportunity": { /* full opportunity object */ }
-}
-```
-
-**Status Codes:**
-- `201` - Created
-- `400` - Validation error (returns Zod error details)
-- `401` - Unauthorized
-- `500` - Server error
+**Status Codes:** `201` Created | `400` Validation error | `401` Unauthorized | `500` Server error
 
 ---
 
@@ -925,57 +901,23 @@ if (user.role !== 'ADMIN' && user.role !== 'MANAGER') {
 
 All API routes validate input with Zod schemas from `/src/lib/validations/`.
 
-### Example: Create Opportunity
+**Standard API Route Pattern:**
+1. Authenticate session (Supabase)
+2. Get user with `organizationId`
+3. Parse/validate input with Zod schema (`.safeParse()`)
+4. Scope query by `organizationId`
+5. Check permissions (role, ownership)
+6. Execute database operation
+7. Return JSON response
 
-```typescript
-import { NextRequest, NextResponse } from 'next/server';
-import { opportunityCreateSchema } from '@/lib/validations/opportunity';
-import { prisma } from '@/lib/db';
+**Error Responses:**
+- `400` - Validation error: `{ error: zodError.flatten() }`
+- `401` - Unauthorized: `{ error: "Unauthorized" }`
+- `403` - Forbidden: `{ error: "Forbidden" }`
+- `404` - Not found: `{ error: "Not found" }`
+- `500` - Server error: `{ error: "Internal server error" }`
 
-export async function POST(req: NextRequest) {
-  try {
-    // 1. Authenticate
-    const session = await getSession();
-    if (!session) return unauthorized();
-
-    // 2. Get user with organization
-    const user = await prisma.user.findUnique({
-      where: { supabaseId: session.user.id }
-    });
-
-    if (!user?.organizationId) return forbidden();
-
-    // 3. Parse and validate input
-    const body = await req.json();
-    const parsed = opportunityCreateSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: parsed.error.flatten() },
-        { status: 400 }
-      );
-    }
-
-    // 4. Create opportunity (scoped to organization)
-    const opportunity = await prisma.opportunity.create({
-      data: {
-        ...parsed.data,
-        organizationId: user.organizationId,
-        ownerId: parsed.data.ownerId || user.id,
-      },
-      include: { owner: true }
-    });
-
-    return NextResponse.json({ opportunity }, { status: 201 });
-  } catch (error) {
-    console.error('Error creating opportunity:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
-```
+See existing API routes in `src/app/api/v1/` for implementation examples.
 
 ---
 

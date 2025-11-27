@@ -127,7 +127,7 @@ export async function classifyContactRole(
     const response = await generateWithSystemInstruction(
       prompt,
       SYSTEM_INSTRUCTION,
-      "gemini-2.5-flash" // Flash is sufficient for simple classification
+      "gemini-3-pro-preview" // Use Gemini 3 Pro for classification
     );
 
     if (response.error || !response.text) {

@@ -9,6 +9,7 @@ import {
   SyncTokenInvalidError,
   type CalendarEventData,
 } from "@/lib/integrations/google-calendar";
+import { GoogleTasksClient } from "@/lib/integrations/google-tasks";
 import { getValidAccessToken } from "@/lib/integrations/oauth-helpers";
 
 /**
@@ -289,6 +290,140 @@ async function buildMatchingMaps(organizationId: string) {
 }
 
 /**
+ * Minimal event data needed for creating follow-up tasks
+ */
+interface FollowUpEventData {
+  id: string;
+  opportunityId: string;
+  summary: string;
+  endTime: Date;
+}
+
+/**
+ * Helper: Create follow-up task for completed external calendar event
+ *
+ * Behavior:
+ * - Only creates task if user has autoCreateFollowupTasks enabled
+ * - Task title: "[Company Name] follow up email"
+ * - Task due date: Tomorrow at 9 AM
+ * - Deduplicates using taskSource field with event ID
+ * - Requires user to have Google Tasks connected
+ *
+ * @param userId - User ID who owns the calendar event
+ * @param event - Calendar event data (must include opportunityId)
+ * @throws Will not throw - logs errors and returns gracefully
+ */
+async function createFollowUpTaskForEvent(
+  userId: string,
+  event: FollowUpEventData
+): Promise<void> {
+  // 1. Check user preference
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { autoCreateFollowupTasks: true },
+  });
+
+  if (!user?.autoCreateFollowupTasks) {
+    return; // User has disabled automation
+  }
+
+  // 2. Fetch opportunity and account for task title
+  const opportunity = await prisma.opportunity.findUnique({
+    where: { id: event.opportunityId },
+    select: {
+      id: true,
+      name: true,
+      account: {
+        select: { id: true, name: true },
+      },
+    },
+  });
+
+  if (!opportunity?.account) {
+    console.warn(`[Calendar Sync] No account found for opportunity ${event.opportunityId}`);
+    return;
+  }
+
+  const companyName = opportunity.account.name;
+
+  // 3. Check for duplicate task (using taskSource field with event ID)
+  const taskSource = `calendar-followup:${event.id}`;
+  const existingTask = await prisma.task.findFirst({
+    where: {
+      userId,
+      taskSource, // Check by event ID to prevent duplicates for the same event
+      // Check all tasks (completed or not) to prevent recreation
+    },
+  });
+
+  if (existingTask) {
+    console.log(`[Calendar Sync] Follow-up task already exists for event ${event.id}`);
+    return;
+  }
+
+  // 4. Get user's primary task list
+  let taskList = await prisma.taskList.findFirst({
+    where: {
+      userId,
+      title: 'My Tasks',
+    },
+  });
+
+  if (!taskList) {
+    // Fallback: use first task list
+    taskList = await prisma.taskList.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  if (!taskList) {
+    console.warn(`[Calendar Sync] User ${userId} has no Google Task lists`);
+    return;
+  }
+
+  // 5. Calculate due date (tomorrow)
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(9, 0, 0, 0); // 9 AM tomorrow
+
+  // 6. Check if user has valid Google Tasks OAuth token
+  try {
+    await getValidAccessToken(userId, 'google');
+  } catch (error) {
+    console.warn(`[Calendar Sync] User ${userId} does not have valid Google OAuth token, skipping task creation`);
+    return; // Skip task creation gracefully
+  }
+
+  // 7. Create task via Google Tasks API
+  const googleTasksClient = new GoogleTasksClient();
+  const createdTask = await googleTasksClient.createTask(userId, taskList.googleListId, {
+    title: `${companyName} follow up email`,
+    notes: `Follow up on meeting that ended ${event.endTime.toLocaleDateString()}.\n\nCalendar event: ${event.summary}`,
+    due: tomorrow,
+  });
+
+  // 8. Store in database with taskSource for duplicate prevention
+  await prisma.task.create({
+    data: {
+      userId,
+      taskListId: taskList.id,
+      googleTaskId: createdTask.id,
+      title: createdTask.title,
+      notes: createdTask.notes,
+      due: createdTask.due,
+      status: 'needsAction',
+      position: createdTask.position,
+      opportunityId: event.opportunityId,
+      accountId: opportunity.account.id,
+      taskSource, // Use event ID for deduplication
+    },
+  });
+
+  console.log(`[Calendar Sync] Created follow-up task: "${companyName} follow up email" for user ${userId}`);
+}
+
+/**
  * Sync calendar events for a single user using incremental sync
  */
 async function syncUserCalendar(userId: string): Promise<{
@@ -495,6 +630,42 @@ async function syncUserCalendar(userId: string): Promise<{
     } catch (error) {
       console.error(`[Calendar Sync] Failed to process event ${event.id} for user ${userId}:`, error);
       // Continue to next event instead of failing entire sync
+    }
+  }
+
+  // Create follow-up tasks for completed external events linked to opportunities
+  // Query database for events that just completed
+  const completedEvents = await prisma.calendarEvent.findMany({
+    where: {
+      userId,
+      isExternal: true,
+      opportunityId: { not: null },
+      endTime: { lte: new Date() }, // Event has ended
+    },
+    select: {
+      id: true,
+      googleEventId: true,
+      summary: true,
+      endTime: true,
+      opportunityId: true,
+    },
+  });
+
+  for (const event of completedEvents) {
+    if (!event.opportunityId) continue; // TypeScript guard
+
+    try {
+      // Create follow-up task using the DB event data
+      await createFollowUpTaskForEvent(userId, {
+        id: event.googleEventId || event.id,
+        opportunityId: event.opportunityId,
+        summary: event.summary,
+        endTime: event.endTime,
+      });
+    } catch (error) {
+      // Log error but don't break calendar sync
+      console.error(`[Calendar Sync] Failed to create follow-up task for event ${event.id}:`, error);
+      // Continue to next event
     }
   }
 

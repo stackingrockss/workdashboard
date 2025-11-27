@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { User as UserIcon, Plug, Bell, Shield } from "lucide-react";
 import { IntegrationsSettingsContent } from "./integrations-settings-content";
 import { UserProfileSettings } from "./user-profile-settings";
+import { UserPreferencesSettings } from "./user-preferences-settings";
 
 interface UserSettingsTabsProps {
   user: {
@@ -15,6 +16,7 @@ interface UserSettingsTabsProps {
     role: string;
     avatarUrl: string | null;
     annualQuota: number | null;
+    autoCreateFollowupTasks?: boolean;
   };
 }
 
@@ -41,9 +43,9 @@ export function UserSettingsTabs({ user }: UserSettingsTabsProps) {
           <Plug className="h-4 w-4" />
           Integrations
         </TabsTrigger>
-        <TabsTrigger value="notifications" className="gap-2" disabled>
+        <TabsTrigger value="notifications" className="gap-2">
           <Bell className="h-4 w-4" />
-          Notifications
+          Preferences
         </TabsTrigger>
         <TabsTrigger value="security" className="gap-2" disabled>
           <Shield className="h-4 w-4" />
@@ -62,9 +64,7 @@ export function UserSettingsTabs({ user }: UserSettingsTabsProps) {
       </TabsContent>
 
       <TabsContent value="notifications" className="space-y-6">
-        <div className="text-muted-foreground">
-          Notification preferences coming soon...
-        </div>
+        <UserPreferencesSettings user={user} />
       </TabsContent>
 
       <TabsContent value="security" className="space-y-6">

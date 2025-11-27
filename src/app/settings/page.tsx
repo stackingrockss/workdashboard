@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { UserSettingsTabs } from "@/components/features/settings/user-settings-tabs";
 import { Loader2 } from "lucide-react";
 
@@ -18,6 +19,24 @@ export default async function UserSettingsPage() {
   // Require authentication
   const user = await requireAuth();
 
+  // Fetch full user data including preferences
+  const fullUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      avatarUrl: true,
+      annualQuota: true,
+      autoCreateFollowupTasks: true,
+    },
+  });
+
+  if (!fullUser) {
+    throw new Error("User not found");
+  }
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div>
@@ -34,7 +53,7 @@ export default async function UserSettingsPage() {
           </div>
         }
       >
-        <UserSettingsTabs user={user} />
+        <UserSettingsTabs user={fullUser} />
       </Suspense>
     </div>
   );

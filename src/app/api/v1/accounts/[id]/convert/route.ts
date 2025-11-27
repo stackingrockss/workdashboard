@@ -50,6 +50,11 @@ export async function POST(
       );
     }
 
+    // Verify account belongs to user's organization
+    if (account.organizationId !== user.organization.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
     // Create opportunity from account using a transaction
     const opportunity = await prisma.$transaction(async (tx) => {
       // Parse closeDate properly if provided

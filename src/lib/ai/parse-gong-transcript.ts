@@ -133,7 +133,7 @@ IMPORTANT RULES:
  * - Minimum transcript length: 100 characters
  * - Maximum transcript length: 80,000 characters (to stay within API limits)
  * - Never throws errors - returns error in result object instead
- * - Uses gemini-2.5-pro model for superior reasoning and nuance detection
+ * - Uses gemini-3-pro-preview model for superior reasoning and nuance detection
  * - Automatically classifies contact roles using AI after extraction
  *
  * @see {@link GongParseResult} for return type
@@ -172,7 +172,7 @@ Return your analysis as JSON only.`;
     const response = await generateWithSystemInstruction(
       prompt,
       SYSTEM_INSTRUCTION,
-      "gemini-2.5-pro" // Use Pro model for superior reasoning and nuance detection
+      "gemini-3-pro-preview" // Use Pro model for superior reasoning and nuance detection
     );
 
     if (response.error || !response.text) {

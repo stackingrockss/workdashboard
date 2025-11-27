@@ -21,24 +21,17 @@ async function testGeminiAPI() {
     // Initialize the API
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    // Test 1: gemini-2.5-flash
-    console.log('🧪 Test 1: Testing gemini-2.5-flash model...');
-    const flashModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const flashResult = await flashModel.generateContent('Say "Hello" if you can hear me.');
-    const flashText = flashResult.response.text();
-    console.log('✅ gemini-2.5-flash response:', flashText.substring(0, 50) + '...\n');
-
-    // Test 2: gemini-2.5-pro
-    console.log('🧪 Test 2: Testing gemini-2.5-pro model...');
-    const proModel = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
+    // Test 1: gemini-3-pro-preview
+    console.log('🧪 Test 1: Testing gemini-3-pro-preview model...');
+    const proModel = genAI.getGenerativeModel({ model: 'gemini-3-pro-preview' });
     const proResult = await proModel.generateContent('Say "Hello" if you can hear me.');
     const proText = proResult.response.text();
-    console.log('✅ gemini-2.5-pro response:', proText.substring(0, 50) + '...\n');
+    console.log('✅ gemini-3-pro-preview response:', proText.substring(0, 50) + '...\n');
 
-    // Test 3: Rate limit test (multiple quick requests)
-    console.log('🧪 Test 3: Testing rate limits (5 quick requests)...');
+    // Test 2: Rate limit test (multiple quick requests)
+    console.log('🧪 Test 2: Testing rate limits (5 quick requests)...');
     const promises = Array.from({ length: 5 }, (_, i) =>
-      flashModel.generateContent(`Test request ${i + 1}`)
+      proModel.generateContent(`Test request ${i + 1}`)
     );
     await Promise.all(promises);
     console.log('✅ All 5 requests succeeded\n');

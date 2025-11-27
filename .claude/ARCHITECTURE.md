@@ -386,192 +386,26 @@ Column within a Kanban view.
 
 ---
 
-## 📁 Folder Structure
+## 📁 Key File Locations
 
-```
-/work
-  /.claude
-    CLAUDE.md (main rules + imports)
-    ARCHITECTURE.md (this file)
-    API.md
-    PROMPTS.md
-    INTEGRATIONS.md
-    MULTI_TENANCY.md
-    /agents
-      context-navigator.md
-      api-architect.md
-      testing-architect.md
-      database-expert.md
-      code-reviewer.md
-  /src
-    /app
-      /api
-        /v1
-          /opportunities
-            route.ts (GET, POST)
-            /[id]
-              route.ts (GET, PATCH, DELETE)
-              /contacts (CRUD for opportunity contacts)
-              /gong-calls (CRUD for Gong calls)
-              /google-notes (CRUD for Google notes)
-              /granola-notes (CRUD for Granola notes)
-              /research-status (update research status)
-              /consolidate-insights (trigger insight consolidation)
-          /accounts (CRUD for accounts)
-          /contacts (CRUD for contacts)
-          /views (Kanban view CRUD)
-          /columns (Column CRUD)
-          /users (User management)
-          /invitations (Invitation CRUD)
-          /organization (Org settings)
-          /me (Current user endpoint)
-          /settings (User settings)
-          /gong-calls (Gong call operations)
-          /ai
-            /meeting-notes (AI parsing)
-            /parse-gong-transcript (transcript parsing)
-          /admin (Admin operations)
-      /opportunities
-        page.tsx (Kanban board)
-        loading.tsx
-        error.tsx
-        /[id]
-          page.tsx (Opportunity detail)
-          loading.tsx
-          error.tsx
-      /prospects
-        page.tsx (Prospects/accounts table)
-        /[id]
-          page.tsx (Account detail)
-      /deal-updates
-        page.tsx (Deal updates feed)
-      /key-deal-review
-        page.tsx (Key deals review)
-      /settings
-        page.tsx (Settings home)
-        /organization
-          page.tsx (Org settings)
-      /users
-        page.tsx (User management)
-      /auth
-        /login
-          page.tsx
-          actions.ts
-      layout.tsx (root layout with auth)
-      page.tsx (dashboard/home)
-      globals.css
-    /components
-      /kanban
-        KanbanBoard.tsx
-        KanbanBoardWrapper.tsx (client wrapper)
-        KanbanColumn.tsx
-        OpportunityCard.tsx
-        DraggableOpportunityCard.tsx (drag-and-drop wrapper)
-        ColumnTemplateDialog.tsx (apply templates)
-        ManageViewsDialog.tsx (view management)
-        WelcomeViewDialog.tsx (first-time setup)
-      /contacts
-        ContactCard.tsx
-        ContactList.tsx
-        OrgChartNode.tsx (org chart visualization)
-        OrgChartSection.tsx
-        OrgChartView.tsx
-      /whiteboard
-        WhiteboardTable.tsx (pinned opportunities table)
-      /auth
-        GoogleSignInButton.tsx
-      /forms
-        opportunity-form.tsx
-        account-form.tsx
-        contact-form.tsx
-        column-form.tsx
-      /features
-        /opportunities
-          opportunity-detail-client.tsx
-          google-notes-section.tsx
-        /prospects
-          prospect-detail-client.tsx
-          prospect-actions.tsx
-        /users
-          user-management-client.tsx
-          invite-user-dialog.tsx
-          edit-user-dialog.tsx
-          delete-user-dialog.tsx
-        /settings
-          organization-settings-client.tsx
-      /ui (shadcn/ui components)
-        button.tsx
-        card.tsx
-        dialog.tsx
-        tabs.tsx
-        dropdown-menu.tsx
-        tooltip.tsx
-        input.tsx
-        textarea.tsx
-        select.tsx
-        label.tsx
-        badge.tsx
-        avatar.tsx
-        separator.tsx
-        skeleton.tsx
-        scroll-area.tsx
-        checkbox.tsx
-        table.tsx
-        switch.tsx
-        alert-dialog.tsx
-        currency-input.tsx (custom component)
-        inline-editable.tsx (custom component)
-    /lib
-      /api (API helper functions)
-        accounts.ts
-        gong-calls.ts
-        google-notes.ts
-        granola-notes.ts
-        users.ts
-      /validations (Zod schemas)
-        opportunity.ts
-        account.ts
-        contact.ts
-        user.ts
-        organization.ts
-        invitation.ts
-        view.ts
-        column.ts
-        google-note.ts
-        granola-note.ts
-        gong-call.ts
-      /templates
-        column-templates.ts (Kanban view templates)
-      /utils
-        quarter.ts (quarter calculation utilities)
-        quarterly-view.ts (quarterly Kanban helpers)
-      db.ts (Prisma singleton)
-      utils.ts (cn, clsx helper)
-      format.ts (currency & date formatting)
-    /types
-      opportunity.ts
-      account.ts
-      contact.ts
-      organization.ts
-      invitation.ts
-      permissions.ts
-      view.ts
-      google-note.ts
-      granola-note.ts
-      gong-call.ts
-    /hooks
-      (create as needed)
-      useDebounce.ts
-      useOpportunities.ts
-  /prisma
-    schema.prisma
-    /migrations
-  /public
-    /images
-  /scripts
-    verify-auth-setup.mjs
-    fix-opportunity-organizations.ts
-```
+**Database & Types:**
+- Prisma schema: `prisma/schema.prisma`
+- Type definitions: `src/types/`
+- Validation schemas: `src/lib/validations/`
+
+**Application Code:**
+- API routes: `src/app/api/v1/`
+- Page components: `src/app/`
+- Reusable components: `src/components/`
+- Utility functions: `src/lib/`
+- shadcn/ui components: `src/components/ui/`
+
+**Documentation & Configuration:**
+- Documentation: `.claude/` (ARCHITECTURE.md, API.md, INTEGRATIONS.md, MULTI_TENANCY.md)
+- Reference docs: `.claude/reference/` (PROMPTS.md)
+- Subagent configs: `.claude/agents/`
+
+**Note:** Use Glob/Grep tools to find specific files when needed.
 
 ---
 

@@ -42,8 +42,8 @@ export const POLLING = {
 // ============================================================================
 
 export const AI_MODELS = {
-  GEMINI_DEFAULT: process.env.GEMINI_MODEL || "gemini-2.5-pro",
-  GEMINI_FLASH: "gemini-2.5-flash",
+  GEMINI_DEFAULT: process.env.GEMINI_MODEL || "gemini-3-pro-preview",
+  GEMINI_FLASH: "gemini-3-pro-preview",
 } as const;
 
 // ============================================================================

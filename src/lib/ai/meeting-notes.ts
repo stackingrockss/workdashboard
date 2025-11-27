@@ -167,8 +167,7 @@ Generate comprehensive, actionable intelligence that prepares the sales rep for 
 }
 
 /**
- * Generate pre-meeting notes using Gemini with automatic fallback
- * Tries gemini-2.5-pro first, falls back to gemini-2.5-flash if overloaded
+ * Generate pre-meeting notes using Gemini
  */
 export async function generatePreMeetingNotes(
   context: MeetingNotesContext
@@ -185,44 +184,21 @@ export async function generatePreMeetingNotes(
 
     const prompt = buildMeetingNotesPrompt(context);
 
-    // Try gemini-2.5-pro first for superior research quality
-    let result = await generateWithSystemInstruction(
+    // Use Gemini 3 Pro for superior research quality
+    const result = await generateWithSystemInstruction(
       prompt,
       VERIFIABLE_CONTEXT,
-      "gemini-2.5-pro",
-      2 // Only 2 retries for the premium model to fail faster
+      "gemini-3-pro-preview",
+      3 // Standard 3 retries
     );
 
-    // If gemini-2.5-pro fails with overload error, fallback to gemini-2.5-flash
     if (result.error) {
-      const errorMessage = result.error.toLowerCase();
-      const isOverloadError = errorMessage.includes("503") || errorMessage.includes("overloaded");
-
-      if (isOverloadError) {
-        console.log("gemini-2.5-pro overloaded, falling back to gemini-2.5-flash");
-
-        result = await generateWithSystemInstruction(
-          prompt,
-          VERIFIABLE_CONTEXT,
-          "gemini-2.5-flash",
-          3 // Standard 3 retries for fallback model
-        );
-
-        // If fallback succeeded, log it
-        if (!result.error) {
-          console.log("Successfully generated with gemini-2.5-flash fallback");
-        }
-      }
-
-      // If still errored after fallback attempt
-      if (result.error) {
-        return {
-          success: false,
-          notes: "",
-          fullBrief: "",
-          error: result.error,
-        };
-      }
+      return {
+        success: false,
+        notes: "",
+        fullBrief: "",
+        error: result.error,
+      };
     }
 
     return {

@@ -8,9 +8,11 @@ This file imports specialized documentation for different aspects of the codebas
 
 @.claude/ARCHITECTURE.md
 @.claude/API.md
-@.claude/PROMPTS.md
 @.claude/INTEGRATIONS.md
 @.claude/MULTI_TENANCY.md
+
+**Reference Documentation** (not auto-imported, access when needed):
+- `.claude/reference/PROMPTS.md` - Ready-to-use prompts for common development tasks
 
 ---
 
@@ -526,67 +528,20 @@ npm run migrate:fix-orgs    # Run org migration script
 
 ---
 
-## 🎯 Quick Decision Tree
+## 🎯 Quick Reference
 
-**When should I use "use client"?**
-- Need state (useState, useReducer)? → Yes
-- Need effects (useEffect, useLayoutEffect)? → Yes
-- Need event handlers (onClick, onChange)? → Yes
-- Need browser APIs (window, localStorage)? → Yes
-- Using @dnd-kit, reactflow, or client-only libraries? → Yes
-- Otherwise → No (use server component)
-
-**Which Zod schema should I use?**
-- Creating opportunity → `opportunityCreateSchema`
-- Updating opportunity → `opportunityUpdateSchema`
-- Creating account → `accountCreateSchema`
-- Updating account → `accountUpdateSchema`
-- Creating contact → `contactCreateSchema`
-- Updating user → `userUpdateSchema`
-- Creating invitation → `invitationCreateSchema`
-- See `/src/lib/validations/` for complete list
-
-**Which formatting function should I use?**
-- Display currency compact → `formatCurrencyCompact(amountArr)` → "$50K"
-- Display currency full → `formatCurrency(amountArr)` → "$50,000"
-- Currency input field → `formatCurrencyInput(1234567)` → "1,234,567"
-- Parse currency input → `parseCurrencyInput("$1,234,567")` → 1234567
-- Display date → `formatDateShort(closeDate)` → "Dec 31, 2024"
-
-**Which API endpoint should I call?**
-- See [API.md](.claude/API.md) for complete list
-- Opportunities: `/api/v1/opportunities`
-- Accounts: `/api/v1/accounts`
-- Contacts: `/api/v1/opportunities/[id]/contacts` or `/api/v1/accounts/[id]/contacts`
-- Gong calls: `/api/v1/opportunities/[id]/gong-calls`
-- Granola notes: `/api/v1/opportunities/[id]/granola-notes`
-- Google notes: `/api/v1/opportunities/[id]/google-notes`
-- Views: `/api/v1/views`
-- Users: `/api/v1/users`
-- Invitations: `/api/v1/invitations`
-- Organization: `/api/v1/organization`
-
-**How do I check permissions?**
-- See [MULTI_TENANCY.md](.claude/MULTI_TENANCY.md) for complete guide
-- Always scope by `organizationId` first
-- Check user role (ADMIN, MANAGER, REP, VIEWER)
-- Verify ownership for edit/delete operations
-- Use permission helpers from `/src/lib/permissions.ts`
-
-**Where should I put this code?**
-- React component → `/src/components/`
-- Page component → `/src/app/`
-- API route → `/src/app/api/v1/`
-- Type definition → `/src/types/`
-- Validation schema → `/src/lib/validations/`
-- Utility function → `/src/lib/`
-- Custom hook → `/src/hooks/`
+**Key Decisions:**
+- **"use client"?** Only if you need state, effects, event handlers, or browser APIs. Otherwise use server components.
+- **Validation schemas:** See `/src/lib/validations/` - use `*CreateSchema` for POST, `*UpdateSchema` for PATCH
+- **Formatting:** Use utilities from `/src/lib/format.ts` - never hardcode currency/date formatting
+- **API endpoints:** See [API.md](.claude/API.md) - all routes under `/api/v1/`
+- **Permissions:** See [MULTI_TENANCY.md](.claude/MULTI_TENANCY.md) - always scope by `organizationId`
 
 ---
 
 **For detailed information, see:**
 - Database schema & folder structure → [ARCHITECTURE.md](.claude/ARCHITECTURE.md)
 - API endpoints & patterns → [API.md](.claude/API.md)
-- Prompt templates → [PROMPTS.md](.claude/PROMPTS.md)
 - AI & external integrations → [INTEGRATIONS.md](.claude/INTEGRATIONS.md)
 - Multi-tenancy & permissions → [MULTI_TENANCY.md](.claude/MULTI_TENANCY.md)
+- Prompt templates → [reference/PROMPTS.md](.claude/reference/PROMPTS.md) (reference only)

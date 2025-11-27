@@ -175,24 +175,12 @@ ${callsData.join("\n")}
 Return your consolidated analysis as JSON only.`;
 
     // Call Gemini with system instruction
-    // Try gemini-2.5-pro first, fallback to gemini-2.5-flash if overloaded
-    let response = await generateWithSystemInstruction(
+    const response = await generateWithSystemInstruction(
       prompt,
       SYSTEM_INSTRUCTION,
-      "gemini-2.5-pro", // Use Pro model for superior synthesis and reasoning
+      "gemini-3-pro-preview", // Use Pro model for superior synthesis and reasoning
       3 // Max retries
     );
-
-    // If gemini-2.5-pro fails with 503/overload, fallback to gemini-2.5-flash
-    if (response.error && (response.error.includes("503") || response.error.includes("overloaded"))) {
-      console.log("gemini-2.5-pro overloaded, falling back to gemini-2.5-flash...");
-      response = await generateWithSystemInstruction(
-        prompt,
-        SYSTEM_INSTRUCTION,
-        "gemini-2.5-flash", // Fallback to 2.5 Flash model
-        3 // Max retries
-      );
-    }
 
     if (response.error || !response.text) {
       return {

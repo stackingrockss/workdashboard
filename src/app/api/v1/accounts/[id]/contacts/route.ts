@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { contactCreateSchema } from "@/lib/validations/contact";
+import { requireAuth } from "@/lib/auth";
 
 const prisma = new PrismaClient();
 
@@ -10,11 +11,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth();
     const { id } = await params;
 
-    // Verify account exists
-    const account = await prisma.account.findUnique({
-      where: { id },
+    // Verify account exists and belongs to user's organization
+    const account = await prisma.account.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id,
+      },
     });
 
     if (!account) {
@@ -62,6 +67,9 @@ export async function GET(
 
     return NextResponse.json(transformedContacts);
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     console.error("Error fetching contacts:", error);
     return NextResponse.json(
       { error: "Failed to fetch contacts" },
@@ -76,12 +84,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await requireAuth();
     const { id } = await params;
     const body = await request.json();
 
-    // Verify account exists
-    const account = await prisma.account.findUnique({
-      where: { id },
+    // Verify account exists and belongs to user's organization
+    const account = await prisma.account.findFirst({
+      where: {
+        id,
+        organizationId: user.organization.id,
+      },
     });
 
     if (!account) {
@@ -146,6 +158,10 @@ export async function POST(
 
     return NextResponse.json(transformedContact, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === "Unauthorized") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     console.error("Error creating contact:", error);
 
     if (error instanceof Error && error.name === "ZodError") {

@@ -231,7 +231,7 @@ Guidelines:
 `;
 ```
 
-**Model**: Use `gemini-2.5-pro` (for complex, structured generation)
+**Model**: Use `gemini-3-pro-preview` (for complex, structured generation)
 
 **Error Handling**:
 - Validate opportunity has minimum required data (contacts, close date)
