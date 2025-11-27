@@ -116,6 +116,7 @@ export async function GET(
     return NextResponse.json({
       tasks: tasks.map((task) => ({
         id: task.id,
+        taskListId: task.taskListId,
         googleTaskId: task.googleTaskId,
         title: task.title,
         notes: task.notes,
