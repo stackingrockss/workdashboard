@@ -82,7 +82,8 @@ export function SecFilingsSection({
 
   // Auto-refresh when filings are processing
   useEffect(() => {
-    const processingFilings = filings.filter(
+    const safeFilings = Array.isArray(filings) ? filings : [];
+    const processingFilings = safeFilings.filter(
       (f) => f.processingStatus === "processing"
     );
 
@@ -97,7 +98,8 @@ export function SecFilingsSection({
 
   // Show toast when filing completes
   useEffect(() => {
-    const completedFilings = filings.filter(
+    const safeFilings = Array.isArray(filings) ? filings : [];
+    const completedFilings = safeFilings.filter(
       (f) => f.processingStatus === "completed" && f.processedAt
     );
 

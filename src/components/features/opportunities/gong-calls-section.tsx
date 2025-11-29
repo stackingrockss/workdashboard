@@ -94,7 +94,8 @@ export function GongCallsSection({
 
   // Auto-refresh when any call is in "parsing" state
   useEffect(() => {
-    const parsingCalls = calls.filter((call) => call.parsingStatus === "parsing");
+    const safeCalls = Array.isArray(calls) ? calls : [];
+    const parsingCalls = safeCalls.filter((call) => call.parsingStatus === "parsing");
 
     if (parsingCalls.length === 0) return;
 
@@ -134,7 +135,8 @@ export function GongCallsSection({
 
   // Show completion toast when a call finishes parsing
   useEffect(() => {
-    const completedCalls = calls.filter(
+    const safeCalls = Array.isArray(calls) ? calls : [];
+    const completedCalls = safeCalls.filter(
       (call) => call.parsingStatus === "completed" && call.parsedAt
     );
 
@@ -244,7 +246,8 @@ export function GongCallsSection({
   };
 
   // Count parsed calls
-  const parsedCallCount = calls.filter(
+  const safeCallsForCount = Array.isArray(calls) ? calls : [];
+  const parsedCallCount = safeCallsForCount.filter(
     (call) => call.parsingStatus === "completed" && call.parsedAt
   ).length;
 

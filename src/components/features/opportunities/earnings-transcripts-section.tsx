@@ -98,7 +98,8 @@ export function EarningsTranscriptsSection({
 
   // Auto-refresh when transcripts are processing
   useEffect(() => {
-    const processingTranscripts = transcripts.filter(
+    const safeTranscripts = Array.isArray(transcripts) ? transcripts : [];
+    const processingTranscripts = safeTranscripts.filter(
       (t) => t.processingStatus === "processing"
     );
 
@@ -113,7 +114,8 @@ export function EarningsTranscriptsSection({
 
   // Show toast when transcript completes
   useEffect(() => {
-    const completedTranscripts = transcripts.filter(
+    const safeTranscripts = Array.isArray(transcripts) ? transcripts : [];
+    const completedTranscripts = safeTranscripts.filter(
       (t) => t.processingStatus === "completed" && t.processedAt
     );
 
