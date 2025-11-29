@@ -3,6 +3,13 @@ import { prisma } from "@/lib/db";
 import { columnCreateSchema } from "@/lib/validations/column";
 import { requireAuth } from "@/lib/auth";
 import { z } from "zod";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
 
 export async function GET(req: NextRequest) {
   try {
@@ -31,14 +38,43 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch columns for this view
-    const columns = await prisma.kanbanColumn.findMany({
-      where: {
-        viewId,
-      },
-      orderBy: { order: "asc" },
-    });
+    const whereClause = { viewId };
+    const usePagination = wantsPagination(searchParams);
 
-    return NextResponse.json({ columns });
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50,
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [total, columns] = await Promise.all([
+        prisma.kanbanColumn.count({ where: whereClause }),
+        prisma.kanbanColumn.findMany({
+          where: whereClause,
+          orderBy: { order: "asc" },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      return cachedResponse(
+        buildPaginatedResponse(columns, page, limit, total, 'columns'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all columns
+      const columns = await prisma.kanbanColumn.findMany({
+        where: whereClause,
+        orderBy: { order: "asc" },
+      });
+
+      return cachedResponse(buildLegacyResponse(columns, 'columns'), 'frequent');
+    }
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

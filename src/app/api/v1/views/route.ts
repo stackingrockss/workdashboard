@@ -9,6 +9,14 @@ import { requireAuth } from "@/lib/auth";
 import { viewCreateSchema, viewQuerySchema } from "@/lib/validations/view";
 import { SerializedKanbanView, MAX_VIEWS_PER_USER, PrismaViewWithColumns, PrismaWhereClause } from "@/types/view";
 import { getAllBuiltInViews } from "@/lib/utils/built-in-views";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
+import { Prisma } from "@prisma/client";
 
 /**
  * GET /api/v1/views
@@ -44,21 +52,20 @@ export async function GET(request: NextRequest) {
     if (params.organizationId) where.organizationId = params.organizationId;
     if (params.activeOnly) where.isActive = true;
 
-    // Fetch custom views from database
-    const dbViews = await prisma.kanbanView.findMany({
-      where,
-      include: params.includeColumns
-        ? {
-            columns: {
-              orderBy: { order: "asc" },
-            },
-          }
-        : undefined,
-      orderBy: [{ isActive: "desc" }, { lastAccessedAt: "desc" }, { createdAt: "desc" }],
-    });
+    // Define include for relations
+    const includeRelations = params.includeColumns
+      ? {
+          columns: {
+            orderBy: { order: "asc" as const },
+          },
+        }
+      : undefined;
 
-    // Transform to serialized format
-    const customViews: SerializedKanbanView[] = dbViews.map((view) => ({
+    // Helper to transform views
+    type ViewWithColumns = Prisma.KanbanViewGetPayload<{
+      include: typeof includeRelations;
+    }>;
+    const transformView = (view: ViewWithColumns): SerializedKanbanView => ({
       id: view.id,
       name: view.name,
       viewType: view.viewType,
@@ -81,7 +88,48 @@ export async function GET(request: NextRequest) {
             updatedAt: col.updatedAt.toISOString(),
           }))
         : [],
-    }));
+    });
+
+    const usePagination = wantsPagination(searchParams);
+
+    let customViews: SerializedKanbanView[];
+    let total: number;
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50,
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [totalCount, dbViews] = await Promise.all([
+        prisma.kanbanView.count({ where }),
+        prisma.kanbanView.findMany({
+          where,
+          include: includeRelations,
+          orderBy: [{ isActive: "desc" }, { lastAccessedAt: "desc" }, { createdAt: "desc" }],
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      total = totalCount;
+      customViews = dbViews.map(transformView);
+    } else {
+      // LEGACY MODE: No pagination params, return all views
+      const dbViews = await prisma.kanbanView.findMany({
+        where,
+        include: includeRelations,
+        orderBy: [{ isActive: "desc" }, { lastAccessedAt: "desc" }, { createdAt: "desc" }],
+      });
+
+      total = dbViews.length;
+      customViews = dbViews.map(transformView);
+    }
 
     // Get fiscal year start month from organization
     let fiscalYearStartMonth = 1;
@@ -109,7 +157,18 @@ export async function GET(request: NextRequest) {
     // Combine built-in and custom views (built-in first)
     const allViews = [...builtInViews, ...customViews];
 
-    return NextResponse.json({ views: allViews }, { status: 200 });
+    if (usePagination) {
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50,
+      });
+      return cachedResponse(
+        buildPaginatedResponse(allViews, parsed.page, parsed.limit ?? 50, total + builtInViews.length, 'views'),
+        'frequent'
+      );
+    } else {
+      return cachedResponse(buildLegacyResponse(allViews, 'views'), 'frequent');
+    }
   } catch (error) {
     console.error("Error fetching views:", error);
 

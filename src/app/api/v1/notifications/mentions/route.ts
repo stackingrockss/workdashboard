@@ -5,13 +5,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { notificationQuerySchema, notificationMarkReadSchema } from "@/lib/validations/notification";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
+import { Prisma } from "@prisma/client";
 
 /**
  * GET /api/v1/notifications/mentions
  * Fetch user's comment mentions (notifications)
  *
  * Query params:
- * - limit: number (default: 10, max: 100)
+ * - page: number (optional, pagination page)
+ * - limit: number (optional, pagination limit or legacy limit, default: 50 for pagination, 10 for legacy)
  * - includeRead: boolean (default: false)
  */
 export async function GET(request: NextRequest) {
@@ -32,44 +41,35 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { limit, includeRead } = queryValidation.data;
+    const { includeRead } = queryValidation.data;
 
-    // Fetch mentions for the current user
-    const mentions = await prisma.commentMention.findMany({
-      where: {
-        userId: user.id,
-        organizationId: user.organization.id,
-        ...(includeRead ? {} : { isRead: false }), // Only unread if includeRead is false
-      },
-      orderBy: { createdAt: "desc" },
-      take: limit,
-      include: {
-        comment: {
-          include: {
-            author: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                avatarUrl: true,
-              },
+    const whereClause = {
+      userId: user.id,
+      organizationId: user.organization.id,
+      ...(includeRead ? {} : { isRead: false }), // Only unread if includeRead is false
+    };
+
+    // Define include for relations
+    const includeRelations = {
+      comment: {
+        include: {
+          author: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              avatarUrl: true,
             },
           },
         },
       },
-    });
+    };
 
-    // Calculate unread count
-    const unreadCount = await prisma.commentMention.count({
-      where: {
-        userId: user.id,
-        organizationId: user.organization.id,
-        isRead: false,
-      },
-    });
-
-    // Transform mentions to include relevant comment data
-    const notifications = mentions.map((mention) => ({
+    // Helper to transform mentions
+    type MentionWithComment = Prisma.CommentMentionGetPayload<{
+      include: typeof includeRelations;
+    }>;
+    const transformMention = (mention: MentionWithComment) => ({
       id: mention.id,
       commentId: mention.commentId,
       comment: {
@@ -86,12 +86,65 @@ export async function GET(request: NextRequest) {
       isRead: mention.isRead,
       createdAt: mention.createdAt.toISOString(),
       readAt: mention.readAt?.toISOString() || null,
-    }));
-
-    return NextResponse.json({
-      notifications,
-      unreadCount,
     });
+
+    const usePagination = wantsPagination(searchParams);
+
+    // Calculate unread count (always include for notifications)
+    const unreadCount = await prisma.commentMention.count({
+      where: {
+        userId: user.id,
+        organizationId: user.organization.id,
+        isRead: false,
+      },
+    });
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50,
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [total, mentions] = await Promise.all([
+        prisma.commentMention.count({ where: whereClause }),
+        prisma.commentMention.findMany({
+          where: whereClause,
+          include: includeRelations,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const notifications = mentions.map(transformMention);
+
+      return cachedResponse({
+        ...buildPaginatedResponse(notifications, page, limit, total, 'notifications'),
+        unreadCount,
+      }, 'realtime');
+    } else {
+      // LEGACY MODE: Use existing limit param (default 10, max 100)
+      const legacyLimit = queryValidation.data.limit; // Already validated by notificationQuerySchema
+
+      const mentions = await prisma.commentMention.findMany({
+        where: whereClause,
+        include: includeRelations,
+        orderBy: { createdAt: "desc" },
+        take: legacyLimit,
+      });
+
+      const notifications = mentions.map(transformMention);
+
+      return cachedResponse({
+        ...buildLegacyResponse(notifications, 'notifications'),
+        unreadCount,
+      }, 'realtime');
+    }
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

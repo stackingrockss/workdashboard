@@ -3,12 +3,20 @@ import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db';
 import { googleTasksClient } from '@/lib/integrations/google-tasks';
 import { taskListCreateSchema } from '@/lib/validations/task';
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from '@/lib/utils/pagination';
+import { paginationQuerySchema } from '@/lib/validations/pagination';
+import { cachedResponse } from '@/lib/cache';
+import { Prisma } from '@prisma/client';
 
 /**
  * GET /api/v1/tasks/lists
  * Lists all task lists for the authenticated user
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     // Authenticate user
     const supabase = await createClient();
@@ -65,27 +73,70 @@ export async function GET() {
       );
     }
 
-    // Fetch task lists from database (cached from background sync)
-    const taskLists = await prisma.taskList.findMany({
-      where: { userId: user.id },
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        _count: {
-          select: { tasks: true },
-        },
+    const { searchParams } = new URL(req.url);
+    const whereClause = { userId: user.id };
+    const usePagination = wantsPagination(searchParams);
+
+    // Define include for relations
+    const includeRelations = {
+      _count: {
+        select: { tasks: true },
       },
+    };
+
+    // Helper to transform task lists
+    type TaskListWithCount = Prisma.TaskListGetPayload<{
+      include: typeof includeRelations;
+    }>;
+    const transformTaskList = (list: TaskListWithCount) => ({
+      id: list.id,
+      googleListId: list.googleListId,
+      title: list.title,
+      taskCount: list._count.tasks,
+      createdAt: list.createdAt.toISOString(),
+      updatedAt: list.updatedAt.toISOString(),
     });
 
-    return NextResponse.json({
-      taskLists: taskLists.map((list) => ({
-        id: list.id,
-        googleListId: list.googleListId,
-        title: list.title,
-        taskCount: list._count.tasks,
-        createdAt: list.createdAt.toISOString(),
-        updatedAt: list.updatedAt.toISOString(),
-      })),
-    });
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50,
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [total, taskLists] = await Promise.all([
+        prisma.taskList.count({ where: whereClause }),
+        prisma.taskList.findMany({
+          where: whereClause,
+          include: includeRelations,
+          orderBy: { updatedAt: 'desc' },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const transformedTaskLists = taskLists.map(transformTaskList);
+
+      return cachedResponse(
+        buildPaginatedResponse(transformedTaskLists, page, limit, total, 'taskLists'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all task lists
+      const taskLists = await prisma.taskList.findMany({
+        where: whereClause,
+        include: includeRelations,
+        orderBy: { updatedAt: 'desc' },
+      });
+
+      const transformedTaskLists = taskLists.map(transformTaskList);
+
+      return cachedResponse(buildLegacyResponse(transformedTaskLists, 'taskLists'), 'frequent');
+    }
   } catch (error) {
     console.error('Failed to list task lists:', error);
 

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { ProspectDetailClient } from "@/components/features/prospects/prospect-detail-client";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAuthOrRedirect } from "@/lib/auth";
 
 interface ProspectPageProps {
   params: Promise<{ id: string }>;
@@ -12,9 +12,8 @@ export const dynamic = "force-dynamic";
 export default async function ProspectDetailPage({ params }: ProspectPageProps) {
   const { id } = await params;
 
-  // Get current user to scope by organization
-  const user = await getCurrentUser();
-  if (!user || !user.organization) return notFound();
+  // Require authentication - redirects to /auth/login if not authenticated
+  const user = await requireAuthOrRedirect();
 
   const accountFromDB = await prisma.account.findFirst({
     where: {

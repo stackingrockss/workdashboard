@@ -4,7 +4,7 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { OpportunityDetailClient } from "@/components/features/opportunities/opportunity-detail-client";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAuthOrRedirect } from "@/lib/auth";
 import type { RiskAssessment } from "@/types/gong-call";
 
 interface OpportunityPageProps {
@@ -16,9 +16,8 @@ export const dynamic = "force-dynamic";
 export default async function OpportunityDetailPage({ params }: OpportunityPageProps) {
   const { id } = await params;
 
-  // Get current user to scope by organization
-  const user = await getCurrentUser();
-  if (!user || !user.organization) return notFound();
+  // Require authentication - redirects to /auth/login if not authenticated
+  const user = await requireAuthOrRedirect();
 
   const opportunityFromDB = await prisma.opportunity.findFirst({
     where: {

@@ -4,12 +4,20 @@ import { requireAuth } from "@/lib/auth";
 import { invitationCreateSchema } from "@/lib/validations/invitation";
 import { canInviteUsers } from "@/lib/permissions";
 import { generateInvitationToken } from "@/lib/organization";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
+import { Prisma } from "@prisma/client";
 
 /**
  * GET /api/v1/invitations
  * List all pending invitations for the organization
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth();
 
@@ -21,27 +29,30 @@ export async function GET() {
       );
     }
 
-    // Get all pending invitations for the organization
-    const invitations = await prisma.invitation.findMany({
-      where: {
-        organizationId: user.organization.id,
-        acceptedAt: null, // Only pending invitations
-      },
-      include: {
-        invitedBy: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            avatarUrl: true,
-          },
+    const { searchParams } = new URL(req.url);
+    const whereClause = {
+      organizationId: user.organization.id,
+      acceptedAt: null, // Only pending invitations
+    };
+    const usePagination = wantsPagination(searchParams);
+
+    // Define include for relations
+    const includeRelations = {
+      invitedBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          avatarUrl: true,
         },
       },
-      orderBy: { createdAt: "desc" },
-    });
+    };
 
-    // Transform to include status
-    const sanitizedInvitations = invitations.map((inv) => ({
+    // Helper to transform invitations
+    type InvitationWithUser = Prisma.InvitationGetPayload<{
+      include: typeof includeRelations;
+    }>;
+    const transformInvitation = (inv: InvitationWithUser) => ({
       id: inv.id,
       email: inv.email,
       role: inv.role,
@@ -49,13 +60,49 @@ export async function GET() {
       expiresAt: inv.expiresAt.toISOString(),
       createdAt: inv.createdAt.toISOString(),
       invitedBy: inv.invitedBy,
-      status: new Date() > inv.expiresAt ? "expired" : "pending",
-    }));
+      status: new Date() > inv.expiresAt ? "expired" as const : "pending" as const,
+    });
 
-    return NextResponse.json(
-      { invitations: sanitizedInvitations },
-      { status: 200 }
-    );
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50,
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [total, invitations] = await Promise.all([
+        prisma.invitation.count({ where: whereClause }),
+        prisma.invitation.findMany({
+          where: whereClause,
+          include: includeRelations,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const sanitizedInvitations = invitations.map(transformInvitation);
+
+      return cachedResponse(
+        buildPaginatedResponse(sanitizedInvitations, page, limit, total, 'invitations'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all invitations
+      const invitations = await prisma.invitation.findMany({
+        where: whereClause,
+        include: includeRelations,
+        orderBy: { createdAt: "desc" },
+      });
+
+      const sanitizedInvitations = invitations.map(transformInvitation);
+
+      return cachedResponse(buildLegacyResponse(sanitizedInvitations, 'invitations'), 'frequent');
+    }
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
