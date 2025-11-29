@@ -312,7 +312,7 @@ model User {
   organizationId          String?
   role                    UserRole             @default(REP)
   annualQuota             Int?
-  autoCreateFollowupTasks Boolean              @default(true)
+  autoCreateMeetingTasks  Boolean              @default(true)
   taskFilterPreference    String               @default("thisWeekOrNoDueDate")
   ownedAccounts           Account[]            @relation("AccountOwner")
   calendarEvents          CalendarEvent[]
@@ -393,6 +393,7 @@ model CalendarEvent {
   opportunityId       String?
   accountId           String?
   followupTaskCreated Boolean?            @default(false)
+  prepTaskCreated     Boolean?            @default(false)
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
   account        Account?            @relation(fields: [accountId], references: [id])

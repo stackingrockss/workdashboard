@@ -29,7 +29,7 @@ export default async function UserSettingsPage() {
       role: true,
       avatarUrl: true,
       annualQuota: true,
-      autoCreateFollowupTasks: true,
+      autoCreateMeetingTasks: true,
     },
   });
 

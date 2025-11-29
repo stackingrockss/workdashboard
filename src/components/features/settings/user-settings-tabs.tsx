@@ -16,7 +16,7 @@ interface UserSettingsTabsProps {
     role: string;
     avatarUrl: string | null;
     annualQuota: number | null;
-    autoCreateFollowupTasks?: boolean;
+    autoCreateMeetingTasks?: boolean;
   };
 }
 

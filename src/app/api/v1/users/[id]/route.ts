@@ -109,11 +109,11 @@ export async function PATCH(
     const data = parsed.data;
     const isUpdatingSelf = id === user.id;
 
-    // Users can update their own preferences (autoCreateFollowupTasks)
+    // Users can update their own preferences (autoCreateMeetingTasks)
     // But need admin/manager permission to update other fields
     const isOnlyUpdatingPreferences =
       Object.keys(data).length === 1 &&
-      data.autoCreateFollowupTasks !== undefined;
+      data.autoCreateMeetingTasks !== undefined;
 
     // Check permission to manage users (unless updating own preferences)
     if (!isUpdatingSelf && !canManageUsers(user)) {
@@ -194,8 +194,8 @@ export async function PATCH(
         }),
         ...(data.name !== undefined && { name: data.name }),
         ...(data.annualQuota !== undefined && { annualQuota: data.annualQuota }),
-        ...(data.autoCreateFollowupTasks !== undefined && {
-          autoCreateFollowupTasks: data.autoCreateFollowupTasks,
+        ...(data.autoCreateMeetingTasks !== undefined && {
+          autoCreateMeetingTasks: data.autoCreateMeetingTasks,
         }),
       },
       include: {
@@ -233,7 +233,7 @@ export async function PATCH(
       role: updatedUser.role,
       managerId: updatedUser.managerId,
       annualQuota: updatedUser.annualQuota,
-      autoCreateFollowupTasks: updatedUser.autoCreateFollowupTasks,
+      autoCreateMeetingTasks: updatedUser.autoCreateMeetingTasks,
       manager: updatedUser.manager,
       directReports: updatedUser.directReports,
       opportunityCount: updatedUser._count.opportunities,

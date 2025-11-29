@@ -24,7 +24,7 @@ export const userUpdateSchema = z.object({
   role: userRoleSchema.optional(),
   managerId: z.string().nullable().optional(),
   annualQuota: z.number().int().positive('Quota must be a positive number').nullable().optional(),
-  autoCreateFollowupTasks: z.boolean().optional(),
+  autoCreateMeetingTasks: z.boolean().optional(),
   taskFilterPreference: z.enum([
     'thisWeekOrNoDueDate',
     'thisWeek',
