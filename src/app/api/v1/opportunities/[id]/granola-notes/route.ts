@@ -5,19 +5,58 @@ import { granolaCreateSchema } from "@/lib/validations/granola-note";
 import { inngest } from "@/lib/inngest/client";
 import { ParsingStatus } from "@prisma/client";
 import { recalculateNextCallDateForOpportunity } from "@/lib/utils/next-call-date-calculator";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
 
 // GET /api/v1/opportunities/[id]/granola-notes - List all granola notes for an opportunity
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   try {
-    const notes = await prisma.granolaNote.findMany({
-      where: { opportunityId: id },
-      orderBy: { createdAt: "desc" },
-    });
-    return NextResponse.json({ notes });
+    const searchParams = req.nextUrl.searchParams;
+    const whereClause = { opportunityId: id };
+    const usePagination = wantsPagination(searchParams);
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 25, // Default to 25 (lower due to large transcript data)
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 25;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [total, notes] = await Promise.all([
+        prisma.granolaNote.count({ where: whereClause }),
+        prisma.granolaNote.findMany({
+          where: whereClause,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      return cachedResponse(
+        buildPaginatedResponse(notes, page, limit, total, 'notes'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all notes
+      const notes = await prisma.granolaNote.findMany({
+        where: whereClause,
+        orderBy: { createdAt: "desc" },
+      });
+      return cachedResponse(buildLegacyResponse(notes, 'notes'), 'frequent');
+    }
   } catch {
     return NextResponse.json({ error: "Failed to fetch Granola notes" }, { status: 500 });
   }

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { EditableCell } from "../EditableCell";
 import {
   Select,
@@ -28,9 +29,17 @@ export function EditableForecastCell({
   onSave,
   className,
 }: EditableForecastCellProps) {
+  const [open, setOpen] = useState(false);
+
   const formatForecastLabel = (forecast: ForecastCategory | null | undefined) => {
     if (!forecast) return null;
     return FORECAST_CATEGORIES.find((f) => f.value === forecast)?.label || forecast;
+  };
+
+  const handleSave = async (newValue: string) => {
+    const valueToSave = newValue === "none" ? null : (newValue as ForecastCategory);
+    await onSave(valueToSave);
+    setOpen(false);
   };
 
   return (
@@ -38,6 +47,7 @@ export function EditableForecastCell({
       value={value}
       onSave={onSave}
       className={className}
+      autoSave={false}
       renderDisplay={(val) =>
         val ? (
           <Badge variant="secondary" className="capitalize">
@@ -47,12 +57,14 @@ export function EditableForecastCell({
           <span className="text-muted-foreground">-</span>
         )
       }
-      renderEdit={({ value: editValue, onChange }) => (
+      renderEdit={({ value: editValue }) => (
         <Select
           value={editValue || "none"}
-          onValueChange={(v) => onChange(v === "none" ? null : v as ForecastCategory)}
+          onValueChange={handleSave}
+          open={open}
+          onOpenChange={setOpen}
         >
-          <SelectTrigger className="h-8">
+          <SelectTrigger className="h-8" onClick={(e) => e.stopPropagation()}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

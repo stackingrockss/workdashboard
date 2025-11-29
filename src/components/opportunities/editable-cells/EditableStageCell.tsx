@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { EditableCell } from "../EditableCell";
 import {
   Select,
@@ -19,8 +20,15 @@ interface EditableStageCellProps {
 }
 
 export function EditableStageCell({ value, onSave, className }: EditableStageCellProps) {
+  const [open, setOpen] = useState(false);
+
   const formatStageLabel = (stage: OpportunityStage) => {
     return STAGE_OPTIONS.find((s) => s.value === stage)?.label || stage;
+  };
+
+  const handleSave = async (newValue: OpportunityStage) => {
+    await onSave(newValue);
+    setOpen(false);
   };
 
   return (
@@ -28,14 +36,20 @@ export function EditableStageCell({ value, onSave, className }: EditableStageCel
       value={value}
       onSave={onSave}
       className={className}
+      autoSave={false}
       renderDisplay={(val) => (
         <Badge variant="outline" className="capitalize">
           {formatStageLabel(val)}
         </Badge>
       )}
-      renderEdit={({ value: editValue, onChange }) => (
-        <Select value={editValue} onValueChange={onChange}>
-          <SelectTrigger className="h-8">
+      renderEdit={({ value: editValue }) => (
+        <Select
+          value={editValue}
+          onValueChange={handleSave}
+          open={open}
+          onOpenChange={setOpen}
+        >
+          <SelectTrigger className="h-8" onClick={(e) => e.stopPropagation()}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

@@ -5,10 +5,17 @@ import { gongCallCreateSchema } from "@/lib/validations/gong-call";
 import { triggerTranscriptParsingAsync } from "@/lib/ai/background-transcript-parsing";
 import { requireAuth } from "@/lib/auth";
 import { recalculateNextCallDateForOpportunity } from "@/lib/utils/next-call-date-calculator";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
 
 // GET /api/v1/opportunities/[id]/gong-calls - List all Gong calls for an opportunity
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -27,11 +34,43 @@ export async function GET(
       return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });
     }
 
-    const calls = await prisma.gongCall.findMany({
-      where: { opportunityId: id },
-      orderBy: { createdAt: "desc" },
-    });
-    return NextResponse.json({ calls });
+    const searchParams = req.nextUrl.searchParams;
+    const whereClause = { opportunityId: id };
+    const usePagination = wantsPagination(searchParams);
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 25, // Default to 25 (lower due to large transcript data)
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 25;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [total, calls] = await Promise.all([
+        prisma.gongCall.count({ where: whereClause }),
+        prisma.gongCall.findMany({
+          where: whereClause,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      return cachedResponse(
+        buildPaginatedResponse(calls, page, limit, total, 'calls'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all calls
+      const calls = await prisma.gongCall.findMany({
+        where: whereClause,
+        orderBy: { createdAt: "desc" },
+      });
+      return cachedResponse(buildLegacyResponse(calls, 'calls'), 'frequent');
+    }
   } catch (error) {
     console.error('Failed to fetch Gong calls:', error);
     return NextResponse.json({ error: "Failed to fetch Gong calls" }, { status: 500 });

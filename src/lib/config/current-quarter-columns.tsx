@@ -1,6 +1,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, ArrowUpDown } from "lucide-react";
+import Link from "next/link";
 import { Opportunity } from "@/types/opportunity";
 import {
   EditableStageCell,
@@ -164,7 +165,12 @@ export function createCurrentQuarterColumns(
           {row.original.riskNotes && (
             <AlertTriangle className="h-4 w-4 text-yellow-600 dark:text-yellow-500 flex-shrink-0" />
           )}
-          <span className="truncate max-w-[200px] font-medium">{row.original.name}</span>
+          <Link
+            href={`/opportunities/${row.original.id}`}
+            className="truncate max-w-[200px] font-medium text-primary hover:underline"
+          >
+            {row.original.name}
+          </Link>
         </div>
       ),
       meta: {
@@ -186,9 +192,22 @@ export function createCurrentQuarterColumns(
           <ArrowUpDown className="ml-1 h-3 w-3" />
         </Button>
       ),
-      cell: ({ row }) => (
-        <span className="truncate max-w-[150px] block">{row.original.account?.name || "-"}</span>
-      ),
+      cell: ({ row }) => {
+        const accountName = row.original.account?.name;
+
+        if (!accountName) {
+          return <span className="text-muted-foreground">-</span>;
+        }
+
+        return (
+          <Link
+            href={`/opportunities/${row.original.id}`}
+            className="truncate max-w-[150px] block text-primary hover:underline"
+          >
+            {accountName}
+          </Link>
+        );
+      },
       meta: {
         className: "",
       },

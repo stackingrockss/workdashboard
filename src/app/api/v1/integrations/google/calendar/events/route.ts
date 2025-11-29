@@ -6,6 +6,13 @@ import {
   calendarEventFilterSchema,
   createCalendarEventSchema,
 } from '@/lib/validations/calendar';
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from '@/lib/utils/pagination';
+import { paginationQuerySchema } from '@/lib/validations/pagination';
+import { cachedResponse } from '@/lib/cache';
 
 /**
  * GET /api/v1/integrations/google/calendar/events
@@ -120,35 +127,41 @@ export async function GET(req: NextRequest) {
       whereClause.opportunityId = filters.opportunityId;
     }
 
-    // Fetch events from database
-    const maxResults = filters.maxResults || 50;
-    const events = await prisma.calendarEvent.findMany({
-      where: whereClause,
-      orderBy: {
-        startTime: 'asc',
-      },
-      take: maxResults,
-      select: {
-        id: true, // Include the database ID for linking
-        googleEventId: true,
-        summary: true,
-        description: true,
-        location: true,
-        startTime: true,
-        endTime: true,
-        attendees: true,
-        isExternal: true,
-        organizerEmail: true,
-        meetingUrl: true,
-        opportunityId: true,
-        accountId: true,
-        source: true,
-      },
-    });
+    // Define select for event fields
+    const selectFields = {
+      id: true, // Include the database ID for linking
+      googleEventId: true,
+      summary: true,
+      description: true,
+      location: true,
+      startTime: true,
+      endTime: true,
+      attendees: true,
+      isExternal: true,
+      organizerEmail: true,
+      meetingUrl: true,
+      opportunityId: true,
+      accountId: true,
+      source: true,
+    };
 
-    // Transform to match Google Calendar client response format
-    // IMPORTANT: Use database `id` for linking, not googleEventId
-    const transformedEvents = events.map(event => ({
+    // Helper to transform events
+    const transformEvent = (event: {
+      id: string;
+      googleEventId: string | null;
+      summary: string | null;
+      description: string | null;
+      location: string | null;
+      startTime: Date | null;
+      endTime: Date | null;
+      attendees: string[];
+      isExternal: boolean | null;
+      organizerEmail: string | null;
+      meetingUrl: string | null;
+      opportunityId: string | null;
+      accountId: string | null;
+      source: string;
+    }) => ({
       id: event.id, // Database ID - used for linking Gong calls/Granola notes
       googleEventId: event.googleEventId, // Google's event ID - for reference
       summary: event.summary,
@@ -161,14 +174,54 @@ export async function GET(req: NextRequest) {
       organizerEmail: event.organizerEmail,
       meetingUrl: event.meetingUrl,
       source: event.source,
-    }));
-
-    return NextResponse.json({
-      events: transformedEvents,
-      nextPageToken: undefined, // Database queries don't use pagination tokens
-      hasMore: events.length === maxResults, // If we got max results, there might be more
-      source: 'database',
     });
+
+    // Detect if client wants pagination
+    const usePagination = wantsPagination(searchParams);
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50, // Default to 50
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [total, events] = await Promise.all([
+        prisma.calendarEvent.count({ where: whereClause }),
+        prisma.calendarEvent.findMany({
+          where: whereClause,
+          orderBy: { startTime: 'asc' },
+          select: selectFields,
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const transformedEvents = events.map(transformEvent);
+      return cachedResponse(
+        buildPaginatedResponse(transformedEvents, page, limit, total, 'events'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: Use maxResults for backwards compatibility
+      const maxResults = filters.maxResults || 50;
+      const events = await prisma.calendarEvent.findMany({
+        where: whereClause,
+        orderBy: { startTime: 'asc' },
+        take: maxResults,
+        select: selectFields,
+      });
+
+      const transformedEvents = events.map(transformEvent);
+      return cachedResponse(
+        buildLegacyResponse(transformedEvents, 'events'),
+        'frequent'
+      );
+    }
   } catch (error) {
     console.error('Failed to fetch calendar events:', error);
 
