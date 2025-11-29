@@ -65,6 +65,8 @@ export function EarningsTranscriptsSection({
   opportunityId,
 }: EarningsTranscriptsSectionProps) {
   const [transcripts, setTranscripts] = useState<EarningsTranscript[]>([]);
+  // Defensive check - ensure transcripts is always an array
+  const safeTranscripts = Array.isArray(transcripts) ? transcripts : [];
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
@@ -98,7 +100,6 @@ export function EarningsTranscriptsSection({
 
   // Auto-refresh when transcripts are processing
   useEffect(() => {
-    const safeTranscripts = Array.isArray(transcripts) ? transcripts : [];
     const processingTranscripts = safeTranscripts.filter(
       (t) => t.processingStatus === "processing"
     );
@@ -114,7 +115,6 @@ export function EarningsTranscriptsSection({
 
   // Show toast when transcript completes
   useEffect(() => {
-    const safeTranscripts = Array.isArray(transcripts) ? transcripts : [];
     const completedTranscripts = safeTranscripts.filter(
       (t) => t.processingStatus === "completed" && t.processedAt
     );
@@ -224,7 +224,7 @@ export function EarningsTranscriptsSection({
         />
       )}
 
-      {transcripts.length === 0 ? (
+      {safeTranscripts.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -242,7 +242,7 @@ export function EarningsTranscriptsSection({
         </Card>
       ) : (
         <div className="space-y-4">
-          {transcripts.map((transcript) => (
+          {safeTranscripts.map((transcript) => (
             <EarningsTranscriptCard
               key={transcript.id}
               transcript={transcript}

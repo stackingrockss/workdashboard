@@ -53,6 +53,8 @@ interface GranolaNoteSectionProps {
 }
 
 export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarEvent, onNoteAdded }: GranolaNoteSectionProps) {
+  // Defensive check - ensure notes is an array
+  const safeNotes = Array.isArray(notes) ? notes : [];
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
@@ -193,13 +195,13 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
         </Button>
       </div>
 
-      {notes.length === 0 ? (
+      {safeNotes.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No Granola notes yet. Add meeting notes to track call history.
         </p>
       ) : (
         <div className="space-y-2">
-          {notes.map((note) => (
+          {safeNotes.map((note) => (
             <div
               key={note.id}
               className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 group"

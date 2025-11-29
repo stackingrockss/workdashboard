@@ -57,6 +57,8 @@ export function SecFilingsSection({
   opportunityId,
 }: SecFilingsSectionProps) {
   const [filings, setFilings] = useState<SecFiling[]>([]);
+  // Defensive check - ensure filings is always an array
+  const safeFilings = Array.isArray(filings) ? filings : [];
   const [isLoading, setIsLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
@@ -82,7 +84,6 @@ export function SecFilingsSection({
 
   // Auto-refresh when filings are processing
   useEffect(() => {
-    const safeFilings = Array.isArray(filings) ? filings : [];
     const processingFilings = safeFilings.filter(
       (f) => f.processingStatus === "processing"
     );
@@ -98,7 +99,6 @@ export function SecFilingsSection({
 
   // Show toast when filing completes
   useEffect(() => {
-    const safeFilings = Array.isArray(filings) ? filings : [];
     const completedFilings = safeFilings.filter(
       (f) => f.processingStatus === "completed" && f.processedAt
     );
@@ -206,7 +206,7 @@ export function SecFilingsSection({
         </Card>
       )}
 
-      {filings.length === 0 ? (
+      {safeFilings.length === 0 ? (
         <Card>
           <CardContent className="text-center py-12">
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -224,7 +224,7 @@ export function SecFilingsSection({
         </Card>
       ) : (
         <div className="space-y-4">
-          {filings.map((filing) => (
+          {safeFilings.map((filing) => (
             <SecFilingCard
               key={filing.id}
               filing={filing}

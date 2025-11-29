@@ -22,6 +22,8 @@ interface GoogleNotesSectionProps {
 }
 
 export function GoogleNotesSection({ opportunityId, notes }: GoogleNotesSectionProps) {
+  // Defensive check - ensure notes is an array
+  const safeNotes = Array.isArray(notes) ? notes : [];
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
@@ -76,13 +78,13 @@ export function GoogleNotesSection({ opportunityId, notes }: GoogleNotesSectionP
         </Button>
       </div>
 
-      {notes.length === 0 ? (
+      {safeNotes.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No Google notes yet. Link Google Docs or other notes to track important information.
         </p>
       ) : (
         <div className="space-y-2">
-          {notes.map((note) => (
+          {safeNotes.map((note) => (
             <div
               key={note.id}
               className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50 group"

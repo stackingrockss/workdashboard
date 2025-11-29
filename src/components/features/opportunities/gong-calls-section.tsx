@@ -65,6 +65,8 @@ export function GongCallsSection({
   preselectedCalendarEvent,
   onCallAdded,
 }: GongCallsSectionProps) {
+  // Defensive check - ensure calls is an array (shared for all uses)
+  const safeCalls = Array.isArray(calls) ? calls : [];
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState("");
@@ -94,7 +96,6 @@ export function GongCallsSection({
 
   // Auto-refresh when any call is in "parsing" state
   useEffect(() => {
-    const safeCalls = Array.isArray(calls) ? calls : [];
     const parsingCalls = safeCalls.filter((call) => call.parsingStatus === "parsing");
 
     if (parsingCalls.length === 0) return;
@@ -135,7 +136,6 @@ export function GongCallsSection({
 
   // Show completion toast when a call finishes parsing
   useEffect(() => {
-    const safeCalls = Array.isArray(calls) ? calls : [];
     const completedCalls = safeCalls.filter(
       (call) => call.parsingStatus === "completed" && call.parsedAt
     );
@@ -246,8 +246,7 @@ export function GongCallsSection({
   };
 
   // Count parsed calls
-  const safeCallsForCount = Array.isArray(calls) ? calls : [];
-  const parsedCallCount = safeCallsForCount.filter(
+  const parsedCallCount = safeCalls.filter(
     (call) => call.parsingStatus === "completed" && call.parsedAt
   ).length;
 
@@ -332,13 +331,13 @@ export function GongCallsSection({
         </div>
       )}
 
-      {calls.length === 0 ? (
+      {safeCalls.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No Gong calls yet. Add call recordings to track conversation history.
         </p>
       ) : (
         <div className="space-y-2">
-          {calls.map((call) => {
+          {safeCalls.map((call) => {
             const isParsing = call.parsingStatus === "parsing";
             const hasFailed = call.parsingStatus === "failed";
             const hasCompleted = call.parsingStatus === "completed" && !!call.parsedAt;
