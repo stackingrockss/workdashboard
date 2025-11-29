@@ -10,6 +10,13 @@ import {
   sortTimelineEvents,
   type TimelineEvent,
 } from "@/types/timeline";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
 
 export async function GET(
   request: NextRequest,
@@ -120,14 +127,49 @@ export async function GET(
     const allEvents: TimelineEvent[] = [...gongEvents, ...granolaEvents];
     const sortedEvents = sortTimelineEvents(allEvents);
 
-    return NextResponse.json({
-      events: sortedEvents,
-      meta: {
-        totalCount: sortedEvents.length,
-        gongCallCount: gongEvents.length,
-        granolaNotesCount: granolaEvents.length,
-      },
-    });
+    // Check if pagination is requested
+    const usePagination = wantsPagination(searchParams);
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50, // Default to 50
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50;
+      const skip = (page - 1) * limit;
+      const total = sortedEvents.length;
+
+      // Apply pagination to sorted events
+      const paginatedEvents = sortedEvents.slice(skip, skip + limit);
+
+      const response = buildPaginatedResponse(paginatedEvents, page, limit, total, 'events');
+      return cachedResponse(
+        {
+          ...response,
+          meta: {
+            gongCallCount: gongEvents.length,
+            granolaNotesCount: granolaEvents.length,
+          },
+        },
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all events
+      const response = buildLegacyResponse(sortedEvents, 'events');
+      return cachedResponse(
+        {
+          ...response,
+          meta: {
+            totalCount: sortedEvents.length,
+            gongCallCount: gongEvents.length,
+            granolaNotesCount: granolaEvents.length,
+          },
+        },
+        'frequent'
+      );
+    }
   } catch (error) {
     console.error("Error fetching timeline:", error);
     return NextResponse.json(

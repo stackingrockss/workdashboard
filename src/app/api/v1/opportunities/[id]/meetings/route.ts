@@ -3,10 +3,17 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { createManualMeetingSchema } from "@/lib/validations/calendar";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
 
 // GET /api/v1/opportunities/[id]/meetings - List all calendar events for an opportunity
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
@@ -25,16 +32,52 @@ export async function GET(
       return NextResponse.json({ error: "Opportunity not found" }, { status: 404 });
     }
 
-    const events = await prisma.calendarEvent.findMany({
-      where: { opportunityId: id },
-      include: {
-        gongCalls: true,
-        granolaNotes: true,
-      },
-      orderBy: { startTime: "desc" },
-    });
+    const searchParams = req.nextUrl.searchParams;
+    const whereClause = { opportunityId: id };
+    const usePagination = wantsPagination(searchParams);
 
-    return NextResponse.json({ events });
+    // Define include for relations
+    const includeRelations = {
+      gongCalls: true,
+      granolaNotes: true,
+    };
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50, // Default to 50
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [total, events] = await Promise.all([
+        prisma.calendarEvent.count({ where: whereClause }),
+        prisma.calendarEvent.findMany({
+          where: whereClause,
+          include: includeRelations,
+          orderBy: { startTime: "desc" },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      return cachedResponse(
+        buildPaginatedResponse(events, page, limit, total, 'events'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all events
+      const events = await prisma.calendarEvent.findMany({
+        where: whereClause,
+        include: includeRelations,
+        orderBy: { startTime: "desc" },
+      });
+
+      return cachedResponse(buildLegacyResponse(events, 'events'), 'frequent');
+    }
   } catch (error) {
     console.error("Failed to fetch meetings:", error);
     if (error instanceof Error && error.message === "Unauthorized") {
