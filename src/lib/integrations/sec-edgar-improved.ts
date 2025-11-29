@@ -124,10 +124,45 @@ async function shouldRefreshCache(): Promise<boolean> {
 }
 
 /**
+ * Get list of unique tickers from accounts in the database
+ * This limits the cache refresh to only companies actively being tracked
+ */
+async function getActiveAccountTickers(): Promise<string[]> {
+  const accounts = await prisma.account.findMany({
+    where: {
+      ticker: {
+        not: null,
+      },
+    },
+    select: {
+      ticker: true,
+    },
+    distinct: ['ticker'],
+  });
+
+  const tickers = accounts
+    .map(a => a.ticker)
+    .filter((ticker): ticker is string => ticker !== null && ticker.length > 0)
+    .map(ticker => ticker.toUpperCase());
+
+  console.log(`Found ${tickers.length} unique tickers in accounts`);
+  return tickers;
+}
+
+/**
  * Fetch and cache company tickers data in database
+ * Only caches companies that have active accounts with tickers
  */
 async function refreshSecCompanyCache(): Promise<void> {
   console.log("Refreshing SEC company cache from API...");
+
+  // Get list of active tickers from accounts
+  const activeTickers = await getActiveAccountTickers();
+
+  if (activeTickers.length === 0) {
+    console.log("No accounts with tickers found, skipping refresh");
+    return;
+  }
 
   const response = await fetchWithRetry(
     async () => {
@@ -148,14 +183,29 @@ async function refreshSecCompanyCache(): Promise<void> {
   );
 
   const data: CompanyTickersData = await response.json();
-  console.log(`Fetched ${Object.keys(data).length} companies from SEC`);
+  const allCompanies = Object.values(data);
 
-  // Batch upsert to database
-  const companies = Object.values(data);
-  const batchSize = 1000;
+  // Filter to only companies with active account tickers
+  const activeTickerSet = new Set(activeTickers);
+  const companies = allCompanies.filter(company =>
+    activeTickerSet.has(company.ticker.toUpperCase())
+  );
+
+  console.log(`Filtered ${allCompanies.length} companies to ${companies.length} active companies`);
+
+  if (companies.length === 0) {
+    console.log("No matching companies found in SEC data");
+    return;
+  }
+
+  // Batch upsert to database (batch size can be larger since we have fewer companies)
+  const batchSize = 50; // Conservative batch size
+  const startTime = Date.now();
 
   for (let i = 0; i < companies.length; i += batchSize) {
     const batch = companies.slice(i, i + batchSize);
+    const batchNumber = Math.floor(i / batchSize) + 1;
+    const totalBatches = Math.ceil(companies.length / batchSize);
 
     await prisma.$transaction(
       batch.map((company) =>
@@ -176,11 +226,12 @@ async function refreshSecCompanyCache(): Promise<void> {
     );
 
     console.log(
-      `Cached ${Math.min(i + batchSize, companies.length)}/${companies.length} companies`
+      `[Batch ${batchNumber}/${totalBatches}] Cached ${Math.min(i + batchSize, companies.length)}/${companies.length} companies`
     );
   }
 
-  console.log("SEC company cache refresh completed");
+  const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1);
+  console.log(`SEC company cache refresh completed in ${totalDuration}s for ${companies.length} companies`);
 }
 
 /**
