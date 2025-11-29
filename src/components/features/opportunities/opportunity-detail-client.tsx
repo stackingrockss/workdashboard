@@ -113,8 +113,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
   const [researchStatus, setResearchStatus] = useState(opportunity.accountResearchStatus);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  const [allGongCalls, setAllGongCalls] = useState<GongCall[]>(opportunity.gongCalls || []);
-  const [allGranolaNotes, setAllGranolaNotes] = useState<GranolaNote[]>(opportunity.granolaNotes || []);
+  const [allGongCalls, setAllGongCalls] = useState<GongCall[]>(Array.isArray(opportunity.gongCalls) ? opportunity.gongCalls : []);
+  const [allGranolaNotes, setAllGranolaNotes] = useState<GranolaNote[]>(Array.isArray(opportunity.granolaNotes) ? opportunity.granolaNotes : []);
   const [loadingCalendar, setLoadingCalendar] = useState(true);
   const [addGongDialogEvent, setAddGongDialogEvent] = useState<{id: string; title: string; startTime: string | Date} | null>(null);
   const [addGranolaDialogEvent, setAddGranolaDialogEvent] = useState<{id: string; title: string; startTime: string | Date} | null>(null);
