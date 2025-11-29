@@ -87,11 +87,14 @@ export function UpcomingMeetingsWidget() {
         `/api/v1/integrations/google/calendar/events?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&externalOnly=false`
       );
 
+      const safeDataEvents = Array.isArray(data.events) ? data.events : [];
+
       let internalCount = 0;
       if (allEventsResponse.ok) {
         const allData = await allEventsResponse.json();
-        const totalEvents = allData.events.length;
-        const externalCount = data.events.length;
+        const safeAllDataEvents = Array.isArray(allData.events) ? allData.events : [];
+        const totalEvents = safeAllDataEvents.length;
+        const externalCount = safeDataEvents.length;
         internalCount = totalEvents - externalCount;
 
         setDebugInfo({
@@ -107,7 +110,7 @@ export function UpcomingMeetingsWidget() {
           totalEvents,
           externalCount,
           internalCount,
-          externalEvents: data.events.map((e: CalendarEvent) => ({
+          externalEvents: safeDataEvents.map((e: CalendarEvent) => ({
             summary: e.summary,
             attendees: e.attendees,
             isExternal: e.isExternal,
@@ -116,7 +119,7 @@ export function UpcomingMeetingsWidget() {
       }
 
       // Take only the first 5 upcoming meetings
-      setEvents(data.events.slice(0, 5));
+      setEvents(safeDataEvents.slice(0, 5));
     } catch (err) {
       console.error("Failed to load upcoming meetings:", err);
       setError("Failed to load meetings");
