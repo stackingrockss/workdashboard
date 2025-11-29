@@ -12,7 +12,7 @@ export const granolaCreateSchema = z.object({
   transcriptText: z
     .string()
     .min(100, "Transcript must be at least 100 characters")
-    .max(100000, "Transcript must not exceed 100,000 characters")
+    .max(250000, "Transcript must not exceed 250,000 characters")
     .optional(),
 });
 
@@ -25,7 +25,7 @@ export const granolaUpdateSchema = z.object({
   transcriptText: z
     .string()
     .min(100, "Transcript must be at least 100 characters")
-    .max(100000, "Transcript must not exceed 100,000 characters")
+    .max(250000, "Transcript must not exceed 250,000 characters")
     .nullable()
     .optional(),
 });

@@ -10,7 +10,7 @@ export const gongCallCreateSchema = z.object({
   transcriptText: z
     .string()
     .min(100, "Transcript must be at least 100 characters")
-    .max(100000, "Transcript must not exceed 100,000 characters")
+    .max(250000, "Transcript must not exceed 250,000 characters")
     .optional(),
   calendarEventId: z.string().optional(),
 });
