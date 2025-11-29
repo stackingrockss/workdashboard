@@ -5,6 +5,13 @@ import { secFilingCreateSchema } from "@/lib/validations/sec-filing";
 import { getCikFromTicker, getCompanyFilings, getFilingViewerUrl } from "@/lib/integrations/sec-edgar";
 import { inngest } from "@/lib/inngest/client";
 import { FilingProcessingStatus } from "@prisma/client";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
 
 // Force dynamic rendering and Node.js runtime for JSDOM support
 export const dynamic = 'force-dynamic';
@@ -38,22 +45,51 @@ export async function GET(
       ? parseInt(searchParams.get("fiscalYear")!)
       : undefined;
     const processingStatus = searchParams.get("processingStatus") as FilingProcessingStatus | undefined;
+    const usePagination = wantsPagination(searchParams);
 
-    // Fetch SEC filings with optional filters
-    const filings = await prisma.secFiling.findMany({
-      where: {
-        accountId,
-        organizationId: user.organization.id,
-        ...(filingType && { filingType }),
-        ...(fiscalYear && { fiscalYear }),
-        ...(processingStatus && { processingStatus }),
-      },
-      orderBy: {
-        filingDate: "desc",
-      },
-    });
+    // Build where clause
+    const whereClause = {
+      accountId,
+      organizationId: user.organization.id,
+      ...(filingType && { filingType }),
+      ...(fiscalYear && { fiscalYear }),
+      ...(processingStatus && { processingStatus }),
+    };
 
-    return NextResponse.json({ filings });
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50, // Default to 50
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [total, filings] = await Promise.all([
+        prisma.secFiling.count({ where: whereClause }),
+        prisma.secFiling.findMany({
+          where: whereClause,
+          orderBy: { filingDate: "desc" },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      return cachedResponse(
+        buildPaginatedResponse(filings, page, limit, total, 'filings'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all filings
+      const filings = await prisma.secFiling.findMany({
+        where: whereClause,
+        orderBy: { filingDate: "desc" },
+      });
+
+      return cachedResponse(buildLegacyResponse(filings, 'filings'), 'frequent');
+    }
   } catch (err) {
     console.error("Error fetching SEC filings:", err);
     console.error("Error details:", {

@@ -4,6 +4,13 @@ import { requireAuth } from "@/lib/auth";
 import { earningsTranscriptCreateSchema } from "@/lib/validations/earnings-transcript";
 import { inngest } from "@/lib/inngest/client";
 import { TranscriptProcessingStatus } from "@prisma/client";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
 
 // Force dynamic rendering and Node.js runtime
 export const dynamic = 'force-dynamic';
@@ -39,30 +46,63 @@ export async function GET(
     const processingStatus = searchParams.get(
       "processingStatus"
     ) as TranscriptProcessingStatus | undefined;
+    const usePagination = wantsPagination(searchParams);
 
-    // Fetch earnings transcripts with optional filters
-    const transcripts = await prisma.earningsCallTranscript.findMany({
-      where: {
-        accountId,
-        organizationId: user.organization.id,
-        ...(fiscalYear && { fiscalYear }),
-        ...(quarter && { quarter }),
-        ...(processingStatus && { processingStatus }),
-      },
-      include: {
-        opportunity: {
-          select: {
-            id: true,
-            name: true,
-          },
+    // Build where clause
+    const whereClause = {
+      accountId,
+      organizationId: user.organization.id,
+      ...(fiscalYear && { fiscalYear }),
+      ...(quarter && { quarter }),
+      ...(processingStatus && { processingStatus }),
+    };
+
+    // Define include for relations
+    const includeRelations = {
+      opportunity: {
+        select: {
+          id: true,
+          name: true,
         },
       },
-      orderBy: {
-        callDate: "desc",
-      },
-    });
+    };
 
-    return NextResponse.json({ transcripts });
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 25, // Default to 25 (large transcript data)
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 25;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [total, transcripts] = await Promise.all([
+        prisma.earningsCallTranscript.count({ where: whereClause }),
+        prisma.earningsCallTranscript.findMany({
+          where: whereClause,
+          include: includeRelations,
+          orderBy: { callDate: "desc" },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      return cachedResponse(
+        buildPaginatedResponse(transcripts, page, limit, total, 'transcripts'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all transcripts
+      const transcripts = await prisma.earningsCallTranscript.findMany({
+        where: whereClause,
+        include: includeRelations,
+        orderBy: { callDate: "desc" },
+      });
+
+      return cachedResponse(buildLegacyResponse(transcripts, 'transcripts'), 'frequent');
+    }
   } catch (error) {
     console.error("Error fetching earnings transcripts:", error);
     console.error("Error details:", {
