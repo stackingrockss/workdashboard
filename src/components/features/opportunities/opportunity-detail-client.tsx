@@ -231,8 +231,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
 
   // Sync local state when opportunity prop updates (after router.refresh())
   useEffect(() => {
-    setAllGongCalls(opportunity.gongCalls || []);
-    setAllGranolaNotes(opportunity.granolaNotes || []);
+    setAllGongCalls(Array.isArray(opportunity.gongCalls) ? opportunity.gongCalls : []);
+    setAllGranolaNotes(Array.isArray(opportunity.granolaNotes) ? opportunity.granolaNotes : []);
   }, [opportunity.gongCalls, opportunity.granolaNotes]);
 
   // Function to refresh all data after changes
@@ -712,8 +712,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                   .slice(0, 10) // Show last 10 meetings
                   .map((event, index) => {
                     // Find Gong calls and Granola notes linked to this event
-                    const linkedGongCalls = allGongCalls.filter(call => call.calendarEventId === event.id);
-                    const linkedGranolaNotes = allGranolaNotes.filter(note => note.calendarEventId === event.id);
+                    const linkedGongCalls = Array.isArray(allGongCalls) ? allGongCalls.filter(call => call.calendarEventId === event.id) : [];
+                    const linkedGranolaNotes = Array.isArray(allGranolaNotes) ? allGranolaNotes.filter(note => note.calendarEventId === event.id) : [];
 
                     return (
                       <MeetingEventCard
@@ -737,8 +737,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
 
           {/* Orphaned Notes Section */}
           <OrphanedNotesSection
-            orphanedGongCalls={allGongCalls.filter(call => !call.calendarEventId)}
-            orphanedGranolaNotes={allGranolaNotes.filter(note => !note.calendarEventId)}
+            orphanedGongCalls={Array.isArray(allGongCalls) ? allGongCalls.filter(call => !call.calendarEventId) : []}
+            orphanedGranolaNotes={Array.isArray(allGranolaNotes) ? allGranolaNotes.filter(note => !note.calendarEventId) : []}
             calendarEvents={calendarEvents}
             opportunityId={opportunity.id}
             onRefresh={handleRefreshMeetingsData}

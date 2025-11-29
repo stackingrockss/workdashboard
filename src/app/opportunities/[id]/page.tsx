@@ -111,6 +111,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
       url: note.url,
       meetingDate: note.meetingDate.toISOString(),
       noteType: note.noteType as "customer" | "internal" | "prospect",
+      calendarEventId: note.calendarEventId || undefined,
       createdAt: note.createdAt.toISOString(),
       updatedAt: note.updatedAt.toISOString(),
     })),

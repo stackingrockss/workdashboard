@@ -139,6 +139,7 @@ export interface Opportunity {
     url: string;
     meetingDate: string;
     noteType: "customer" | "internal" | "prospect";
+    calendarEventId?: string | null;
     createdAt: string;
     updatedAt: string;
   }>;
@@ -149,6 +150,7 @@ export interface Opportunity {
     url: string;
     meetingDate: string;
     noteType: "customer" | "internal" | "prospect";
+    calendarEventId?: string | null;
     createdAt: string;
     updatedAt: string;
   }>;
