@@ -17,5 +17,6 @@ export async function getUsers(): Promise<OpportunityOwner[]> {
   }
 
   const data: GetUsersResponse = await response.json();
-  return data.users;
+  // Defensive check - ensure we return an array
+  return Array.isArray(data?.users) ? data.users : [];
 }

@@ -61,7 +61,9 @@ export function OrgChartSection({
         throw new Error("Failed to fetch contacts");
       }
       const data = await response.json();
-      setContacts(data);
+      // API returns { contacts: [...] } - extract the array, with fallback for safety
+      const contactsArray = Array.isArray(data) ? data : (Array.isArray(data?.contacts) ? data.contacts : []);
+      setContacts(contactsArray);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Failed to load contacts"

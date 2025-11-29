@@ -72,7 +72,10 @@ export function OrgChartView({
 }: OrgChartViewProps) {
   // Convert contacts to nodes and edges
   const { initialNodes, initialEdges } = useMemo(() => {
-    const nodes: Node[] = contacts.map((contact) => ({
+    // Defensive check - ensure contacts is an array
+    const safeContacts = Array.isArray(contacts) ? contacts : [];
+
+    const nodes: Node[] = safeContacts.map((contact) => ({
       id: contact.id,
       type: "orgChartNode",
       data: {
@@ -85,7 +88,7 @@ export function OrgChartView({
       },
     }));
 
-    const edges: Edge[] = contacts
+    const edges: Edge[] = safeContacts
       .filter((contact) => contact.managerId)
       .map((contact) => ({
         id: `${contact.managerId}-${contact.id}`,

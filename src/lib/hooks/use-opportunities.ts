@@ -21,7 +21,8 @@ export function useOpportunities(): UseOpportunitiesResult {
       setLoading(true);
       setError(null);
       const data = await opportunitiesApi.getOpportunities();
-      setOpportunities(data);
+      // Defensive check - ensure we set an array
+      setOpportunities(Array.isArray(data?.opportunities) ? data.opportunities : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {

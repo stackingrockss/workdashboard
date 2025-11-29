@@ -55,7 +55,7 @@ export function DecisionMakerSection({
       }
 
       const newContact = await response.json();
-      const updatedContacts = [...contacts, newContact];
+      const updatedContacts = [...safeContacts, newContact];
       onContactsUpdate?.(updatedContacts);
       setIsCreateDialogOpen(false);
       toast.success("Decision maker added successfully!");
@@ -84,7 +84,7 @@ export function DecisionMakerSection({
       }
 
       const updatedContact = await response.json();
-      const updatedContacts = contacts.map((c) =>
+      const updatedContacts = safeContacts.map((c) =>
         c.id === updatedContact.id ? updatedContact : c
       );
       onContactsUpdate?.(updatedContacts);
