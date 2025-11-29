@@ -323,7 +323,7 @@ export function UpcomingMeetingsWidget() {
           </Link>
         </div>
         <CardDescription>
-          Next 5 external meetings in the next 7 days
+          Click to expand • Next 5 external meetings in 7 days
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -373,11 +373,11 @@ export function UpcomingMeetingsWidget() {
         )}
 
         {Object.entries(groupedEvents).map(([dateLabel, dateEvents]) => (
-          <div key={dateLabel} className="space-y-2">
+          <div key={dateLabel} className="space-y-1.5">
             <h4 className="font-semibold text-sm text-muted-foreground">
               {dateLabel}
             </h4>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {dateEvents.map((event) => (
                 <CalendarEventCard key={event.id} event={event} />
               ))}
