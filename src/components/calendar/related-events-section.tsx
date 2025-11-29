@@ -72,7 +72,7 @@ export function RelatedEventsSection({
       }
 
       const data = await response.json();
-      setEvents(data.events);
+      setEvents(Array.isArray(data.events) ? data.events : []);
     } catch (err) {
       console.error("Failed to load related events:", err);
       setError("Failed to load meetings");
@@ -82,10 +82,11 @@ export function RelatedEventsSection({
   };
 
   const now = new Date();
-  const pastEvents = events.filter(
+  const safeEvents = Array.isArray(events) ? events : [];
+  const pastEvents = safeEvents.filter(
     (event) => new Date(event.endTime) < now
   );
-  const upcomingEvents = events.filter(
+  const upcomingEvents = safeEvents.filter(
     (event) => new Date(event.startTime) >= now
   );
 
