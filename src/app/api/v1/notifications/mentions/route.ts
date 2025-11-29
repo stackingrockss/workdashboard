@@ -43,6 +43,22 @@ export async function GET(request: NextRequest) {
 
     const { includeRead } = queryValidation.data;
 
+    // Check if CommentMention table exists by attempting a simple count query
+    try {
+      await prisma.commentMention.findFirst({ take: 1 });
+    } catch (tableError) {
+      // Table doesn't exist - return empty notifications gracefully
+      if (tableError instanceof Error && tableError.message.includes('relation') && tableError.message.includes('does not exist')) {
+        console.warn("[mentions-api] CommentMention table does not exist - returning empty notifications");
+        return cachedResponse({
+          notifications: [],
+          unreadCount: 0,
+        }, 'realtime');
+      }
+      // Re-throw if it's a different error
+      throw tableError;
+    }
+
     const whereClause = {
       userId: user.id,
       organizationId: user.organization.id,
@@ -149,9 +165,14 @@ export async function GET(request: NextRequest) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Error fetching mentions:", error);
+    console.error("[mentions-api] Error fetching mentions:", error);
+    console.error("[mentions-api] Error details:", error instanceof Error ? error.message : String(error));
+    console.error("[mentions-api] Error stack:", error instanceof Error ? error.stack : "No stack trace");
     return NextResponse.json(
-      { error: "Failed to fetch notifications" },
+      {
+        error: "Failed to fetch notifications",
+        details: error instanceof Error ? error.message : String(error)
+      },
       { status: 500 }
     );
   }
