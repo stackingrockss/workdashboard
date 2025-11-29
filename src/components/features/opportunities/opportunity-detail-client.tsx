@@ -217,7 +217,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
 
         if (response.ok) {
           const data = await response.json();
-          setCalendarEvents(data.events || []);
+          setCalendarEvents(Array.isArray(data.events) ? data.events : []);
         }
       } catch (error) {
         console.error("Failed to load calendar events:", error);
