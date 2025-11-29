@@ -35,8 +35,11 @@ export function DecisionMakerSection({
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Defensive check - ensure contacts is an array
+  const safeContacts = Array.isArray(contacts) ? contacts : [];
+
   // Filter for decision makers only
-  const decisionMakers = contacts.filter((c) => c.role === "decision_maker");
+  const decisionMakers = safeContacts.filter((c) => c.role === "decision_maker");
 
   // Create contact with decision_maker role
   const handleCreateContact = async (data: ContactCreateInput | ContactUpdateInput) => {
@@ -111,7 +114,7 @@ export function DecisionMakerSection({
         throw new Error("Failed to delete contact");
       }
 
-      const updatedContacts = contacts.filter((c) => c.id !== selectedContact.id);
+      const updatedContacts = safeContacts.filter((c) => c.id !== selectedContact.id);
       onContactsUpdate?.(updatedContacts);
       setIsDeleteDialogOpen(false);
       setSelectedContact(null);
@@ -190,7 +193,7 @@ export function DecisionMakerSection({
           <ContactForm
             onSubmit={handleCreateContact}
             onCancel={() => setIsCreateDialogOpen(false)}
-            existingContacts={contacts}
+            existingContacts={safeContacts}
             initialData={{
               role: "decision_maker", // Pre-select decision_maker role
             }}
@@ -212,7 +215,7 @@ export function DecisionMakerSection({
                 setIsEditDialogOpen(false);
                 setSelectedContact(null);
               }}
-              existingContacts={contacts.filter((c) => c.id !== selectedContact.id)}
+              existingContacts={safeContacts.filter((c) => c.id !== selectedContact.id)}
               initialData={{
                 firstName: selectedContact.firstName,
                 lastName: selectedContact.lastName,

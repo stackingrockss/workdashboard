@@ -22,8 +22,11 @@ export function ContactList({ contacts, onEdit, onDelete }: ContactListProps) {
   const [roleFilter, setRoleFilter] = useState<ContactRole | "all">("all");
   const [sentimentFilter, setSentimentFilter] = useState<ContactSentiment | "all">("all");
 
+  // Defensive check - ensure contacts is an array
+  const safeContacts = Array.isArray(contacts) ? contacts : [];
+
   // Apply filters
-  const filteredContacts = contacts.filter((contact) => {
+  const filteredContacts = safeContacts.filter((contact) => {
     const matchesRole = roleFilter === "all" || contact.role === roleFilter;
     const matchesSentiment =
       sentimentFilter === "all" || contact.sentiment === sentimentFilter;
