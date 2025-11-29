@@ -185,50 +185,32 @@ export function CurrentQuarterView({
         />
       </div>
 
-      {/* Forecast Category Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4 border-l-4 border-slate-400">
-          <div className="text-sm text-muted-foreground">Pipeline</div>
-          <div className="text-2xl font-bold">
-            {formatCurrencyCompact(stats.forecastStats.pipeline.arr)}
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {stats.forecastStats.pipeline.count} opportunities
-          </div>
-        </Card>
+      {/* Forecast Summary - Single Line */}
+      <Card className="p-3">
+        <div className="flex items-center justify-center gap-2 text-sm flex-wrap">
+          <span className="font-medium text-slate-600 dark:text-slate-400">Pipeline:</span>
+          <span className="font-semibold">{formatCurrencyCompact(stats.forecastStats.pipeline.arr)}</span>
+          <span className="text-muted-foreground">({stats.forecastStats.pipeline.count} {stats.forecastStats.pipeline.count === 1 ? 'opportunity' : 'opportunities'})</span>
 
-        <Card className="p-4 border-l-4 border-blue-500">
-          <div className="text-sm text-muted-foreground">Best Case</div>
-          <div className="text-2xl font-bold">
-            {formatCurrencyCompact(stats.forecastStats.bestCase.arr)}
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {stats.forecastStats.bestCase.count} opportunities
-          </div>
-        </Card>
+          <span className="text-muted-foreground mx-1">|</span>
 
-        <Card className="p-4 border-l-4 border-emerald-500">
-          <div className="text-sm text-muted-foreground">Commit</div>
-          <div className="text-2xl font-bold">
-            {formatCurrencyCompact(stats.forecastStats.commit.arr)}
-          </div>
-          <div className="text-xs text-muted-foreground mt-1">
-            {stats.forecastStats.commit.count} opportunities
-          </div>
-        </Card>
-      </div>
+          <span className="font-medium text-blue-600 dark:text-blue-400">Best Case:</span>
+          <span className="font-semibold">{formatCurrencyCompact(stats.forecastStats.bestCase.arr)}</span>
+          <span className="text-muted-foreground">({stats.forecastStats.bestCase.count} {stats.forecastStats.bestCase.count === 1 ? 'opportunity' : 'opportunities'})</span>
 
-      {/* Summary Stats Bar */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="p-4">
-          <div className="text-sm text-muted-foreground">Total ARR</div>
-          <div className="text-2xl font-bold">{formatCurrencyCompact(stats.totalArr)}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-sm text-muted-foreground">Count</div>
-          <div className="text-2xl font-bold">{stats.count}</div>
-        </Card>
-      </div>
+          <span className="text-muted-foreground mx-1">|</span>
+
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">Commit:</span>
+          <span className="font-semibold">{formatCurrencyCompact(stats.forecastStats.commit.arr)}</span>
+          <span className="text-muted-foreground">({stats.forecastStats.commit.count} {stats.forecastStats.commit.count === 1 ? 'opportunity' : 'opportunities'})</span>
+
+          <span className="text-muted-foreground mx-1">|</span>
+
+          <span className="font-medium">Total ARR:</span>
+          <span className="font-bold text-lg">{formatCurrencyCompact(stats.totalArr)}</span>
+          <span className="text-muted-foreground">({stats.count} {stats.count === 1 ? 'opportunity' : 'opportunities'})</span>
+        </div>
+      </Card>
 
       {/* Table */}
       <Card>

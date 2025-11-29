@@ -4,6 +4,13 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { contentCreateSchema } from "@/lib/validations/content";
 import { ContentType } from "@prisma/client";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
 
 const VALID_CONTENT_TYPES: ContentType[] = [
   "blog_post",
@@ -19,30 +26,71 @@ export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth();
 
-    const { searchParams } = new URL(req.url);
+    const searchParams = req.nextUrl.searchParams;
     const typeParam = searchParams.get("type");
     const contentType = typeParam && VALID_CONTENT_TYPES.includes(typeParam as ContentType)
       ? (typeParam as ContentType)
       : undefined;
 
-    const contents = await prisma.content.findMany({
-      where: {
-        organizationId: user.organization.id,
-        ...(contentType && { contentType }),
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
-          },
+    // Build where clause
+    const whereClause = {
+      organizationId: user.organization.id,
+      ...(contentType && { contentType }),
+    };
+
+    // Define include for content relations
+    const includeRelations = {
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          avatarUrl: true,
         },
       },
-      orderBy: { createdAt: "desc" },
-    });
+    };
 
-    return NextResponse.json({ contents });
+    // Detect if client wants pagination
+    const usePagination = wantsPagination(searchParams);
+
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50, // Default to 50
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50; // Ensure limit is never undefined
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance (count total + fetch page)
+      const [total, contents] = await Promise.all([
+        prisma.content.count({ where: whereClause }),
+        prisma.content.findMany({
+          where: whereClause,
+          include: includeRelations,
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      return cachedResponse(
+        buildPaginatedResponse(contents, page, limit, total, 'contents'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all content
+      const contents = await prisma.content.findMany({
+        where: whereClause,
+        include: includeRelations,
+        orderBy: { createdAt: "desc" },
+      });
+
+      return cachedResponse(
+        buildLegacyResponse(contents, 'contents'),
+        'frequent'
+      );
+    }
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

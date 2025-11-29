@@ -923,15 +923,122 @@ See existing API routes in `src/app/api/v1/` for implementation examples.
 
 ## 📊 Pagination
 
-Use `skip` and `take` for pagination:
+**DealVibes API supports opt-in pagination** - endpoints return all data by default (legacy mode) and only paginate when query parameters are present.
+
+### Query Parameters
+
+- `page` - Page number (1-indexed, defaults to 1)
+- `limit` - Items per page (max 500, defaults vary by endpoint)
+
+### Endpoints with Pagination Support
+
+| Endpoint | Default Limit | Notes |
+|----------|---------------|-------|
+| `GET /api/v1/opportunities` | 100 | Matches existing behavior |
+| `GET /api/v1/accounts` | 100 | Includes nested opportunities |
+| `GET /api/v1/comments` | 50 | Lower due to heavy nesting |
+| `GET /api/v1/tasks/lists/[listId]/tasks` | 100 | Preserves existing filters |
+| `GET /api/v1/content` | 50 | Includes creator relation |
+| `GET /api/v1/users` | 100 | Org-scoped user list |
+
+### Response Formats
+
+**Legacy mode (no pagination params):**
+```json
+{
+  "opportunities": [...]
+}
+```
+
+**Paginated mode (with `?page=1&limit=25`):**
+```json
+{
+  "opportunities": [...],
+  "pagination": {
+    "page": 1,
+    "limit": 25,
+    "total": 156,
+    "totalPages": 7,
+    "hasNext": true,
+    "hasPrev": false
+  }
+}
+```
+
+### Usage Examples
+
+```bash
+# Legacy mode (no pagination)
+GET /api/v1/opportunities
+
+# Paginated mode
+GET /api/v1/opportunities?page=1&limit=50
+GET /api/v1/accounts?page=2&limit=100
+GET /api/v1/comments?entityType=opportunity&entityId=abc&page=1&limit=25
+GET /api/v1/tasks/lists/list-id/tasks?status=needsAction&page=1
+```
+
+### TypeScript Types
 
 ```typescript
-const opportunities = await prisma.opportunity.findMany({
-  where: { organizationId: user.organizationId },
-  skip: Number(searchParams.get('skip')) || 0,
-  take: Number(searchParams.get('take')) || 100,
-  orderBy: { createdAt: 'desc' }
-});
+import { PaginationMeta } from "@/lib/utils/pagination";
+
+interface PaginatedResponse<T> {
+  [key: string]: T[];
+  pagination: PaginationMeta;
+}
+
+interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
+```
+
+### Implementation Pattern
+
+```typescript
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
+
+export async function GET(req: NextRequest) {
+  const user = await requireAuth();
+  const searchParams = req.nextUrl.searchParams;
+
+  const whereClause = { organizationId: user.organization.id };
+  const usePagination = wantsPagination(searchParams);
+
+  if (usePagination) {
+    // Paginated mode
+    const { page, limit } = paginationQuerySchema.parse({
+      page: searchParams.get('page'),
+      limit: searchParams.get('limit') || 100,
+    });
+    const skip = (page - 1) * limit;
+
+    const [total, data] = await Promise.all([
+      prisma.model.count({ where: whereClause }),
+      prisma.model.findMany({ where: whereClause, skip, take: limit }),
+    ]);
+
+    return cachedResponse(
+      buildPaginatedResponse(data, page, limit, total, 'dataKey'),
+      'frequent'
+    );
+  } else {
+    // Legacy mode
+    const data = await prisma.model.findMany({ where: whereClause });
+    return cachedResponse(buildLegacyResponse(data, 'dataKey'), 'frequent');
+  }
+}
 ```
 
 ---
