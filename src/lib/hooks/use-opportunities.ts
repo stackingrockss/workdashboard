@@ -20,9 +20,9 @@ export function useOpportunities(): UseOpportunitiesResult {
     try {
       setLoading(true);
       setError(null);
-      const data = await opportunitiesApi.getOpportunities();
+      const response = await opportunitiesApi.getOpportunities();
       // Defensive check - ensure we set an array
-      setOpportunities(Array.isArray(data?.opportunities) ? data.opportunities : []);
+      setOpportunities(Array.isArray(response?.opportunities) ? response.opportunities : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
