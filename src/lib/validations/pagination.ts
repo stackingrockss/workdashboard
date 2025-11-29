@@ -23,8 +23,12 @@ export const paginationQuerySchema = z.object({
    * - Automatically coerced from string to number
    * - Must be a positive integer
    * - Defaults to 1 if not provided
+   * - Handles null from searchParams.get() by treating as undefined
    */
-  page: z.coerce.number().int().min(1).optional().default(1),
+  page: z.preprocess(
+    (val) => (val === null || val === '' ? undefined : val),
+    z.coerce.number().int().min(1).optional().default(1)
+  ),
 
   /**
    * Items per page
@@ -32,8 +36,12 @@ export const paginationQuerySchema = z.object({
    * - Must be a positive integer
    * - Maximum of 500 items per page (performance limit)
    * - No default (endpoint-specific defaults applied in route handlers)
+   * - Handles null from searchParams.get() by treating as undefined
    */
-  limit: z.coerce.number().int().min(1).max(500).optional(),
+  limit: z.preprocess(
+    (val) => (val === null || val === '' ? undefined : val),
+    z.coerce.number().int().min(1).max(500).optional()
+  ),
 });
 
 /**
