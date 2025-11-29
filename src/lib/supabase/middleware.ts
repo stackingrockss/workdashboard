@@ -52,9 +52,9 @@ export async function updateSession(request: NextRequest) {
     error
   } = await supabase.auth.getUser();
 
-  // Log auth errors in production for debugging
-  if (error && process.env.NODE_ENV === "production") {
-    console.error("[middleware] Supabase auth error:", error);
+  // Log auth errors for debugging (in dev and production)
+  if (error) {
+    console.error("[middleware] Supabase auth error:", error.message || error);
   }
 
   // Protect routes that require authentication
@@ -62,13 +62,14 @@ export async function updateSession(request: NextRequest) {
   const isPublicPath = publicPaths.some((path) => request.nextUrl.pathname === path);
 
   if (!user && !isPublicPath && !request.nextUrl.pathname.startsWith("/auth")) {
-    // Log redirect for debugging
-    if (process.env.NODE_ENV === "production") {
-      console.log(`[middleware] No user found, redirecting ${request.nextUrl.pathname} → /auth/login`);
-    }
+    // Log redirect for debugging (in dev and production)
+    console.log(`[middleware] No user found, redirecting ${request.nextUrl.pathname} → /auth/login`);
+
     // Redirect to login if user is not authenticated
     const url = request.nextUrl.clone();
     url.pathname = "/auth/login";
+    // Add return URL for post-login redirect
+    url.searchParams.set("redirectTo", request.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
 

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/db";
+import { redirect } from "next/navigation";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import type { User as PrismaUser } from "@prisma/client";
 
@@ -172,6 +173,33 @@ export async function requireAuth(): Promise<PrismaUser & {
       organizationId: user.organizationId
     });
     throw new Error("Unauthorized");
+  }
+
+  return user as PrismaUser & {
+    organization: { id: string; name: string; fiscalYearStartMonth: number };
+    directReports: PrismaUser[];
+  };
+}
+
+/**
+ * Requires authentication for Server Components - redirects to login if not authenticated
+ * Use this in Server Components (page.tsx, layout.tsx) instead of requireAuth()
+ * Returns user with organization and directReports relations
+ *
+ * Note: This function uses redirect() which throws a NEXT_REDIRECT error.
+ * Do NOT wrap this in try-catch as it will prevent the redirect from working.
+ */
+export async function requireAuthOrRedirect(): Promise<PrismaUser & {
+  organization: { id: string; name: string; fiscalYearStartMonth: number };
+  directReports: PrismaUser[];
+}> {
+  const user = await getCurrentUser();
+
+  if (!user || !user.organization) {
+    console.error("[requireAuthOrRedirect] Authentication failed, redirecting to login");
+    // redirect() throws a NEXT_REDIRECT error that Next.js handles
+    // This will stop execution and redirect the user
+    redirect("/auth/login");
   }
 
   return user as PrismaUser & {

@@ -1,10 +1,9 @@
 // app/opportunities/page.tsx
 // Displays a Kanban view of opportunities with view management
 
-import { redirect } from "next/navigation";
 import { KanbanBoardWrapper } from "@/components/kanban/KanbanBoardWrapper";
 import { prisma } from "@/lib/db";
-import { requireAuth } from "@/lib/auth";
+import { requireAuthOrRedirect } from "@/lib/auth";
 import { SerializedKanbanView } from "@/types/view";
 import { getAllBuiltInViews } from "@/lib/utils/built-in-views";
 import { getVisibleUserIds, isAdmin } from "@/lib/permissions";
@@ -12,11 +11,9 @@ import { getVisibleUserIds, isAdmin } from "@/lib/permissions";
 export const dynamic = "force-dynamic";
 
 export default async function OpportunitiesPage() {
-  // Require authentication - redirect to login if not authenticated
-  const user = await requireAuth().catch((error) => {
-    console.error("[OpportunitiesPage] Authentication failed:", error);
-    redirect("/auth/login");
-  });
+  // Require authentication - redirects to /auth/login if not authenticated
+  // Note: Do NOT wrap in try-catch as redirect() throws a special error
+  const user = await requireAuthOrRedirect();
 
   // Get organization's fiscal year settings
   const fiscalYearStartMonth = user.organization?.fiscalYearStartMonth ?? 1;
