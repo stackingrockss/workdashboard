@@ -67,7 +67,8 @@ export function TimelineSection({
       const data: TimelineResponse = await response.json();
 
       // Convert date strings to Date objects
-      const eventsWithDates = data.events.map((event) => ({
+      const safeEvents = Array.isArray(data.events) ? data.events : [];
+      const eventsWithDates = safeEvents.map((event) => ({
         ...event,
         date: new Date(event.date),
       }));
