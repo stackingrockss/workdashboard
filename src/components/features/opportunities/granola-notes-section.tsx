@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +59,7 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
   const [url, setUrl] = useState("");
   const [meetingDate, setMeetingDate] = useState("");
   const [noteType, setNoteType] = useState<NoteType>("customer");
+  const [transcriptText, setTranscriptText] = useState("");
   const [hasAutoOpenedForEvent, setHasAutoOpenedForEvent] = useState(false);
   const [parseDialogNoteId, setParseDialogNoteId] = useState<string | null>(null);
   const [insightsDialogNote, setInsightsDialogNote] = useState<GranolaNote | null>(null);
@@ -91,13 +93,18 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
         meetingDate: new Date(meetingDate).toISOString(),
         noteType,
         calendarEventId: preselectedCalendarEvent?.id || undefined,
+        transcriptText: transcriptText.trim() || undefined,
       });
-      toast.success("Granola note added successfully!");
+      const successMessage = transcriptText.trim()
+        ? "Granola note added! Parsing transcript..."
+        : "Granola note added successfully!";
+      toast.success(successMessage);
       setIsAddDialogOpen(false);
       setTitle("");
       setUrl("");
       setMeetingDate("");
       setNoteType("customer");
+      setTranscriptText("");
 
       // Call the callback if provided
       if (onNoteAdded) {
@@ -369,6 +376,21 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
               <p className="text-xs text-muted-foreground">
                 Is this a customer-facing meeting or internal discussion?
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="transcript">Transcript (Optional)</Label>
+              <Textarea
+                id="transcript"
+                value={transcriptText}
+                onChange={(e) => setTranscriptText(e.target.value)}
+                placeholder="Paste your Granola transcript here to automatically extract insights..."
+                className="min-h-[200px] font-mono text-sm"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>AI will extract pain points, goals, people, and next steps</span>
+                <span>{transcriptText.length.toLocaleString()} characters</span>
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">

@@ -3,6 +3,13 @@ import { contactCreateSchema } from "@/lib/validations/contact";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { logError } from "@/lib/errors";
+import {
+  wantsPagination,
+  buildPaginatedResponse,
+  buildLegacyResponse,
+} from "@/lib/utils/pagination";
+import { paginationQuerySchema } from "@/lib/validations/pagination";
+import { cachedResponse } from "@/lib/cache";
 
 // GET /api/v1/accounts/[id]/contacts - List all contacts for an account
 export async function GET(
@@ -28,43 +35,84 @@ export async function GET(
       );
     }
 
-    // Fetch all contacts for this account with their manager and direct reports
-    const contacts = await prisma.contact.findMany({
-      where: { accountId: id },
-      include: {
-        manager: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            title: true,
-            role: true,
-          },
-        },
-        directReports: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            title: true,
-            role: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "asc",
-      },
-    });
+    const searchParams = request.nextUrl.searchParams;
+    const whereClause = { accountId: id };
+    const usePagination = wantsPagination(searchParams);
 
-    // Transform contacts to include fullName
-    const transformedContacts = contacts.map((contact) => ({
+    // Define include for relations
+    const includeRelations = {
+      manager: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          title: true,
+          role: true,
+        },
+      },
+      directReports: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          title: true,
+          role: true,
+        },
+      },
+    };
+
+    // Helper to transform contacts
+    const transformContact = (contact: {
+      firstName: string;
+      lastName: string;
+      createdAt: Date;
+      updatedAt: Date;
+      [key: string]: unknown;
+    }) => ({
       ...contact,
       fullName: `${contact.firstName} ${contact.lastName}`,
       createdAt: contact.createdAt.toISOString(),
       updatedAt: contact.updatedAt.toISOString(),
-    }));
+    });
 
-    return NextResponse.json(transformedContacts);
+    if (usePagination) {
+      // PAGINATED MODE: Client requested pagination via query params
+      const parsed = paginationQuerySchema.parse({
+        page: searchParams.get('page'),
+        limit: searchParams.get('limit') || 50, // Default to 50
+      });
+      const page = parsed.page;
+      const limit = parsed.limit ?? 50;
+      const skip = (page - 1) * limit;
+
+      // Parallel queries for performance
+      const [total, contacts] = await Promise.all([
+        prisma.contact.count({ where: whereClause }),
+        prisma.contact.findMany({
+          where: whereClause,
+          include: includeRelations,
+          orderBy: { createdAt: "asc" },
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const transformedContacts = contacts.map(transformContact);
+      return cachedResponse(
+        buildPaginatedResponse(transformedContacts, page, limit, total, 'contacts'),
+        'frequent'
+      );
+    } else {
+      // LEGACY MODE: No pagination params, return all contacts
+      const contacts = await prisma.contact.findMany({
+        where: whereClause,
+        include: includeRelations,
+        orderBy: { createdAt: "asc" },
+      });
+
+      const transformedContacts = contacts.map(transformContact);
+      return cachedResponse(buildLegacyResponse(transformedContacts, 'contacts'), 'frequent');
+    }
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

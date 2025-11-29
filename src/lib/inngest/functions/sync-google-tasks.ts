@@ -21,7 +21,7 @@ export const syncAllGoogleTasksJob = inngest.createFunction(
     name: 'Sync All Google Tasks',
     retries: 2, // Retry entire batch up to 2 times on infrastructure failures
   },
-  { cron: '0 */15 * * *' }, // Every 15 minutes
+  { cron: '*/15 * * * *' }, // Every 15 minutes
   async ({ step }) => {
     // Step 1: Fetch all users with active Google OAuth tokens that have tasks scope
     const usersWithTasks = await step.run('fetch-users-with-tasks', async () => {
