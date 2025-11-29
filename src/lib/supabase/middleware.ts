@@ -58,7 +58,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Protect routes that require authentication
-  const publicPaths = ["/", "/auth/login", "/auth/callback"];
+  const publicPaths = ["/auth/login", "/auth/callback", "/auth/auth-code-error"];
   const isPublicPath = publicPaths.some((path) => request.nextUrl.pathname === path);
 
   if (!user && !isPublicPath && !request.nextUrl.pathname.startsWith("/auth")) {
@@ -75,9 +75,17 @@ export async function updateSession(request: NextRequest) {
 
   // Redirect authenticated users away from login page
   if (user && request.nextUrl.pathname === "/auth/login") {
+    console.log("[middleware] Authenticated user on login page, redirecting to /opportunities");
     const url = request.nextUrl.clone();
     url.pathname = "/opportunities";
+    url.searchParams.delete("redirectTo"); // Clear any redirect params to avoid loops
     return NextResponse.redirect(url);
+  }
+
+  // If user is on login page but not authenticated, allow access
+  if (!user && request.nextUrl.pathname === "/auth/login") {
+    console.log("[middleware] Unauthenticated user on login page, allowing access");
+    return supabaseResponse;
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're

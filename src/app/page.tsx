@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { calculateDashboardStats } from "@/lib/stats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,10 +8,19 @@ import { Target, DollarSign } from "lucide-react";
 import Link from "next/link";
 import { UpcomingMeetingsWidget } from "@/components/calendar/upcoming-meetings-widget";
 import { UpcomingTasksWidget } from "@/components/tasks/upcoming-tasks-widget";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
+  // Check authentication
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/auth/login");
+  }
+
   // Fetch opportunities for stats
   const opportunitiesFromDB = await prisma.opportunity.findMany({
     include: {
