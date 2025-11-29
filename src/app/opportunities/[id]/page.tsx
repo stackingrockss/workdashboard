@@ -104,7 +104,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
       name: opportunityFromDB.owner.name || opportunityFromDB.owner.email || "Unknown",
       avatarUrl: opportunityFromDB.owner.avatarUrl || undefined,
     },
-    granolaNotes: opportunityFromDB.granolaNotes.map(note => ({
+    granolaNotes: (opportunityFromDB.granolaNotes || []).map(note => ({
       id: note.id,
       opportunityId: note.opportunityId,
       title: note.title,
@@ -114,7 +114,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
       createdAt: note.createdAt.toISOString(),
       updatedAt: note.updatedAt.toISOString(),
     })),
-    gongCalls: opportunityFromDB.gongCalls.map(call => ({
+    gongCalls: (opportunityFromDB.gongCalls || []).map(call => ({
       id: call.id,
       opportunityId: call.opportunityId,
       title: call.title,
@@ -134,7 +134,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
       createdAt: call.createdAt.toISOString(),
       updatedAt: call.updatedAt.toISOString(),
     })),
-    googleNotes: opportunityFromDB.googleNotes.map(note => ({
+    googleNotes: (opportunityFromDB.googleNotes || []).map(note => ({
       id: note.id,
       opportunityId: note.opportunityId,
       title: note.title,
