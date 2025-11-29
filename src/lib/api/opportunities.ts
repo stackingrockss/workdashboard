@@ -1,10 +1,17 @@
 import { Opportunity } from "@/types/opportunity";
 import { OpportunityCreateInput, OpportunityUpdateInput } from "../validations/opportunity";
+import { PaginationMeta } from "@/components/ui/pagination";
 
 const API_BASE = "/api/v1";
 
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
 export interface GetOpportunitiesResponse {
   opportunities: Opportunity[];
+  pagination?: PaginationMeta;
 }
 
 export interface GetOpportunityResponse {
@@ -27,8 +34,20 @@ export interface ErrorResponse {
   error: string;
 }
 
-export async function getOpportunities(): Promise<Opportunity[]> {
-  const response = await fetch(`${API_BASE}/opportunities`, {
+export async function getOpportunities(params?: PaginationParams): Promise<GetOpportunitiesResponse> {
+  const searchParams = new URLSearchParams();
+  if (params?.page) {
+    searchParams.set("page", params.page.toString());
+  }
+  if (params?.limit) {
+    searchParams.set("limit", params.limit.toString());
+  }
+
+  const url = searchParams.toString()
+    ? `${API_BASE}/opportunities?${searchParams}`
+    : `${API_BASE}/opportunities`;
+
+  const response = await fetch(url, {
     method: "GET",
     headers: { "Content-Type": "application/json" },
   });
@@ -38,7 +57,7 @@ export async function getOpportunities(): Promise<Opportunity[]> {
   }
 
   const data: GetOpportunitiesResponse = await response.json();
-  return data.opportunities;
+  return data;
 }
 
 export async function getOpportunity(id: string): Promise<Opportunity> {

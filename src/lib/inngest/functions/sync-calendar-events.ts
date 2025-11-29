@@ -294,19 +294,21 @@ async function buildMatchingMaps(organizationId: string) {
  */
 interface FollowUpEventData {
   id: string;
+  calendarEventId: string; // Database ID for updating flag
   opportunityId: string;
   summary: string;
-  endTime: Date;
+  startTime: Date;
 }
 
 /**
- * Helper: Create follow-up task for completed external calendar event
+ * Helper: Create follow-up task for upcoming external calendar event
  *
  * Behavior:
  * - Only creates task if user has autoCreateFollowupTasks enabled
  * - Task title: "[Company Name] follow up email"
- * - Task due date: Tomorrow at 9 AM
+ * - Task due date: Same day as meeting at 9 AM
  * - Deduplicates using taskSource field with event ID
+ * - Marks event with followupTaskCreated flag to prevent recreation
  * - Requires user to have Google Tasks connected
  *
  * @param userId - User ID who owns the calendar event
@@ -381,10 +383,9 @@ async function createFollowUpTaskForEvent(
     return;
   }
 
-  // 5. Calculate due date (tomorrow)
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(9, 0, 0, 0); // 9 AM tomorrow
+  // 5. Calculate due date (same day as meeting)
+  const dueDate = new Date(event.startTime);
+  dueDate.setHours(9, 0, 0, 0); // 9 AM on meeting day
 
   // 6. Check if user has valid Google Tasks OAuth token
   try {
@@ -401,8 +402,8 @@ async function createFollowUpTaskForEvent(
   try {
     createdTask = await googleTasksClient.createTask(userId, taskList.googleListId, {
       title: `${companyName} follow up email`,
-      notes: `Follow up on meeting that ended ${event.endTime.toLocaleDateString()}.\n\nCalendar event: ${event.summary}`,
-      due: tomorrow,
+      notes: `Follow up on meeting scheduled for ${event.startTime.toLocaleDateString()}.\n\nCalendar event: ${event.summary}`,
+      due: dueDate,
     });
   } catch (error) {
     console.error(`[Calendar Sync] Failed to create Google task:`, error);
@@ -442,11 +443,24 @@ async function createFollowUpTaskForEvent(
       },
     });
 
+    // 9. Mark event as having task created (prevents recreation)
+    await prisma.calendarEvent.update({
+      where: { id: event.calendarEventId },
+      data: { followupTaskCreated: true },
+    });
+
     console.log(`[Calendar Sync] Created follow-up task: "${companyName} follow up email" for user ${userId}`);
   } catch (error: unknown) {
     // Handle unique constraint violation on taskSource
     if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
       console.log(`[Calendar Sync] Task already exists (race condition handled): ${event.id}`);
+
+      // Still mark flag even if task exists (prevents future recreation attempts)
+      await prisma.calendarEvent.update({
+        where: { id: event.calendarEventId },
+        data: { followupTaskCreated: true },
+      });
+
       return;
     }
     throw error; // Re-throw other errors
@@ -663,34 +677,36 @@ async function syncUserCalendar(userId: string): Promise<{
     }
   }
 
-  // Create follow-up tasks for completed external events linked to opportunities
-  // Query database for events that just completed
-  const completedEvents = await prisma.calendarEvent.findMany({
+  // Create follow-up tasks for upcoming external events linked to opportunities
+  // Query database for future events that haven't had tasks created yet
+  const upcomingEvents = await prisma.calendarEvent.findMany({
     where: {
       userId,
       isExternal: true,
       opportunityId: { not: null },
-      endTime: { lte: new Date() }, // Event has ended
+      startTime: { gt: new Date() }, // Future events only
+      followupTaskCreated: { not: true }, // Task not yet created
     },
     select: {
       id: true,
       googleEventId: true,
       summary: true,
-      endTime: true,
+      startTime: true,
       opportunityId: true,
     },
   });
 
-  for (const event of completedEvents) {
+  for (const event of upcomingEvents) {
     if (!event.opportunityId) continue; // TypeScript guard
 
     try {
       // Create follow-up task using the DB event data
       await createFollowUpTaskForEvent(userId, {
         id: event.googleEventId || event.id,
+        calendarEventId: event.id,
         opportunityId: event.opportunityId,
         summary: event.summary,
-        endTime: event.endTime,
+        startTime: event.startTime,
       });
     } catch (error) {
       // Log error but don't break calendar sync

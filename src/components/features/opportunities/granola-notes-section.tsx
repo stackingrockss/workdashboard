@@ -82,7 +82,14 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !url.trim() || !meetingDate) {
+
+    // When preselectedCalendarEvent exists, use its values directly (not state which may be stale)
+    const effectiveTitle = preselectedCalendarEvent ? preselectedCalendarEvent.title : title;
+    const effectiveMeetingDate = preselectedCalendarEvent
+      ? new Date(preselectedCalendarEvent.startTime).toISOString()
+      : new Date(meetingDate).toISOString();
+
+    if (!effectiveTitle.trim() || !url.trim() || (!preselectedCalendarEvent && !meetingDate)) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -90,9 +97,9 @@ export function GranolaNotesSection({ opportunityId, notes, preselectedCalendarE
     setIsSubmitting(true);
     try {
       await createGranolaNote(opportunityId, {
-        title,
+        title: effectiveTitle,
         url,
-        meetingDate: new Date(meetingDate).toISOString(),
+        meetingDate: effectiveMeetingDate,
         noteType,
         calendarEventId: preselectedCalendarEvent?.id || undefined,
         transcriptText: transcriptText.trim() || undefined,

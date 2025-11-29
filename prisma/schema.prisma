@@ -390,10 +390,11 @@ model CalendarEvent {
   isExternal     Boolean
   organizerEmail String?
   meetingUrl     String?
-  opportunityId  String?
-  accountId      String?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  opportunityId       String?
+  accountId           String?
+  followupTaskCreated Boolean?            @default(false)
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
   account        Account?            @relation(fields: [accountId], references: [id])
   gongCalls      GongCall[]
   granolaNotes   GranolaNote[]
