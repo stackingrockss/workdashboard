@@ -191,7 +191,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
         const response = await fetch(`/api/v1/opportunities/${opportunity.id}/contacts`);
         if (response.ok) {
           const data = await response.json();
-          setContacts(data);
+          setContacts(Array.isArray(data) ? data : []);
         }
       } catch (error) {
         console.error("Failed to load contacts:", error);
