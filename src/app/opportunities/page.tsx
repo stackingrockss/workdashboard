@@ -1,6 +1,7 @@
 // app/opportunities/page.tsx
 // Displays a Kanban view of opportunities with view management
 
+import { cookies } from "next/headers";
 import { KanbanBoardWrapper } from "@/components/kanban/KanbanBoardWrapper";
 import { prisma } from "@/lib/db";
 import { requireAuthOrRedirect } from "@/lib/auth";
@@ -18,68 +19,21 @@ export default async function OpportunitiesPage() {
   // Get organization's fiscal year settings
   const fiscalYearStartMonth = user.organization?.fiscalYearStartMonth ?? 1;
 
-  // Fetch custom views from database (user-specific + organization-specific)
-  const dbViews = await prisma.kanbanView.findMany({
-    where: {
-      OR: [
-        { userId: user.id },
-        { organizationId: null, userId: null }, // Global views
-      ],
-    },
-    include: {
-      columns: {
-        orderBy: { order: "asc" },
-      },
-    },
-    orderBy: [
-      { isActive: "desc" },
-      { lastAccessedAt: "desc" },
-      { createdAt: "desc" },
-    ],
-  });
-
-  // Transform custom views to serialized format
-  const customViews: SerializedKanbanView[] = dbViews.map((view) => ({
-    id: view.id,
-    name: view.name,
-    viewType: view.viewType,
-    isActive: view.isActive,
-    isDefault: view.isDefault,
-    userId: view.userId,
-    organizationId: view.organizationId,
-    lastAccessedAt: view.lastAccessedAt?.toISOString() || null,
-    isShared: view.isShared,
-    createdAt: view.createdAt.toISOString(),
-    updatedAt: view.updatedAt.toISOString(),
-    columns: view.columns.map((col) => ({
-      id: col.id,
-      title: col.title,
-      order: col.order,
-      color: col.color,
-      viewId: col.viewId,
-      createdAt: col.createdAt.toISOString(),
-      updatedAt: col.updatedAt.toISOString(),
-    })),
-  }));
-
   // Generate built-in views
   const builtInViews = getAllBuiltInViews(fiscalYearStartMonth, user.id);
 
-  // Combine all views (built-in first, then custom)
-  const allViews = [...builtInViews, ...customViews];
+  // Check if user has selected a view (stored in cookie for server-side access)
+  const cookieStore = await cookies();
+  const selectedViewId = cookieStore.get("selected-built-in-view")?.value;
 
-  // Determine active view
-  // Priority: 1) Active custom view, 2) Default custom view, 3) Quarterly view (first built-in)
-  let activeView = customViews.find((v) => v.isActive);
-  if (!activeView) {
-    activeView = customViews.find((v) => v.isDefault);
+  // Determine active view from cookie or default to first built-in view (Quarterly)
+  let activeView: SerializedKanbanView | undefined;
+  if (selectedViewId) {
+    activeView = builtInViews.find((v) => v.id === selectedViewId);
   }
   if (!activeView) {
     activeView = builtInViews[0]; // Default to Quarterly View
   }
-
-  // Check if user is new (no custom views)
-  const isNewUser = customViews.length === 0;
 
   // Build visibility filter based on user role
   const visibleUserIds = getVisibleUserIds(user, user.directReports);
@@ -156,10 +110,8 @@ export default async function OpportunitiesPage() {
       </div>
       <KanbanBoardWrapper
         opportunities={opportunities}
-        views={allViews}
+        views={builtInViews}
         activeView={activeView}
-        isNewUser={isNewUser}
-        userId={user.id}
         fiscalYearStartMonth={fiscalYearStartMonth}
       />
     </div>

@@ -1,11 +1,12 @@
 /**
  * Built-in view generators
- * Creates virtual views and columns for quarterly, stages, and forecast views
+ * Creates virtual views and columns for quarterly, stages, forecast, closed lost, and customers views
  */
 
-import { ViewType } from "@prisma/client";
-import { SerializedKanbanView, SerializedKanbanColumn, BUILT_IN_VIEW_IDS } from "@/types/view";
+import { SerializedKanbanView, SerializedKanbanColumn, BUILT_IN_VIEW_IDS, ExtendedViewType } from "@/types/view";
 import { generateQuarterlyColumns as generateQuarterlyColumnsFromOpportunities } from "@/lib/utils/quarterly-view";
+import { generateClosedLostColumns } from "@/lib/utils/closed-lost-view";
+import { generateCustomersColumns } from "@/lib/utils/customers-view";
 import { Opportunity } from "@/types/opportunity";
 
 /**
@@ -76,7 +77,7 @@ export function generateForecastColumns(): SerializedKanbanColumn[] {
  * Get columns for a built-in view type
  */
 export function getBuiltInColumns(
-  viewType: ViewType,
+  viewType: ExtendedViewType,
   fiscalYearStartMonth?: number,
   opportunities?: Opportunity[]
 ): SerializedKanbanColumn[] {
@@ -87,6 +88,10 @@ export function getBuiltInColumns(
       return generateStagesColumns();
     case "forecast":
       return generateForecastColumns();
+    case "closedLost":
+      return generateClosedLostColumns();
+    case "customers":
+      return generateCustomersColumns();
     case "custom":
       return []; // Custom views don't have default columns
     default:
@@ -95,15 +100,20 @@ export function getBuiltInColumns(
 }
 
 /**
+ * Built-in view type (subset of ExtendedViewType that are built-in)
+ */
+type BuiltInViewType = "quarterly" | "stages" | "forecast" | "closedLost" | "customers";
+
+/**
  * Generate a complete built-in view object
  */
 export function getBuiltInView(
-  viewType: "quarterly" | "stages" | "forecast",
+  viewType: BuiltInViewType,
   fiscalYearStartMonth: number = 1,
   userId?: string,
   organizationId?: string
 ): SerializedKanbanView {
-  const viewMap = {
+  const viewMap: Record<BuiltInViewType, { id: string; name: string }> = {
     quarterly: {
       id: BUILT_IN_VIEW_IDS.QUARTERLY,
       name: "Quarterly View",
@@ -115,6 +125,14 @@ export function getBuiltInView(
     forecast: {
       id: BUILT_IN_VIEW_IDS.FORECAST,
       name: "Forecast Categories",
+    },
+    closedLost: {
+      id: BUILT_IN_VIEW_IDS.CLOSED_LOST,
+      name: "Closed Lost",
+    },
+    customers: {
+      id: BUILT_IN_VIEW_IDS.CUSTOMERS,
+      name: "Customers",
     },
   };
 
@@ -149,5 +167,7 @@ export function getAllBuiltInViews(
     getBuiltInView("quarterly", fiscalYearStartMonth, userId, organizationId),
     getBuiltInView("stages", fiscalYearStartMonth, userId, organizationId),
     getBuiltInView("forecast", fiscalYearStartMonth, userId, organizationId),
+    getBuiltInView("closedLost", fiscalYearStartMonth, userId, organizationId),
+    getBuiltInView("customers", fiscalYearStartMonth, userId, organizationId),
   ];
 }

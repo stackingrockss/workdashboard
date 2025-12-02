@@ -175,7 +175,7 @@ export function OpportunityForm({
       // Clean up form data - remove empty strings and convert to null/undefined
       const cleanedData: OpportunityCreateInput = {
         ...formData,
-        accountWebsite: formData.accountWebsite?.trim() || undefined,
+        accountWebsite: formData.accountWebsite?.trim() || "", // Required field - keep empty string for validation
         nextStep: formData.nextStep?.trim() || undefined,
         riskNotes: formData.riskNotes?.trim() || undefined,
         ownerId: formData.ownerId?.trim() || undefined,
@@ -313,16 +313,17 @@ export function OpportunityForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="accountWebsite">Company Website</Label>
+        <Label htmlFor="accountWebsite">Company Website *</Label>
         <Input
           id="accountWebsite"
           type="text"
           value={formData.accountWebsite}
           onChange={(e) => setFormData({ ...formData, accountWebsite: e.target.value })}
           placeholder="acme.com, localhost:3000, or https://example.com"
+          required
         />
         <p className="text-xs text-muted-foreground">
-          Optional - Valuable for AI account research
+          Required for AI account research
         </p>
       </div>
 

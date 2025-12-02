@@ -71,26 +71,28 @@ model Contact {
 }
 
 model GongCall {
-  id              String         @id @default(cuid())
-  opportunityId   String
-  title           String
-  url             String
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  meetingDate     DateTime
-  noteType        NoteType?      @default(customer)
-  goals           Json?
-  nextSteps       Json?
-  painPoints      Json?
-  parsedAt        DateTime?
-  parsedPeople    Json?
-  transcriptText  String?
-  parsingError    String?
-  parsingStatus   ParsingStatus?
-  riskAssessment  Json?
-  calendarEventId String?
-  calendarEvent   CalendarEvent? @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
-  opportunity     Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  id                         String                      @id @default(cuid())
+  opportunityId              String
+  title                      String
+  url                        String
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+  meetingDate                DateTime
+  noteType                   NoteType?                   @default(customer)
+  goals                      Json?
+  nextSteps                  Json?
+  painPoints                 Json?
+  parsedAt                   DateTime?
+  parsedPeople               Json?
+  transcriptText             String?
+  parsingError               String?
+  parsingStatus              ParsingStatus?
+  riskAssessment             Json?
+  calendarEventId            String?
+  calendarEvent                CalendarEvent?              @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
+  contactsReadyNotifications   ContactsReadyNotification[]
+  parsingCompleteNotifications ParsingCompleteNotification[] @relation("GongCallParsingCompleteNotifications")
+  opportunity                  Opportunity                 @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
   @@index([parsingStatus])
@@ -114,26 +116,28 @@ model GoogleNote {
 }
 
 model GranolaNote {
-  id              String         @id @default(cuid())
-  opportunityId   String
-  title           String
-  url             String
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-  meetingDate     DateTime
-  noteType        NoteType?      @default(customer)
-  calendarEventId String?
-  transcriptText  String?
-  goals           Json?
-  nextSteps       Json?
-  painPoints      Json?
-  parsedAt        DateTime?
-  parsedPeople    Json?
-  parsingError    String?
-  parsingStatus   ParsingStatus?
-  riskAssessment  Json?
-  calendarEvent   CalendarEvent? @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
-  opportunity     Opportunity    @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  id                         String                      @id @default(cuid())
+  opportunityId              String
+  title                      String
+  url                        String
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+  meetingDate                DateTime
+  noteType                   NoteType?                   @default(customer)
+  calendarEventId            String?
+  transcriptText             String?
+  goals                      Json?
+  nextSteps                  Json?
+  painPoints                 Json?
+  parsedAt                   DateTime?
+  parsedPeople               Json?
+  parsingError               String?
+  parsingStatus              ParsingStatus?
+  riskAssessment             Json?
+  calendarEvent                CalendarEvent?              @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
+  contactsReadyNotifications   ContactsReadyNotification[]
+  parsingCompleteNotifications ParsingCompleteNotification[] @relation("GranolaParsingCompleteNotifications")
+  opportunity                  Opportunity                 @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
   @@index([calendarEventId])
@@ -242,10 +246,12 @@ model Opportunity {
   nextCallDateManuallySet    Boolean                  @default(false)
   nextCallDateLastCalculated DateTime?
   nextCallDateEventId        String?
-  calendarEvents             CalendarEvent[]
-  chatMessages               ChatMessage[]
-  contacts                   Contact[]
-  earningsTranscripts        EarningsCallTranscript[]
+  calendarEvents               CalendarEvent[]
+  chatMessages                 ChatMessage[]
+  contacts                     Contact[]
+  contactsReadyNotifications   ContactsReadyNotification[]
+  parsingCompleteNotifications ParsingCompleteNotification[] @relation("OpportunityParsingCompleteNotifications")
+  earningsTranscripts          EarningsCallTranscript[]
   gongCalls                  GongCall[]
   googleNotes                GoogleNote[]
   granolaNotes               GranolaNote[]
@@ -266,24 +272,26 @@ model Opportunity {
 }
 
 model Organization {
-  id                   String                   @id @default(cuid())
-  name                 String
-  domain               String?                  @unique
-  logo                 String?
-  fiscalYearStartMonth Int                      @default(1)
-  createdAt            DateTime                 @default(now())
-  updatedAt            DateTime                 @updatedAt
-  accounts             Account[]
-  comments             Comment[]
-  commentMentions      CommentMention[]
-  contents             Content[]
-  earningsTranscripts  EarningsCallTranscript[]
-  invitations          Invitation[]
-  kanbanViews          KanbanView[]
-  opportunities        Opportunity[]
-  settings             OrganizationSettings?
-  secFilings           SecFiling[]
-  users                User[]
+  id                         String                      @id @default(cuid())
+  name                       String
+  domain                     String?                     @unique
+  logo                       String?
+  fiscalYearStartMonth       Int                         @default(1)
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+  accounts                   Account[]
+  comments                     Comment[]
+  commentMentions              CommentMention[]
+  contactsReadyNotifications   ContactsReadyNotification[]
+  parsingCompleteNotifications ParsingCompleteNotification[]
+  contents                     Content[]
+  earningsTranscripts        EarningsCallTranscript[]
+  invitations                Invitation[]
+  kanbanViews                KanbanView[]
+  opportunities              Opportunity[]
+  settings                   OrganizationSettings?
+  secFilings                 SecFiling[]
+  users                      User[]
 
   @@schema("opportunity_tracker")
 }
@@ -303,36 +311,38 @@ model OrganizationSettings {
 }
 
 model User {
-  id                      String               @id @default(cuid())
-  email                   String               @unique
-  name                    String?
-  avatarUrl               String?
-  createdAt               DateTime             @default(now())
-  supabaseId              String?              @unique
-  managerId               String?
-  organizationId          String?
-  role                    UserRole             @default(REP)
-  annualQuota             Int?
-  autoCreateMeetingTasks  Boolean              @default(true)
-  taskFilterPreference    String               @default("today")
-  ownedAccounts           Account[]            @relation("AccountOwner")
-  calendarEvents          CalendarEvent[]
-  calendarSyncStates      CalendarSyncState[]
-  chatMessages            ChatMessage[]
-  authoredComments        Comment[]            @relation("AuthoredComments")
-  createdContents         Content[]            @relation("ContentCreatedBy")
-  resolvedComments        Comment[]            @relation("ResolvedComments")
-  mentions                CommentMention[]     @relation("UserMentions")
-  reactions               CommentReaction[]    @relation("UserReactions")
-  invitations             Invitation[]
-  kanbanViews             KanbanView[]
-  oauthTokens             OAuthToken[]
-  opportunities           Opportunity[]
-  tasks                   Task[]
-  taskLists               TaskList[]
-  manager                 User?                @relation("ManagerReps", fields: [managerId], references: [id])
-  directReports           User[]               @relation("ManagerReps")
-  organization            Organization?        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id                         String                      @id @default(cuid())
+  email                      String                      @unique
+  name                       String?
+  avatarUrl                  String?
+  createdAt                  DateTime                    @default(now())
+  supabaseId                 String?                     @unique
+  managerId                  String?
+  organizationId             String?
+  role                       UserRole                    @default(REP)
+  annualQuota                Int?
+  autoCreateMeetingTasks     Boolean                     @default(true)
+  taskFilterPreference       String                      @default("today")
+  ownedAccounts              Account[]                   @relation("AccountOwner")
+  calendarEvents             CalendarEvent[]
+  calendarSyncStates         CalendarSyncState[]
+  chatMessages               ChatMessage[]
+  authoredComments           Comment[]                   @relation("AuthoredComments")
+  createdContents            Content[]                   @relation("ContentCreatedBy")
+  resolvedComments           Comment[]                   @relation("ResolvedComments")
+  mentions                   CommentMention[]            @relation("UserMentions")
+  reactions                  CommentReaction[]           @relation("UserReactions")
+  contactsReadyNotifications   ContactsReadyNotification[]   @relation("ContactsReadyNotifications")
+  parsingCompleteNotifications ParsingCompleteNotification[] @relation("ParsingCompleteNotifications")
+  invitations                  Invitation[]
+  kanbanViews                  KanbanView[]
+  oauthTokens                OAuthToken[]
+  opportunities              Opportunity[]
+  tasks                      Task[]
+  taskLists                  TaskList[]
+  manager                    User?                       @relation("ManagerReps", fields: [managerId], references: [id])
+  directReports              User[]                      @relation("ManagerReps")
+  organization               Organization?               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
   @@index([managerId])
@@ -627,6 +637,73 @@ model CommentReaction {
   @@unique([commentId, userId, emoji])
   @@index([commentId])
   @@index([userId])
+  @@schema("opportunity_tracker")
+}
+
+model ContactsReadyNotification {
+  id              String       @id @default(cuid())
+  userId          String
+  organizationId  String
+
+  // Source of the contacts (one of these will be set)
+  gongCallId      String?
+  granolaNoteId   String?
+
+  // Metadata
+  contactCount    Int          // Number of contacts extracted
+  opportunityId   String       // For navigation
+  opportunityName String       // For display in notification
+  callTitle       String       // Gong call or Granola note title
+
+  // Status
+  isRead          Boolean      @default(false)
+  readAt          DateTime?
+  createdAt       DateTime     @default(now())
+
+  // Relations
+  user            User         @relation("ContactsReadyNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  gongCall        GongCall?    @relation(fields: [gongCallId], references: [id], onDelete: Cascade)
+  granolaNote     GranolaNote? @relation(fields: [granolaNoteId], references: [id], onDelete: Cascade)
+  opportunity     Opportunity  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gongCallId])      // One notification per user per Gong call
+  @@unique([userId, granolaNoteId])   // One notification per user per Granola note
+  @@index([userId, organizationId, isRead])
+  @@index([userId, isRead, createdAt])
+  @@schema("opportunity_tracker")
+}
+
+model ParsingCompleteNotification {
+  id              String       @id @default(cuid())
+  userId          String
+  organizationId  String
+
+  // Source (one will be set)
+  gongCallId      String?
+  granolaNoteId   String?
+
+  // Metadata for display and navigation
+  opportunityId   String
+  opportunityName String
+  callTitle       String
+
+  // Status
+  isRead          Boolean      @default(false)
+  readAt          DateTime?
+  createdAt       DateTime     @default(now())
+
+  // Relations
+  user            User         @relation("ParsingCompleteNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  gongCall        GongCall?    @relation("GongCallParsingCompleteNotifications", fields: [gongCallId], references: [id], onDelete: Cascade)
+  granolaNote     GranolaNote? @relation("GranolaParsingCompleteNotifications", fields: [granolaNoteId], references: [id], onDelete: Cascade)
+  opportunity     Opportunity  @relation("OpportunityParsingCompleteNotifications", fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gongCallId])
+  @@unique([userId, granolaNoteId])
+  @@index([userId, organizationId, isRead])
+  @@index([userId, isRead, createdAt])
   @@schema("opportunity_tracker")
 }
 

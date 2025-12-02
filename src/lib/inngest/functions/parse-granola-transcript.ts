@@ -7,6 +7,7 @@ import { prisma } from "@/lib/db";
 import { ParsingStatus } from "@prisma/client";
 import { appendToGranolaHistory } from "@/lib/utils/granola-history";
 import { updateOpportunityNextStep } from "@/lib/utils/next-step-updater";
+import { broadcastNotificationEvent } from "@/lib/realtime";
 
 /**
  * Background job that parses a Granola note transcript using AI
@@ -109,13 +110,118 @@ export const parseGranolaTranscriptJob = inngest.createFunction(
       });
     });
 
-    // Step 6: Update opportunity's nextStep field from latest call
+    // Step 6: Create notification for opportunity owner if contacts were found
+    const notificationResult = await step.run("create-contacts-notification", async () => {
+      const peopleCount = parseResult.data!.people.length;
+      if (peopleCount === 0) {
+        return { notificationCreated: false, reason: "no contacts found" };
+      }
+
+      try {
+        // Check if notification already exists (upsert pattern)
+        const existingNotification = await prisma.contactsReadyNotification.findUnique({
+          where: {
+            userId_granolaNoteId: {
+              userId: updatedNote.opportunity.ownerId,
+              granolaNoteId: granolaId,
+            },
+          },
+        });
+
+        if (existingNotification) {
+          return { notificationCreated: false, reason: "notification already exists" };
+        }
+
+        // Create notification for opportunity owner
+        const notification = await prisma.contactsReadyNotification.create({
+          data: {
+            userId: updatedNote.opportunity.ownerId,
+            organizationId: updatedNote.opportunity.organizationId,
+            granolaNoteId: granolaId,
+            contactCount: peopleCount,
+            opportunityId: noteData.opportunityId,
+            opportunityName: updatedNote.opportunity.name,
+            callTitle: updatedNote.title || "Granola Note",
+          },
+        });
+
+        // Broadcast real-time notification
+        await broadcastNotificationEvent(updatedNote.opportunity.ownerId, {
+          type: "contacts:ready",
+          payload: {
+            notificationId: notification.id,
+            granolaNoteId: granolaId,
+            contactCount: peopleCount,
+            opportunityId: noteData.opportunityId,
+            opportunityName: updatedNote.opportunity.name,
+            callTitle: updatedNote.title || "Granola Note",
+          },
+        });
+
+        return { notificationCreated: true, notificationId: notification.id };
+      } catch (error) {
+        // Log but don't fail the job if notification creation fails
+        console.error("Failed to create contacts notification:", error);
+        return { notificationCreated: false, error: String(error) };
+      }
+    });
+
+    // Step 7: Create "Parsing Complete" notification for opportunity owner
+    await step.run("create-parsing-complete-notification", async () => {
+      try {
+        // Check if notification already exists (upsert pattern)
+        const existingNotification = await prisma.parsingCompleteNotification.findUnique({
+          where: {
+            userId_granolaNoteId: {
+              userId: updatedNote.opportunity.ownerId,
+              granolaNoteId: granolaId,
+            },
+          },
+        });
+
+        if (existingNotification) {
+          return { notificationCreated: false, reason: "notification already exists" };
+        }
+
+        // Create parsing complete notification
+        const notification = await prisma.parsingCompleteNotification.create({
+          data: {
+            userId: updatedNote.opportunity.ownerId,
+            organizationId: updatedNote.opportunity.organizationId,
+            granolaNoteId: granolaId,
+            opportunityId: noteData.opportunityId,
+            opportunityName: updatedNote.opportunity.name,
+            callTitle: updatedNote.title || "Granola Note",
+          },
+        });
+
+        // Broadcast real-time notification
+        await broadcastNotificationEvent(updatedNote.opportunity.ownerId, {
+          type: "parsing:complete",
+          payload: {
+            notificationId: notification.id,
+            granolaNoteId: granolaId,
+            opportunityId: noteData.opportunityId,
+            opportunityName: updatedNote.opportunity.name,
+            callTitle: updatedNote.title || "Granola Note",
+          },
+        });
+
+        return { notificationCreated: true, notificationId: notification.id };
+      } catch (error) {
+        // Log but don't fail the job if notification creation fails
+        console.error("Failed to create parsing complete notification:", error);
+        return { notificationCreated: false, error: String(error) };
+      }
+    });
+
+    // Step 8: Update opportunity's nextStep field from latest call
     await step.run("update-opportunity-next-step", async () => {
       const result = await updateOpportunityNextStep(noteData.opportunityId);
       return { updated: result.updated, nextStep: result.nextStep };
     });
 
-    // Step 7: Update opportunity history (with duplicate prevention)
+    // Step 9: Update opportunity history (with duplicate prevention)
     await step.run("update-opportunity-history", async () => {
       try {
         await appendToGranolaHistory({
@@ -134,7 +240,7 @@ export const parseGranolaTranscriptJob = inngest.createFunction(
       }
     });
 
-    // Step 8: Trigger downstream jobs (risk analysis + consolidation check)
+    // Step 10: Trigger downstream jobs (risk analysis + consolidation check)
     // These are sent as separate events so they run independently
     await step.sendEvent("trigger-downstream-jobs", [
       {

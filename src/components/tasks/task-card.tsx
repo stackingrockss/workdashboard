@@ -66,14 +66,16 @@ export function TaskCard({ task, onComplete, onDueDateChange }: TaskCardProps) {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to mark task complete");
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to mark task complete");
       }
 
       toast.success("Task marked complete");
       onComplete?.(task.id);
     } catch (error) {
-      console.error("Failed to mark task complete:", error);
-      toast.error("Failed to mark task complete");
+      const errorMsg = error instanceof Error ? error.message : "Failed to mark task complete";
+      console.error("Failed to mark task complete:", errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsCompleting(false);
     }

@@ -67,7 +67,7 @@ export function getNotificationChannelName(userId: string): string {
 export async function broadcastNotificationEvent(
   userId: string,
   event: {
-    type: "mention:created";
+    type: "mention:created" | "contacts:ready" | "parsing:complete";
     payload: Record<string, unknown>;
   }
 ): Promise<void> {
@@ -102,6 +102,23 @@ export function subscribeToNotifications(
   userId: string,
   callbacks: {
     onMentionCreated?: (data: { mentionId: string; commentId: string }) => void;
+    onContactsReady?: (data: {
+      notificationId: string;
+      gongCallId?: string;
+      granolaNoteId?: string;
+      contactCount: number;
+      opportunityId: string;
+      opportunityName: string;
+      callTitle: string;
+    }) => void;
+    onParsingComplete?: (data: {
+      notificationId: string;
+      gongCallId?: string;
+      granolaNoteId?: string;
+      opportunityId: string;
+      opportunityName: string;
+      callTitle: string;
+    }) => void;
     onConnected?: () => void;
     onDisconnected?: () => void;
     onError?: (error: Error) => void;
@@ -120,6 +137,33 @@ export function subscribeToNotifications(
         callbacks.onMentionCreated({
           mentionId: payload.mentionId,
           commentId: payload.commentId,
+        });
+      }
+    })
+    // Subscribe to contacts ready events
+    .on("broadcast", { event: "contacts:ready" }, ({ payload }) => {
+      if (payload.userId === userId && callbacks.onContactsReady) {
+        callbacks.onContactsReady({
+          notificationId: payload.notificationId,
+          gongCallId: payload.gongCallId,
+          granolaNoteId: payload.granolaNoteId,
+          contactCount: payload.contactCount,
+          opportunityId: payload.opportunityId,
+          opportunityName: payload.opportunityName,
+          callTitle: payload.callTitle,
+        });
+      }
+    })
+    // Subscribe to parsing complete events
+    .on("broadcast", { event: "parsing:complete" }, ({ payload }) => {
+      if (payload.userId === userId && callbacks.onParsingComplete) {
+        callbacks.onParsingComplete({
+          notificationId: payload.notificationId,
+          gongCallId: payload.gongCallId,
+          granolaNoteId: payload.granolaNoteId,
+          opportunityId: payload.opportunityId,
+          opportunityName: payload.opportunityName,
+          callTitle: payload.callTitle,
         });
       }
     })

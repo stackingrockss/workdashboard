@@ -30,16 +30,10 @@ const baseOpportunitySchema = z.object({
   accountTicker: z.string().max(10).optional().transform(val => val?.trim().toUpperCase() || undefined),
   accountWebsite: z
     .string()
-    .optional()
-    .transform((val) => {
-      if (!val || val.trim() === "") return undefined;
-      return normalizeUrl(val);
-    })
+    .min(1, "Company website is required")
+    .transform((val) => normalizeUrl(val))
     .refine(
-      (val) => {
-        if (!val) return true; // Optional field
-        return isValidUrl(val);
-      },
+      (val) => isValidUrl(val),
       {
         message: "Please enter a valid URL (e.g., acme.com, localhost:3000, or https://example.com)"
       }

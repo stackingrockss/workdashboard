@@ -22,14 +22,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ExternalLink, Plus, Trash2, FileText, Eye, Loader2, AlertCircle, RefreshCw } from "lucide-react";
-import { GongCall, NoteType } from "@/types/gong-call";
+import { GongCall, NoteType, RiskAssessment } from "@/types/gong-call";
 import { createGongCall, deleteGongCall } from "@/lib/api/gong-calls";
 import { useRouter } from "next/navigation";
 import { formatDateShort } from "@/lib/format";
 import { ParseGongTranscriptDialog } from "./parse-gong-transcript-dialog";
 import { GongCallInsightsDialog } from "./gong-call-insights-dialog";
 import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
-import type { RiskAssessment } from "@/types/gong-call";
 import type { ConsolidationStatus } from "@/types/opportunity";
 
 interface PreselectedCalendarEvent {
@@ -76,7 +75,6 @@ export function GongCallsSection({
   const [transcriptText, setTranscriptText] = useState("");
   const [selectedCallForParsing, setSelectedCallForParsing] = useState<GongCall | null>(null);
   const [selectedCallForViewing, setSelectedCallForViewing] = useState<GongCall | null>(null);
-  const [autoOpenContactImport, setAutoOpenContactImport] = useState(false);
   const [isConsolidating, setIsConsolidating] = useState(false);
   const [hasAutoOpenedForEvent, setHasAutoOpenedForEvent] = useState(false);
   const router = useRouter();
@@ -133,42 +131,6 @@ export function GongCallsSection({
       }
     }
   }, [consolidationStatus, isConsolidating]);
-
-  // Show completion toast when a call finishes parsing
-  useEffect(() => {
-    const completedCalls = safeCalls.filter(
-      (call) => call.parsingStatus === "completed" && call.parsedAt
-    );
-
-    // Check sessionStorage to avoid showing toast on initial page load
-    completedCalls.forEach((call) => {
-      const toastKey = `gong-parsed-${call.id}`;
-      const hasShownToast = sessionStorage.getItem(toastKey);
-
-      if (!hasShownToast) {
-        // Count contacts extracted
-        const peopleCount = (call.parsedPeople as PersonExtracted[] | null)?.length || 0;
-
-        // Create message with contact count
-        let message = `"${call.title}" parsed successfully!`;
-        if (peopleCount > 0) {
-          message += ` ${peopleCount} contact${peopleCount !== 1 ? 's' : ''} found.`;
-        }
-
-        toast.success(message, {
-          duration: 6000,
-          action: {
-            label: "Review & Import",
-            onClick: () => {
-              setAutoOpenContactImport(true);
-              setSelectedCallForViewing(call);
-            },
-          },
-        });
-        sessionStorage.setItem(toastKey, "true");
-      }
-    });
-  }, [calls]);
 
   const handleAddCall = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -594,7 +556,6 @@ export function GongCallsSection({
           onOpenChange={(open) => {
             if (!open) {
               setSelectedCallForViewing(null);
-              setAutoOpenContactImport(false); // Reset flag when dialog closes
             }
           }}
           gongCallTitle={selectedCallForViewing.title}
@@ -613,7 +574,6 @@ export function GongCallsSection({
           onRiskAnalysisComplete={() => {
             router.refresh();
           }}
-          autoOpenContactImport={autoOpenContactImport}
         />
       )}
     </div>

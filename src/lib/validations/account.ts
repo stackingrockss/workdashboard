@@ -14,7 +14,7 @@ const normalizeUrl = (url: string): string => {
 };
 
 export const accountCreateSchema = z.object({
-  name: z.string().min(1, "Account name is required").max(200),
+  name: z.string().min(1, "Account name is required").max(200).transform(val => val.trim()),
   website: z
     .string()
     .optional()

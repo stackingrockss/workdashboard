@@ -197,6 +197,34 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = accountCreateSchema.parse(body);
 
+    // Check for existing account with case-insensitive name match
+    const existingAccount = await prisma.account.findFirst({
+      where: {
+        organizationId: user.organization.id,
+        name: {
+          equals: data.name,
+          mode: "insensitive",
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        website: true,
+        industry: true,
+      },
+    });
+
+    if (existingAccount) {
+      return NextResponse.json(
+        {
+          error: "duplicate",
+          message: `An account named "${existingAccount.name}" already exists`,
+          existingAccount,
+        },
+        { status: 409 }
+      );
+    }
+
     const account = await prisma.account.create({
       data: {
         name: data.name,

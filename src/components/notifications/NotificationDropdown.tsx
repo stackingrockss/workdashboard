@@ -3,6 +3,7 @@
 
 "use client";
 
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,11 +15,34 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bell, CheckCheck, Inbox, AlertCircle } from "lucide-react";
-import { useNotifications } from "@/hooks/useNotifications";
+import { useNotifications, ContactsReadyNotification, MentionNotification, ParsingCompleteNotification } from "@/hooks/useNotifications";
 import { MentionNotificationItem } from "./MentionNotificationItem";
+import { ContactNotificationItem } from "./ContactNotificationItem";
+import { ParsingCompleteNotificationItem } from "./ParsingCompleteNotificationItem";
+import { ContactImportDialog } from "@/components/contacts/ContactImportDialog";
+import { GongCallInsightsDialog } from "@/components/features/opportunities/gong-call-insights-dialog";
 import { Badge } from "@/components/ui/badge";
+import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
+import type { RiskAssessment } from "@/types/gong-call";
 
 export function NotificationDropdown() {
+  const [selectedContactNotification, setSelectedContactNotification] = useState<ContactsReadyNotification | null>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [selectedParsingNotification, setSelectedParsingNotification] = useState<ParsingCompleteNotification | null>(null);
+  const [isInsightsDialogOpen, setIsInsightsDialogOpen] = useState(false);
+
+  // Handler for when a contact notification is clicked
+  const handleContactsReadyClick = useCallback((notification: ContactsReadyNotification) => {
+    setSelectedContactNotification(notification);
+    setIsImportDialogOpen(true);
+  }, []);
+
+  // Handler for when a parsing complete notification is clicked
+  const handleParsingCompleteClick = useCallback((notification: ParsingCompleteNotification) => {
+    setSelectedParsingNotification(notification);
+    setIsInsightsDialogOpen(true);
+  }, []);
+
   const {
     notifications,
     unreadCount,
@@ -28,7 +52,21 @@ export function NotificationDropdown() {
     markAllAsRead,
     handleNotificationClick,
     refetch,
-  } = useNotifications();
+  } = useNotifications({
+    onContactsReadyClick: handleContactsReadyClick,
+    onParsingCompleteClick: handleParsingCompleteClick,
+  });
+
+  // Handle import complete - refresh notifications
+  const handleImportComplete = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  // Handle insights dialog close
+  const handleInsightsDialogClose = useCallback(() => {
+    setIsInsightsDialogOpen(false);
+    setSelectedParsingNotification(null);
+  }, []);
 
   return (
     <DropdownMenu>
@@ -125,13 +163,33 @@ export function NotificationDropdown() {
         {!isLoading && !error && notifications.length > 0 && (
           <ScrollArea className="max-h-[400px]">
             <div className="space-y-1 p-1">
-              {notifications.map((notification) => (
-                <MentionNotificationItem
-                  key={notification.id}
-                  notification={notification}
-                  onClick={() => handleNotificationClick(notification)}
-                />
-              ))}
+              {notifications.map((notification) => {
+                if (notification.type === "contacts_ready") {
+                  return (
+                    <ContactNotificationItem
+                      key={notification.id}
+                      notification={notification}
+                      onClick={() => handleNotificationClick(notification)}
+                    />
+                  );
+                } else if (notification.type === "parsing_complete") {
+                  return (
+                    <ParsingCompleteNotificationItem
+                      key={notification.id}
+                      notification={notification}
+                      onClick={() => handleNotificationClick(notification)}
+                    />
+                  );
+                } else {
+                  return (
+                    <MentionNotificationItem
+                      key={notification.id}
+                      notification={notification as MentionNotification}
+                      onClick={() => handleNotificationClick(notification)}
+                    />
+                  );
+                }
+              })}
             </div>
           </ScrollArea>
         )}
@@ -146,6 +204,36 @@ export function NotificationDropdown() {
           </>
         )}
       </DropdownMenuContent>
+
+      {/* Contact Import Dialog */}
+      <ContactImportDialog
+        notification={selectedContactNotification}
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        onImportComplete={handleImportComplete}
+      />
+
+      {/* Insights Dialog - Use GongCallInsightsDialog for both types */}
+      {selectedParsingNotification && (
+        <GongCallInsightsDialog
+          open={isInsightsDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) handleInsightsDialogClose();
+          }}
+          gongCallTitle={selectedParsingNotification.callTitle}
+          opportunityId={selectedParsingNotification.opportunityId}
+          gongCallId={selectedParsingNotification.gongCallId || selectedParsingNotification.granolaNoteId || ""}
+          insights={{
+            painPoints: selectedParsingNotification.insights?.painPoints || [],
+            goals: selectedParsingNotification.insights?.goals || [],
+            people: (selectedParsingNotification.insights?.people as PersonExtracted[]) || [],
+            nextSteps: selectedParsingNotification.insights?.nextSteps || [],
+          }}
+          riskAssessment={(selectedParsingNotification.insights?.riskAssessment as RiskAssessment) || null}
+          onContactsImported={refetch}
+          onRiskAnalysisComplete={refetch}
+        />
+      )}
     </DropdownMenu>
   );
 }

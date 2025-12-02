@@ -27,22 +27,15 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Filter, Columns, LayoutGrid, Table } from "lucide-react";
+import { Plus, Filter, LayoutGrid, Table } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { ViewSelector } from "./ViewSelector";
-import { WelcomeViewDialog } from "./WelcomeViewDialog";
-import { ManageViewsDialog } from "./ManageViewsDialog";
 import { CurrentQuarterView } from "@/components/opportunities/CurrentQuarterView";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
-import { ColumnForm } from "@/components/forms/column-form";
 import { Opportunity, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory } from "@/types/opportunity";
-import { SerializedKanbanView, isBuiltInView } from "@/types/view";
+import { SerializedKanbanView } from "@/types/view";
 import { createOpportunity, updateOpportunity } from "@/lib/api/opportunities";
 import { OpportunityCreateInput } from "@/lib/validations/opportunity";
-import { createColumn } from "@/lib/api/columns";
-import { ColumnCreateInput } from "@/lib/validations/column";
-import { createView, activateView, deactivateAllViews } from "@/lib/api/views";
-import { ViewType } from "@prisma/client";
 import { formatDateShort } from "@/lib/format";
 import { getQuarterFromDate } from "@/lib/utils/quarter";
 
@@ -50,9 +43,6 @@ interface KanbanBoardWrapperProps {
   opportunities: Opportunity[];
   views: SerializedKanbanView[];
   activeView: SerializedKanbanView;
-  isNewUser?: boolean;
-  userId?: string;
-  organizationId?: string;
   fiscalYearStartMonth?: number;
 }
 
@@ -60,15 +50,9 @@ export function KanbanBoardWrapper({
   opportunities,
   views: initialViews,
   activeView: initialActiveView,
-  isNewUser = false,
-  userId,
-  organizationId,
   fiscalYearStartMonth = 1
 }: KanbanBoardWrapperProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isColumnDialogOpen, setIsColumnDialogOpen] = useState(false);
-  const [isWelcomeDialogOpen, setIsWelcomeDialogOpen] = useState(false);
-  const [isManageViewsDialogOpen, setIsManageViewsDialogOpen] = useState(false);
   const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"board" | "current-quarter">("board");
@@ -94,44 +78,6 @@ export function KanbanBoardWrapper({
   useEffect(() => {
     setActiveView(initialActiveView);
   }, [initialActiveView]);
-
-  // Check localStorage for selected built-in view preference on mount
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedBuiltInViewId = localStorage.getItem("selected-built-in-view");
-      if (savedBuiltInViewId && isBuiltInView(savedBuiltInViewId)) {
-        // If a built-in view was previously selected and we're not already on it,
-        // and there's no active custom view, switch to it
-        const hasActiveCustomView = views.some(v => !isBuiltInView(v.id) && v.isActive);
-        if (!hasActiveCustomView && activeView.id !== savedBuiltInViewId) {
-          const savedView = views.find(v => v.id === savedBuiltInViewId);
-          if (savedView) {
-            setActiveView(savedView);
-          }
-        }
-      }
-    }
-    // Only run once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Show welcome dialog for new users (client-side only to avoid hydration mismatch)
-  // Use useState initializer to check localStorage on mount (client-side only)
-  const [hasCheckedWelcome, setHasCheckedWelcome] = useState(false);
-
-  useEffect(() => {
-    // Only access localStorage in useEffect to avoid SSR hydration issues
-    if (typeof window !== 'undefined' && !hasCheckedWelcome) {
-      const hasSeenWelcome = localStorage.getItem("kanban-welcome-seen");
-      if (isNewUser && !hasSeenWelcome) {
-        // Delay setting dialog open to avoid hydration mismatch
-        // This ensures the first render matches SSR
-        setTimeout(() => setIsWelcomeDialogOpen(true), 0);
-      }
-      setHasCheckedWelcome(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Run only once on mount, isNewUser is stable from server
 
   // Persist view mode preference
   useEffect(() => {
@@ -159,7 +105,6 @@ export function KanbanBoardWrapper({
   const displayColumns = useMemo(() => {
     // For quarterly view, regenerate columns dynamically from opportunities
     if (activeView.viewType === "quarterly") {
-      // Use dynamic import in useMemo is not ideal, but we need this for quarterly regeneration
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { generateQuarterlyColumns } = require("@/lib/utils/quarterly-view");
       return generateQuarterlyColumns(localOpportunities, fiscalYearStartMonth);
@@ -169,9 +114,7 @@ export function KanbanBoardWrapper({
 
   // Filter columns based on selected quarter
   const filteredColumns = useMemo(() => {
-    // Only filter columns if a specific quarter is selected (not "all" or "unassigned")
-    if (selectedQuarter !== "all" && selectedQuarter !== "unassigned") {
-      // Filter columns to only show the selected quarter
+    if (selectedQuarter !== "all") {
       return displayColumns.filter((col: { title: string }) => col.title === selectedQuarter);
     }
     return displayColumns;
@@ -191,18 +134,10 @@ export function KanbanBoardWrapper({
   // Filter opportunities based on quarter and search
   const filteredOpportunities = useMemo(() => {
     return localOpportunities.filter(opp => {
-      // Quarter filter - return false early if doesn't match
       if (selectedQuarter !== "all") {
-        if (selectedQuarter === "unassigned") {
-          // Show only opportunities without a quarter
-          if (opp.quarter) return false;
-        } else {
-          // Show only opportunities matching the selected quarter
-          if (opp.quarter !== selectedQuarter) return false;
-        }
+        if (opp.quarter !== selectedQuarter) return false;
       }
 
-      // Search filter - if quarter filter passed, now check search
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         const accountName = opp.account?.name || opp.accountName || "";
@@ -212,99 +147,25 @@ export function KanbanBoardWrapper({
         );
       }
 
-      // Both filters passed (or no filters applied)
       return true;
     });
   }, [localOpportunities, selectedQuarter, searchQuery]);
 
-  // Check if current view is read-only (built-in view)
-  const isReadOnlyView = isBuiltInView(activeView.id);
-
-  // Handle view selection (optimistic update)
-  const handleSelectView = async (viewId: string) => {
-    // Find the view
+  // Handle view selection
+  const handleSelectView = (viewId: string) => {
     const newView = views.find(v => v.id === viewId);
     if (!newView) return;
 
     // Optimistic update
     setActiveView(newView);
 
-    try {
-      if (isBuiltInView(viewId)) {
-        // For built-in views, deactivate all custom views
-        // This ensures that on refresh, no custom view will be active,
-        // and the server-side logic will fall through to selecting the built-in view
-        await deactivateAllViews();
-
-        // Store the selected built-in view ID in localStorage
-        // so it persists across page refreshes
-        if (typeof window !== 'undefined') {
-          localStorage.setItem("selected-built-in-view", viewId);
-        }
-      } else {
-        // For custom views, activate this specific view (which deactivates others)
-        // and clear the built-in view preference
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem("selected-built-in-view");
-        }
-        await activateView(viewId);
-      }
-
-      // Refresh to sync
-      router.refresh();
-    } catch (error) {
-      console.error("Error activating view:", error);
-      toast.error("Failed to switch view");
-      // Rollback would happen on refresh
+    // Store the selected view ID in a cookie for server-side rendering
+    if (typeof document !== 'undefined') {
+      document.cookie = `selected-built-in-view=${viewId}; path=/; max-age=${60 * 60 * 24 * 365}`; // 1 year
     }
+
+    router.refresh();
   };
-
-  // Handle creating a new custom view
-  const handleCreateView = async () => {
-    try {
-      await createView({
-        name: "New Custom View",
-        viewType: "custom",
-        isDefault: false,
-        userId,
-        organizationId,
-      });
-
-      toast.success("View created! You can rename it in Manage Views.");
-      router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create view");
-    }
-  };
-
-  // Handle welcome dialog view selection
-  const handleWelcomeViewSelection = async (viewType: ViewType) => {
-    try {
-      if (viewType === "custom") {
-        // Create blank custom view
-        await createView({
-          name: "My Custom View",
-          viewType: "custom",
-          userId,
-          organizationId,
-          isDefault: true,
-        });
-      } else {
-        // For built-in views, just activate them (they're already in the list)
-        const builtInView = views.find(v => v.viewType === viewType && isBuiltInView(v.id));
-        if (builtInView) {
-          setActiveView(builtInView);
-        }
-      }
-
-      localStorage.setItem("kanban-welcome-seen", "true");
-      router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to set up view");
-      throw error;
-    }
-  };
-
 
   const handleCreateOpportunity = async (data: OpportunityCreateInput) => {
     try {
@@ -333,16 +194,13 @@ export function KanbanBoardWrapper({
   };
 
   const handleColumnChange = async (opportunityId: string, newColumnId: string, newCloseDate?: string | null) => {
-    // Optimistic update: update local state immediately
     const previousOpportunities = [...localOpportunities];
 
-    // Determine which type of update this is based on column ID prefix
     const isQuarterlyUpdate = newCloseDate !== undefined;
     const isForecastUpdate = newColumnId.startsWith("virtual-forecast-");
     const isStageUpdate = newColumnId.startsWith("virtual-stage-");
 
     if (isQuarterlyUpdate) {
-      // Quarterly mode: Update closeDate and recalculate quarter
       setLocalOpportunities(prev =>
         prev.map(opp => {
           if (opp.id === opportunityId) {
@@ -360,26 +218,21 @@ export function KanbanBoardWrapper({
       );
 
       try {
-        // Update on server in background
         await updateOpportunity(opportunityId, { closeDate: newCloseDate || undefined });
 
-        // Show toast notification
         if (newCloseDate) {
           toast.success(`Close date updated to ${formatDateShort(newCloseDate)}`);
         } else {
           toast.success("Close date cleared");
         }
 
-        // Refresh in background to sync with server (non-blocking)
         router.refresh();
       } catch (error) {
-        // Rollback on error
         setLocalOpportunities(previousOpportunities);
         toast.error(error instanceof Error ? error.message : "Failed to update close date");
         throw error;
       }
     } else if (isForecastUpdate) {
-      // Forecast Categories mode: Update forecastCategory
       const { columnIdToForecastCategory } = await import("@/lib/utils/forecast-view");
       const newForecastCategory = columnIdToForecastCategory(newColumnId);
 
@@ -397,20 +250,16 @@ export function KanbanBoardWrapper({
       );
 
       try {
-        // Update on server in background
         await updateOpportunity(opportunityId, { forecastCategory: newForecastCategory });
         const { getForecastCategoryLabel } = await import("@/types/opportunity");
         toast.success(`Moved to ${getForecastCategoryLabel(newForecastCategory)}`);
-        // Refresh in background to sync with server (non-blocking)
         router.refresh();
       } catch (error) {
-        // Rollback on error
         setLocalOpportunities(previousOpportunities);
         toast.error(error instanceof Error ? error.message : "Failed to update forecast category");
         throw error;
       }
     } else if (isStageUpdate) {
-      // Sales Stages mode: Update stage
       const { columnIdToStage } = await import("@/lib/utils/stages-view");
       const newStage = columnIdToStage(newColumnId);
 
@@ -428,71 +277,25 @@ export function KanbanBoardWrapper({
       );
 
       try {
-        // Update on server in background
         await updateOpportunity(opportunityId, { stage: newStage });
         const { getStageLabel } = await import("@/types/opportunity");
         toast.success(`Moved to ${getStageLabel(newStage)}`);
-        // Refresh in background to sync with server (non-blocking)
         router.refresh();
       } catch (error) {
-        // Rollback on error
         setLocalOpportunities(previousOpportunities);
         toast.error(error instanceof Error ? error.message : "Failed to update stage");
         throw error;
       }
-    } else {
-      // Custom mode: Update columnId
-      setLocalOpportunities(prev =>
-        prev.map(opp =>
-          opp.id === opportunityId
-            ? { ...opp, columnId: newColumnId }
-            : opp
-        )
-      );
-
-      try {
-        // Update on server in background
-        await updateOpportunity(opportunityId, { columnId: newColumnId });
-        // Refresh in background to sync with server (non-blocking)
-        router.refresh();
-      } catch (error) {
-        // Rollback on error
-        setLocalOpportunities(previousOpportunities);
-        toast.error(error instanceof Error ? error.message : "Failed to move opportunity");
-        throw error;
-      }
     }
-  };
-
-  const handleCreateColumn = async (data: ColumnCreateInput) => {
-    try {
-      const maxOrder = filteredColumns.length > 0 ? Math.max(...filteredColumns.map((c: { order: number }) => c.order)) : -1;
-      await createColumn({
-        ...data,
-        order: maxOrder + 1,
-        viewId: activeView.id
-      });
-      toast.success("Column created successfully!");
-      setIsColumnDialogOpen(false);
-      router.refresh();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create column");
-    }
-  };
-
-  const handleViewsChanged = () => {
-    router.refresh();
   };
 
   const handleOpportunityUpdate = async (id: string, updates: Partial<Opportunity>) => {
     const previousOpportunities = localOpportunities;
 
-    // Optimistic update
     setLocalOpportunities(prev =>
       prev.map(opp => {
         if (opp.id === id) {
           const updated = { ...opp, ...updates };
-          // Recalculate quarter if closeDate changed
           if (updates.closeDate !== undefined) {
             updated.quarter = updates.closeDate
               ? getQuarterFromDate(new Date(updates.closeDate), fiscalYearStartMonth)
@@ -505,10 +308,8 @@ export function KanbanBoardWrapper({
     );
 
     try {
-      // Transform updates to match API expectations
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const apiUpdates: any = { ...updates };
-      // Remove account object if present (API expects account string, not object)
       if ('account' in apiUpdates && typeof apiUpdates.account === 'object') {
         delete apiUpdates.account;
       }
@@ -517,7 +318,6 @@ export function KanbanBoardWrapper({
       toast.success("Opportunity updated");
       router.refresh();
     } catch (error) {
-      // Rollback on error
       setLocalOpportunities(previousOpportunities);
       toast.error(error instanceof Error ? error.message : "Failed to update opportunity");
       throw error;
@@ -545,7 +345,6 @@ export function KanbanBoardWrapper({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Quarters</SelectItem>
-              <SelectItem value="unassigned">Unassigned</SelectItem>
               {quarters.map(quarter => (
                 <SelectItem key={quarter} value={quarter}>
                   {quarter}
@@ -561,17 +360,7 @@ export function KanbanBoardWrapper({
             views={views}
             activeView={activeView}
             onSelectView={handleSelectView}
-            onCreateView={handleCreateView}
-            onManageViews={() => setIsManageViewsDialogOpen(true)}
           />
-
-          {/* Add Column Button (only for custom views) */}
-          {!isReadOnlyView && (
-            <Button size="sm" variant="outline" onClick={() => setIsColumnDialogOpen(true)}>
-              <Columns className="h-4 w-4 mr-2" />
-              Add Column
-            </Button>
-          )}
 
           <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" /> New Opportunity
@@ -604,7 +393,7 @@ export function KanbanBoardWrapper({
             columns={filteredColumns}
             onStageChange={handleStageChange}
             onColumnChange={handleColumnChange}
-            isVirtualMode={isReadOnlyView}
+            isVirtualMode={true}
             fiscalYearStartMonth={fiscalYearStartMonth}
           />
         </TabsContent>
@@ -634,39 +423,6 @@ export function KanbanBoardWrapper({
           />
         </DialogContent>
       </Dialog>
-
-      {/* Add Column Dialog */}
-      <Dialog open={isColumnDialogOpen} onOpenChange={setIsColumnDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Column</DialogTitle>
-            <DialogDescription>
-              Create a new column to organize your opportunities in the Kanban board.
-            </DialogDescription>
-          </DialogHeader>
-          <ColumnForm
-            onSubmit={handleCreateColumn}
-            onCancel={() => setIsColumnDialogOpen(false)}
-            submitLabel="Add Column"
-            defaultOrder={filteredColumns.length}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Welcome View Dialog (for new users) */}
-      <WelcomeViewDialog
-        open={isWelcomeDialogOpen}
-        onOpenChange={setIsWelcomeDialogOpen}
-        onSelectViewType={handleWelcomeViewSelection}
-      />
-
-      {/* Manage Views Dialog */}
-      <ManageViewsDialog
-        open={isManageViewsDialogOpen}
-        onOpenChange={setIsManageViewsDialogOpen}
-        views={views}
-        onViewsChanged={handleViewsChanged}
-      />
     </div>
   );
 }

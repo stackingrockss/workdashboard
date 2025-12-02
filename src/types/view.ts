@@ -48,11 +48,12 @@ export interface KanbanViewWithColumns extends PrismaKanbanView {
 
 /**
  * Serializable view (for passing from server to client components)
+ * Uses ExtendedViewType to support built-in virtual views
  */
 export interface SerializedKanbanView {
   id: string;
   name: string;
-  viewType: ViewType;
+  viewType: ViewType | ExtendedViewType;
   isActive: boolean;
   isDefault: boolean;
   userId: string | null;
@@ -109,6 +110,8 @@ export const BUILT_IN_VIEW_IDS = {
   QUARTERLY: "built-in-quarterly",
   STAGES: "built-in-stages",
   FORECAST: "built-in-forecast",
+  CLOSED_LOST: "built-in-closed-lost",
+  CUSTOMERS: "built-in-customers",
 } as const;
 
 /**
@@ -119,9 +122,15 @@ export function isBuiltInView(viewId: string): boolean {
 }
 
 /**
+ * Extended view type that includes built-in virtual views
+ * These are not stored in the database but used for UI display
+ */
+export type ExtendedViewType = ViewType | "closedLost" | "customers";
+
+/**
  * Get view type from built-in view ID
  */
-export function getViewTypeFromBuiltInId(viewId: string): ViewType | null {
+export function getViewTypeFromBuiltInId(viewId: string): ExtendedViewType | null {
   switch (viewId) {
     case BUILT_IN_VIEW_IDS.QUARTERLY:
       return "quarterly";
@@ -129,6 +138,10 @@ export function getViewTypeFromBuiltInId(viewId: string): ViewType | null {
       return "stages";
     case BUILT_IN_VIEW_IDS.FORECAST:
       return "forecast";
+    case BUILT_IN_VIEW_IDS.CLOSED_LOST:
+      return "closedLost";
+    case BUILT_IN_VIEW_IDS.CUSTOMERS:
+      return "customers";
     default:
       return null;
   }
@@ -150,21 +163,25 @@ export interface ViewMetadata {
 /**
  * View type labels for UI
  */
-export const VIEW_TYPE_LABELS: Record<ViewType, string> = {
+export const VIEW_TYPE_LABELS: Record<ExtendedViewType, string> = {
   custom: "Custom View",
   quarterly: "Quarterly View",
   stages: "Sales Stages",
   forecast: "Forecast Categories",
+  closedLost: "Closed Lost",
+  customers: "Customers",
 };
 
 /**
  * View type descriptions for UI
  */
-export const VIEW_TYPE_DESCRIPTIONS: Record<ViewType, string> = {
+export const VIEW_TYPE_DESCRIPTIONS: Record<ExtendedViewType, string> = {
   custom: "Create and manage your own custom columns",
   quarterly: "Auto-organized by close date quarters (read-only)",
   stages: "Track deals through standard sales stages (read-only)",
   forecast: "Group by forecast confidence level (read-only)",
+  closedLost: "Review lost opportunities by quarter (read-only)",
+  customers: "Active customers grouped by contract value (read-only)",
 };
 
 /**

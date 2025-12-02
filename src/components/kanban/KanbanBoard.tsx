@@ -10,6 +10,8 @@ import { OpportunityCard } from "./OpportunityCard";
 import { groupOpportunitiesByQuarter, calculateCloseDateFromVirtualColumn } from "@/lib/utils/quarterly-view";
 import { groupOpportunitiesByForecast, columnIdToForecastCategory } from "@/lib/utils/forecast-view";
 import { groupOpportunitiesByStage, columnIdToStage } from "@/lib/utils/stages-view";
+import { groupOpportunitiesByClosedLost } from "@/lib/utils/closed-lost-view";
+import { groupOpportunitiesByCustomerValue } from "@/lib/utils/customers-view";
 
 export interface KanbanBoardProps {
   opportunities: Opportunity[];
@@ -37,7 +39,7 @@ export function KanbanBoard({
     })
   );
 
-  // Group opportunities by columnId (custom mode) or by quarter/forecast/stage (virtual mode)
+  // Group opportunities by columnId (custom mode) or by quarter/forecast/stage/etc (virtual mode)
   const grouped = useMemo(() => {
     if (isVirtualMode && columns.length > 0) {
       // Determine which virtual mode we're in based on column ID prefix
@@ -52,6 +54,12 @@ export function KanbanBoard({
       } else if (firstColumnId.startsWith("virtual-stage-")) {
         // Sales Stages view: group by opportunity stage
         return groupOpportunitiesByStage(opportunities);
+      } else if (firstColumnId.startsWith("virtual-closedlost-")) {
+        // Closed Lost view: group by time period (only closedLost opportunities)
+        return groupOpportunitiesByClosedLost(opportunities);
+      } else if (firstColumnId.startsWith("virtual-customers-")) {
+        // Customers view: group by ARR value (only closedWon opportunities)
+        return groupOpportunitiesByCustomerValue(opportunities);
       }
     }
 

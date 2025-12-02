@@ -100,40 +100,47 @@ export async function POST(req: NextRequest) {
     // If account name is provided instead of accountId, find or create the account
     let accountId = data.accountId;
     if (!accountId && data.account) {
-      // First check if account exists to determine update strategy
-      const existingAccount = await prisma.account.findUnique({
+      // Normalize account name (trim whitespace)
+      const normalizedAccountName = data.account.trim();
+
+      // First check if account exists (case-insensitive) to determine update strategy
+      const existingAccount = await prisma.account.findFirst({
         where: {
-          organizationId_name: {
-            organizationId: user.organization.id,
-            name: data.account,
+          organizationId: user.organization.id,
+          name: {
+            equals: normalizedAccountName,
+            mode: "insensitive",
           },
         },
       });
 
-      const account = await prisma.account.upsert({
-        where: {
-          organizationId_name: {
-            organizationId: user.organization.id,
-            name: data.account,
+      if (existingAccount) {
+        // Account exists, update it if needed
+        const account = await prisma.account.update({
+          where: { id: existingAccount.id },
+          data: {
+            // Only update website if provided
+            ...(data.accountWebsite ? { website: data.accountWebsite } : {}),
+            // Only update ticker if it's currently empty (prevent overwriting existing ticker)
+            ...(data.accountTicker && !existingAccount.ticker ? { ticker: data.accountTicker } : {}),
           },
-        },
-        update: {
-          // Only update website if provided
-          ...(data.accountWebsite ? { website: data.accountWebsite } : {}),
-          // Only update ticker if it's currently empty (prevent overwriting existing ticker)
-          ...(data.accountTicker && !existingAccount?.ticker ? { ticker: data.accountTicker } : {}),
-        },
-        create: {
-          name: data.account,
-          website: data.accountWebsite ?? undefined,
-          ticker: data.accountTicker ?? undefined,
-          organizationId: user.organization.id,
-          ownerId: user.id,
-          priority: "medium",
-          health: "good",
-        },
-      });
-      accountId = account.id;
+        });
+        accountId = account.id;
+      } else {
+        // Create new account
+        const account = await prisma.account.create({
+          data: {
+            name: normalizedAccountName,
+            website: data.accountWebsite ?? undefined,
+            ticker: data.accountTicker ?? undefined,
+            organizationId: user.organization.id,
+            ownerId: user.id,
+            priority: "medium",
+            health: "good",
+          },
+        });
+        accountId = account.id;
+      }
     }
 
     // Get organization's fiscal year settings to calculate quarter

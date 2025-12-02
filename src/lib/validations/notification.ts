@@ -21,3 +21,41 @@ export const notificationQuerySchema = z.object({
 });
 
 export type NotificationQueryInput = z.infer<typeof notificationQuerySchema>;
+
+/**
+ * Schema for marking contact notifications as read
+ */
+export const contactNotificationMarkReadSchema = z.object({
+  notificationIds: z.array(z.string()).min(1, "At least one notification ID is required"),
+});
+
+export type ContactNotificationMarkReadInput = z.infer<typeof contactNotificationMarkReadSchema>;
+
+/**
+ * Schema for query parameters when fetching contact notifications
+ */
+export const contactNotificationQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(100).optional().default(10),
+  includeRead: z.coerce.boolean().optional().default(false),
+});
+
+export type ContactNotificationQueryInput = z.infer<typeof contactNotificationQuerySchema>;
+
+/**
+ * Schema for marking parsing complete notifications as read
+ */
+export const parsingCompleteNotificationMarkReadSchema = z.object({
+  notificationIds: z.array(z.string()).min(1, "At least one notification ID is required"),
+});
+
+export type ParsingCompleteNotificationMarkReadInput = z.infer<typeof parsingCompleteNotificationMarkReadSchema>;
+
+/**
+ * Schema for query parameters when fetching parsing complete notifications
+ */
+export const parsingCompleteNotificationQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(100).optional().default(10),
+  includeRead: z.coerce.boolean().optional().default(false),
+});
+
+export type ParsingCompleteNotificationQueryInput = z.infer<typeof parsingCompleteNotificationQuerySchema>;

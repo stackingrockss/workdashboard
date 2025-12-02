@@ -313,10 +313,21 @@ export class GoogleTasksClient {
 
       // Google Tasks API update requires the full task object, not just changed fields
       // First, fetch the current task to get all required fields
-      const currentTask = await tasks.tasks.get({
-        tasklist: listId,
-        task: taskId,
-      });
+      let currentTask;
+      try {
+        currentTask = await tasks.tasks.get({
+          tasklist: listId,
+          task: taskId,
+        });
+      } catch (fetchError) {
+        console.error('Failed to fetch task from Google Tasks:', fetchError);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const gError = fetchError as any;
+        if (gError.code === 404 || gError.status === 404) {
+          throw new Error('Task not found in Google Tasks - it may have been deleted');
+        }
+        throw new Error(`Failed to fetch task from Google: ${gError.message || 'Unknown error'}`);
+      }
 
       if (!currentTask.data || !currentTask.data.title) {
         throw new Error('Task not found in Google Tasks');
@@ -395,9 +406,21 @@ export class GoogleTasksClient {
       };
     } catch (error) {
       console.error('Failed to update task:', error);
-      // Preserve original error message if it's an OAuth error
-      if (error instanceof Error && (error.message.includes('not connected') || error.message.includes('reconnect') || error.message.includes('OAuth'))) {
-        throw error;
+      // Preserve original error message if it's an OAuth error or specific error
+      if (error instanceof Error) {
+        // Check for OAuth-related errors
+        if (error.message.includes('not connected') || error.message.includes('reconnect') || error.message.includes('OAuth') || error.message.includes('Calendar')) {
+          throw error;
+        }
+        // Check for Google API errors (usually have a message property)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const googleError = error as any;
+        if (googleError.response?.data?.error?.message) {
+          throw new Error(`Google Tasks API error: ${googleError.response.data.error.message}`);
+        }
+        if (googleError.code || googleError.status) {
+          throw new Error(`Google Tasks API error (${googleError.code || googleError.status}): ${error.message}`);
+        }
       }
       throw new Error('Failed to update task in Google Tasks');
     }

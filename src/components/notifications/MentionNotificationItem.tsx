@@ -6,11 +6,11 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MessageSquare } from "lucide-react";
-import { Notification } from "@/hooks/useNotifications";
+import { MentionNotification } from "@/hooks/useNotifications";
 import { formatDistanceToNow } from "date-fns";
 
 interface MentionNotificationItemProps {
-  notification: Notification;
+  notification: MentionNotification;
   onClick: () => void;
 }
 
