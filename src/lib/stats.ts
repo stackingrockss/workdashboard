@@ -20,6 +20,12 @@ export interface DashboardStats {
     value: number;
     weightedValue: number;
   }[];
+  byForecastCategory: {
+    pipeline: { value: number; count: number };
+    bestCase: { value: number; count: number };
+    commit: { value: number; count: number };
+    closedWon: { value: number; count: number };
+  };
   recentActivity: {
     id: string;
     name: string;
@@ -127,6 +133,27 @@ export function calculateDashboardStats(opportunities: Opportunity[]): Dashboard
       timestamp: opp.updatedAt,
     }));
 
+  // Group by forecast category (excluding closed deals for pipeline/bestCase/commit)
+  const byForecastCategory = {
+    pipeline: { value: 0, count: 0 },
+    bestCase: { value: 0, count: 0 },
+    commit: { value: 0, count: 0 },
+    closedWon: { value: 0, count: 0 },
+  };
+
+  opportunities.forEach(opp => {
+    if (opp.stage === "closedWon") {
+      byForecastCategory.closedWon.value += opp.amountArr;
+      byForecastCategory.closedWon.count += 1;
+    } else if (opp.stage !== "closedLost") {
+      const category = opp.forecastCategory ?? "pipeline";
+      if (category === "pipeline" || category === "bestCase" || category === "commit") {
+        byForecastCategory[category].value += opp.amountArr;
+        byForecastCategory[category].count += 1;
+      }
+    }
+  });
+
   return {
     totalOpportunities,
     totalValue,
@@ -138,6 +165,7 @@ export function calculateDashboardStats(opportunities: Opportunity[]): Dashboard
     closedWonValue,
     byStage,
     byQuarter,
+    byForecastCategory,
     recentActivity,
   };
 }

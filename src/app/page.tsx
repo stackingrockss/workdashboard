@@ -149,6 +149,39 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
+      {/* Forecast Category Summary */}
+      <Card className="p-3">
+        <div className="flex items-center justify-center gap-2 text-sm flex-wrap">
+          <span className="font-medium text-slate-600 dark:text-slate-400">Pipeline:</span>
+          <span className="font-semibold" suppressHydrationWarning>{formatCurrencyCompact(stats.byForecastCategory.pipeline.value)}</span>
+          <span className="text-muted-foreground">({stats.byForecastCategory.pipeline.count} {stats.byForecastCategory.pipeline.count === 1 ? 'opportunity' : 'opportunities'})</span>
+
+          <span className="text-muted-foreground mx-1">|</span>
+
+          <span className="font-medium text-blue-600 dark:text-blue-400">Best Case:</span>
+          <span className="font-semibold" suppressHydrationWarning>{formatCurrencyCompact(stats.byForecastCategory.bestCase.value)}</span>
+          <span className="text-muted-foreground">({stats.byForecastCategory.bestCase.count} {stats.byForecastCategory.bestCase.count === 1 ? 'opportunity' : 'opportunities'})</span>
+
+          <span className="text-muted-foreground mx-1">|</span>
+
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">Commit:</span>
+          <span className="font-semibold" suppressHydrationWarning>{formatCurrencyCompact(stats.byForecastCategory.commit.value)}</span>
+          <span className="text-muted-foreground">({stats.byForecastCategory.commit.count} {stats.byForecastCategory.commit.count === 1 ? 'opportunity' : 'opportunities'})</span>
+
+          <span className="text-muted-foreground mx-1">|</span>
+
+          <span className="font-medium text-green-600 dark:text-green-400">Closed Won:</span>
+          <span className="font-semibold" suppressHydrationWarning>{formatCurrencyCompact(stats.byForecastCategory.closedWon.value)}</span>
+          <span className="text-muted-foreground">({stats.byForecastCategory.closedWon.count} {stats.byForecastCategory.closedWon.count === 1 ? 'opportunity' : 'opportunities'})</span>
+
+          <span className="text-muted-foreground mx-1">|</span>
+
+          <span className="font-medium">Total ARR:</span>
+          <span className="font-bold text-lg" suppressHydrationWarning>{formatCurrencyCompact(stats.totalValue)}</span>
+          <span className="text-muted-foreground">({stats.totalOpportunities} {stats.totalOpportunities === 1 ? 'opportunity' : 'opportunities'})</span>
+        </div>
+      </Card>
+
       {/* Time-sensitive widgets: Meetings and Tasks */}
       <div className="grid gap-6 md:grid-cols-2">
         <UpcomingMeetingsWidget />
