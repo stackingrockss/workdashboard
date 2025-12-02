@@ -25,7 +25,7 @@ export function generateQuarterlyColumns(
 
 /**
  * Generate virtual sales stages columns
- * Based on the OpportunityStage enum
+ * Based on the OpportunityStage enum (excluding closed stages)
  */
 export function generateStagesColumns(): SerializedKanbanColumn[] {
   const stages = [
@@ -34,8 +34,6 @@ export function generateStagesColumns(): SerializedKanbanColumn[] {
     { title: "Validate Solution", color: "#3b82f6" }, // blue-500
     { title: "Decision Maker Approval", color: "#f59e0b" }, // amber-500
     { title: "Contracting", color: "#10b981" }, // emerald-500
-    { title: "Closed Won", color: "#22c55e" }, // green-500
-    { title: "Closed Lost", color: "#ef4444" }, // red-500
   ];
 
   return stages.map((stage, index) => ({
@@ -51,15 +49,13 @@ export function generateStagesColumns(): SerializedKanbanColumn[] {
 
 /**
  * Generate virtual forecast category columns
- * Based on confidence levels: Pipeline, Best Case, Commit, Won, Lost
+ * Based on confidence levels: Pipeline, Best Case, Commit (excluding closed stages)
  */
 export function generateForecastColumns(): SerializedKanbanColumn[] {
   const categories = [
     { title: "Pipeline", color: "#94a3b8" }, // slate-400
     { title: "Best Case", color: "#3b82f6" }, // blue-500
     { title: "Commit", color: "#10b981" }, // emerald-500
-    { title: "Closed Won", color: "#22c55e" }, // green-500
-    { title: "Closed Lost", color: "#ef4444" }, // red-500
   ];
 
   return categories.map((category, index) => ({

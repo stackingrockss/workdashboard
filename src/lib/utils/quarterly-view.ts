@@ -124,7 +124,12 @@ export function groupOpportunitiesByQuarter(
 ): Record<string, Opportunity[]> {
   const grouped: Record<string, Opportunity[]> = {};
 
-  opportunities.forEach((opp) => {
+  // Filter out closed opportunities - they belong in dedicated Customers/Closed Lost views
+  const activeOpportunities = opportunities.filter(
+    (opp) => opp.stage !== "closedWon" && opp.stage !== "closedLost"
+  );
+
+  activeOpportunities.forEach((opp) => {
     let columnId: string;
 
     if (opp.closeDate) {

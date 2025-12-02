@@ -1,27 +1,26 @@
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { calculateDashboardStats } from "@/lib/stats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/format";
-import { Target, DollarSign } from "lucide-react";
+import { Target, DollarSign, Trophy } from "lucide-react";
 import { UpcomingMeetingsWidget } from "@/components/calendar/upcoming-meetings-widget";
 import { UpcomingTasksWidget } from "@/components/tasks/upcoming-tasks-widget";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuthOrRedirect } from "@/lib/auth";
+import { addMonths, isWithinInterval } from "date-fns";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  // Check authentication
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Check authentication and get user with organization
+  const user = await requireAuthOrRedirect();
 
-  if (!user) {
-    redirect("/auth/login");
-  }
-
-  // Fetch opportunities for stats
+  // Fetch opportunities for stats (scoped by organization)
   const opportunitiesFromDB = await prisma.opportunity.findMany({
+    where: {
+      organizationId: user.organization.id,
+    },
     include: {
       owner: true,
       account: true,
@@ -57,6 +56,30 @@ export default async function DashboardPage() {
 
   const stats = calculateDashboardStats(opportunities);
 
+  // Calculate fiscal year closed won for quota attainment
+  const fiscalYearStartMonth = user.organization.fiscalYearStartMonth;
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1; // 1-12
+  const fiscalYearStartYear = currentMonth >= fiscalYearStartMonth
+    ? now.getFullYear()
+    : now.getFullYear() - 1;
+  const fiscalYearStart = new Date(fiscalYearStartYear, fiscalYearStartMonth - 1, 1);
+  const fiscalYearEnd = addMonths(fiscalYearStart, 12);
+
+  // Filter closed won opportunities in current fiscal year
+  const fiscalYearClosedWon = opportunitiesFromDB
+    .filter(opp =>
+      opp.stage === "closedWon" &&
+      opp.closeDate &&
+      isWithinInterval(new Date(opp.closeDate), { start: fiscalYearStart, end: fiscalYearEnd })
+    )
+    .reduce((sum, opp) => sum + opp.amountArr, 0);
+
+  // Calculate quota attainment percentage
+  const quotaAttainment = user.annualQuota && user.annualQuota > 0
+    ? Math.round((fiscalYearClosedWon / user.annualQuota) * 100)
+    : null;
+
   const stageLabels: Record<string, string> = {
     discovery: "Discovery",
     demo: "Demo",
@@ -75,7 +98,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Opportunities</CardTitle>
@@ -95,6 +118,33 @@ export default async function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold" suppressHydrationWarning>{formatCurrencyCompact(stats.totalValue)}</div>
             <p className="text-xs text-muted-foreground">Total ARR in pipeline</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Quota Attainment</CardTitle>
+            <Trophy className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {quotaAttainment !== null ? (
+              <>
+                <div className="text-2xl font-bold">{quotaAttainment}%</div>
+                <p className="text-xs text-muted-foreground" suppressHydrationWarning>
+                  {formatCurrencyCompact(fiscalYearClosedWon)} of {formatCurrencyCompact(user.annualQuota!)} closed
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-muted-foreground">--</div>
+                <p className="text-xs text-muted-foreground">
+                  No quota set.{" "}
+                  <Link href="/settings" className="text-primary hover:underline">
+                    Set quota
+                  </Link>
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

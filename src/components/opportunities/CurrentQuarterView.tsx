@@ -97,9 +97,14 @@ export function CurrentQuarterView({
     return getQuarterFromDate(new Date(), fiscalYearStartMonth);
   }, [fiscalYearStartMonth]);
 
-  // Filter opportunities to current quarter
+  // Filter opportunities to current quarter (excluding closed won/lost)
   const currentQuarterOpps = useMemo(() => {
-    return opportunities.filter((opp) => opp.quarter === currentQuarter);
+    return opportunities.filter(
+      (opp) =>
+        opp.quarter === currentQuarter &&
+        opp.stage !== "closedWon" &&
+        opp.stage !== "closedLost"
+    );
   }, [opportunities, currentQuarter]);
 
   // Helper function for getDaysUntilClose (used by column definition)

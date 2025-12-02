@@ -1,9 +1,22 @@
 "use client";
 
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { formatCurrency } from "@/lib/format";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { formatCurrency, formatCurrencyInput, parseCurrencyInput } from "@/lib/format";
+import { Loader2 } from "lucide-react";
+
+const quotaFormSchema = z.object({
+  annualQuota: z.number().int().positive("Quota must be a positive number").nullable(),
+});
 
 interface UserProfileSettingsProps {
   user: {
@@ -30,7 +43,21 @@ const roleColors: Record<string, "default" | "secondary" | "destructive" | "outl
   VIEWER: "outline",
 };
 
+type QuotaFormData = z.infer<typeof quotaFormSchema>;
+
 export function UserProfileSettings({ user }: UserProfileSettingsProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [quotaInputValue, setQuotaInputValue] = useState(
+    user.annualQuota ? formatCurrencyInput(user.annualQuota) : ""
+  );
+
+  const { handleSubmit, setValue, formState: { isDirty } } = useForm<QuotaFormData>({
+    resolver: zodResolver(quotaFormSchema),
+    defaultValues: {
+      annualQuota: user.annualQuota,
+    },
+  });
+
   const getInitials = (name?: string | null) => {
     if (!name) return "U";
     return name
@@ -39,6 +66,35 @@ export function UserProfileSettings({ user }: UserProfileSettingsProps) {
       .join("")
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const onSubmit = async (data: QuotaFormData) => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/v1/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ annualQuota: data.annualQuota }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update quota");
+      }
+
+      toast.success("Annual quota updated successfully");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update quota");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleQuotaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setQuotaInputValue(value);
+    const parsed = parseCurrencyInput(value);
+    setValue("annualQuota", parsed > 0 ? parsed : null, { shouldDirty: true });
   };
 
   return (
@@ -54,7 +110,7 @@ export function UserProfileSettings({ user }: UserProfileSettingsProps) {
         <CardHeader>
           <CardTitle>Account Details</CardTitle>
           <CardDescription>
-            View your account information. Contact your administrator to make changes.
+            View your account information. Contact your administrator to change your name, email, or role.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -86,14 +142,41 @@ export function UserProfileSettings({ user }: UserProfileSettingsProps) {
                 {roleLabels[user.role] || user.role}
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
 
-            <div className="grid gap-2">
-              <label className="text-sm font-medium">Annual Quota</label>
+      <Card>
+        <CardHeader>
+          <CardTitle>Sales Quota</CardTitle>
+          <CardDescription>
+            Set your annual sales quota for tracking performance
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="annualQuota">Annual Quota</Label>
+              <div className="relative max-w-xs">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                <Input
+                  id="annualQuota"
+                  type="text"
+                  placeholder="0"
+                  value={quotaInputValue}
+                  onChange={handleQuotaChange}
+                  className="pl-7"
+                />
+              </div>
               <p className="text-sm text-muted-foreground">
-                {user.annualQuota ? formatCurrency(user.annualQuota) : "Not set"}
+                Enter your annual sales target. This is used to track quota attainment.
               </p>
             </div>
-          </div>
+            <Button type="submit" disabled={isSubmitting || !isDirty}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save Quota
+            </Button>
+          </form>
         </CardContent>
       </Card>
 
@@ -101,7 +184,7 @@ export function UserProfileSettings({ user }: UserProfileSettingsProps) {
         <CardHeader>
           <CardTitle>Need to Update Your Information?</CardTitle>
           <CardDescription>
-            Contact your organization administrator to update your profile information, role, or permissions.
+            Contact your organization administrator to update your name, email, role, or permissions.
           </CardDescription>
         </CardHeader>
       </Card>

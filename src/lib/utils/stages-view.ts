@@ -29,17 +29,18 @@ export function groupOpportunitiesByStage(
     "virtual-stage-validate-solution": [],
     "virtual-stage-decision-maker-approval": [],
     "virtual-stage-contracting": [],
-    "virtual-stage-closed-won": [],
-    "virtual-stage-closed-lost": [],
   };
 
-  opportunities.forEach((opp) => {
-    const columnId = stageToColumnId(opp.stage);
+  // Filter out closed opportunities - they belong in dedicated Customers/Closed Lost views
+  opportunities
+    .filter((opp) => opp.stage !== "closedWon" && opp.stage !== "closedLost")
+    .forEach((opp) => {
+      const columnId = stageToColumnId(opp.stage);
 
-    if (grouped[columnId]) {
-      grouped[columnId].push(opp);
-    }
-  });
+      if (grouped[columnId]) {
+        grouped[columnId].push(opp);
+      }
+    });
 
   return grouped;
 }

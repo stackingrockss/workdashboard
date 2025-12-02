@@ -27,22 +27,23 @@ export function groupOpportunitiesByForecast(
     "virtual-forecast-pipeline": [],
     "virtual-forecast-best-case": [],
     "virtual-forecast-commit": [],
-    "virtual-forecast-closed-won": [],
-    "virtual-forecast-closed-lost": [],
   };
 
-  opportunities.forEach((opp) => {
-    // Use the opportunity's forecast category, or default to pipeline if not set
-    const category = opp.forecastCategory || "pipeline";
-    const columnId = forecastCategoryToColumnId(category);
+  // Filter out closed opportunities - they belong in dedicated Customers/Closed Lost views
+  opportunities
+    .filter((opp) => opp.stage !== "closedWon" && opp.stage !== "closedLost")
+    .forEach((opp) => {
+      // Use the opportunity's forecast category, or default to pipeline if not set
+      const category = opp.forecastCategory || "pipeline";
+      const columnId = forecastCategoryToColumnId(category);
 
-    if (grouped[columnId]) {
-      grouped[columnId].push(opp);
-    } else {
-      // Fallback to pipeline if unexpected category
-      grouped["virtual-forecast-pipeline"].push(opp);
-    }
-  });
+      if (grouped[columnId]) {
+        grouped[columnId].push(opp);
+      } else {
+        // Fallback to pipeline if unexpected category
+        grouped["virtual-forecast-pipeline"].push(opp);
+      }
+    });
 
   return grouped;
 }

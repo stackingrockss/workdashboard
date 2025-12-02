@@ -8,6 +8,7 @@ export interface DashboardStats {
   wonOpportunities: number;
   lostOpportunities: number;
   winRate: number;
+  closedWonValue: number;
   byStage: {
     stage: string;
     count: number;
@@ -40,10 +41,12 @@ export function calculateDashboardStats(opportunities: Opportunity[]): Dashboard
     ? opportunities.reduce((sum, opp) => sum + opp.confidenceLevel, 0) / totalOpportunities
     : 0;
 
-  const wonOpportunities = opportunities.filter(opp => opp.stage === "closedWon").length;
+  const closedWonOpportunities = opportunities.filter(opp => opp.stage === "closedWon");
+  const wonOpportunities = closedWonOpportunities.length;
   const lostOpportunities = opportunities.filter(opp => opp.stage === "closedLost").length;
   const closedOpportunities = wonOpportunities + lostOpportunities;
   const winRate = closedOpportunities > 0 ? (wonOpportunities / closedOpportunities) * 100 : 0;
+  const closedWonValue = closedWonOpportunities.reduce((sum, opp) => sum + opp.amountArr, 0);
 
   // Group by stage
   const stageMap = new Map<string, { count: number; value: number }>();
@@ -132,6 +135,7 @@ export function calculateDashboardStats(opportunities: Opportunity[]): Dashboard
     wonOpportunities,
     lostOpportunities,
     winRate,
+    closedWonValue,
     byStage,
     byQuarter,
     recentActivity,

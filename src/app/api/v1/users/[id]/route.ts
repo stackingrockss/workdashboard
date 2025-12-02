@@ -109,13 +109,13 @@ export async function PATCH(
     const data = parsed.data;
     const isUpdatingSelf = id === user.id;
 
-    // Users can update their own preferences (autoCreateMeetingTasks)
-    // But need admin/manager permission to update other fields
-    const isOnlyUpdatingPreferences =
-      Object.keys(data).length === 1 &&
-      data.autoCreateMeetingTasks !== undefined;
+    // Fields users can update on their own profile without admin permissions
+    const selfEditableFields = ['autoCreateMeetingTasks', 'annualQuota', 'taskFilterPreference'];
+    const isOnlyUpdatingSelfEditableFields = Object.keys(data).every(
+      key => selfEditableFields.includes(key)
+    );
 
-    // Check permission to manage users (unless updating own preferences)
+    // Check permission to manage users (unless updating own editable fields)
     if (!isUpdatingSelf && !canManageUsers(user)) {
       return NextResponse.json(
         { error: "Forbidden: Insufficient permissions to manage users" },
@@ -123,10 +123,10 @@ export async function PATCH(
       );
     }
 
-    // If updating someone else or updating more than just preferences, need permissions
-    if (isUpdatingSelf && !isOnlyUpdatingPreferences && !canManageUsers(user)) {
+    // If updating someone else or updating restricted fields, need permissions
+    if (isUpdatingSelf && !isOnlyUpdatingSelfEditableFields && !canManageUsers(user)) {
       return NextResponse.json(
-        { error: "Forbidden: You can only update your own preferences. Contact an administrator to change other settings." },
+        { error: "Forbidden: You can only update your own preferences and quota. Contact an administrator to change other settings." },
         { status: 403 }
       );
     }
