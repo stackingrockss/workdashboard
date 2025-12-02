@@ -55,11 +55,28 @@ export function calculateDashboardStats(opportunities: Opportunity[]): Dashboard
     });
   });
 
-  const byStage = Array.from(stageMap.entries()).map(([stage, data]) => ({
-    stage,
-    count: data.count,
-    value: data.value,
-  }));
+  // Stage order from closest to closing to furthest
+  const stageOrder: Record<string, number> = {
+    contracting: 1,
+    decisionMakerApproval: 2,
+    validateSolution: 3,
+    demo: 4,
+    discovery: 5,
+    closedWon: 6,
+    closedLost: 7,
+  };
+
+  const byStage = Array.from(stageMap.entries())
+    .map(([stage, data]) => ({
+      stage,
+      count: data.count,
+      value: data.value,
+    }))
+    .sort((a, b) => {
+      const orderA = stageOrder[a.stage] ?? 99;
+      const orderB = stageOrder[b.stage] ?? 99;
+      return orderA - orderB;
+    });
 
   // Group by quarter
   const quarterMap = new Map<string, { count: number; value: number; weightedValue: number }>();
@@ -83,7 +100,16 @@ export function calculateDashboardStats(opportunities: Opportunity[]): Dashboard
     .sort((a, b) => {
       if (a.quarter === "Unassigned") return 1;
       if (b.quarter === "Unassigned") return -1;
-      return a.quarter.localeCompare(b.quarter);
+      // Parse "Q1 2026" format to sort chronologically
+      const parseQuarter = (q: string) => {
+        const match = q.match(/Q(\d)\s+(\d{4})/);
+        if (!match) return { year: 0, quarter: 0 };
+        return { year: parseInt(match[2]), quarter: parseInt(match[1]) };
+      };
+      const qA = parseQuarter(a.quarter);
+      const qB = parseQuarter(b.quarter);
+      if (qA.year !== qB.year) return qA.year - qB.year;
+      return qA.quarter - qB.quarter;
     });
 
   // Recent activity (last 5 updated)
