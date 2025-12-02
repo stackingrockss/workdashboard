@@ -106,6 +106,7 @@ export async function GET(req: NextRequest) {
       isExternal?: boolean;
       accountId?: string;
       opportunityId?: string;
+      OR?: Array<{ opportunityId?: string; accountId?: string }>;
     } = {
       userId: user.id,
       startTime: {
@@ -119,11 +120,16 @@ export async function GET(req: NextRequest) {
       whereClause.isExternal = true;
     }
 
-    if (filters.accountId) {
+    // When both opportunityId and accountId are provided, use OR logic
+    // This allows showing events linked to the opportunity OR to the account
+    if (filters.opportunityId && filters.accountId) {
+      whereClause.OR = [
+        { opportunityId: filters.opportunityId },
+        { accountId: filters.accountId },
+      ];
+    } else if (filters.accountId) {
       whereClause.accountId = filters.accountId;
-    }
-
-    if (filters.opportunityId) {
+    } else if (filters.opportunityId) {
       whereClause.opportunityId = filters.opportunityId;
     }
 
