@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Building2 } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -838,24 +838,38 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
 
               <Separator />
 
-              {/* SEC Filings Section */}
-              <SecFilingsSection
-                accountId={opportunity.account.id}
-                accountTicker={opportunity.account.ticker || null}
-                opportunityId={opportunity.id}
-              />
+              {/* SEC Filings & Earnings Transcripts - Only for public companies (with ticker) */}
+              {opportunity.account.ticker ? (
+                <>
+                  <SecFilingsSection
+                    accountId={opportunity.account.id}
+                    accountTicker={opportunity.account.ticker}
+                    opportunityId={opportunity.id}
+                  />
 
-              <Separator />
+                  <Separator />
 
-              {/* Earnings Transcripts Section */}
-              <EarningsTranscriptsSection
-                accountId={opportunity.account.id}
-                accountName={opportunity.account.name}
-                accountTicker={opportunity.account.ticker || null}
-                nextEarningsDate={opportunity.account.nextEarningsDate}
-                lastEarningsSync={opportunity.account.lastEarningsSync}
-                opportunityId={opportunity.id}
-              />
+                  <EarningsTranscriptsSection
+                    accountId={opportunity.account.id}
+                    accountName={opportunity.account.name}
+                    accountTicker={opportunity.account.ticker}
+                    nextEarningsDate={opportunity.account.nextEarningsDate}
+                    lastEarningsSync={opportunity.account.lastEarningsSync}
+                    opportunityId={opportunity.id}
+                  />
+                </>
+              ) : (
+                <Card>
+                  <CardContent className="text-center py-8">
+                    <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                    <h3 className="font-medium mb-1">Private Company</h3>
+                    <p className="text-sm text-muted-foreground">
+                      SEC filings and earnings transcripts are only available for public companies.
+                      Select a public company from the search when creating an opportunity to enable these features.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           ) : (
             <Card>
