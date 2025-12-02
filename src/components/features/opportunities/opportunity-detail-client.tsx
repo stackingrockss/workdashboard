@@ -15,24 +15,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Phone, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Building2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Building2 } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
-import { GoogleNotesSection } from "./google-notes-section";
 import { GongCallsSection } from "./gong-calls-section";
 import { GranolaNotesSection } from "./granola-notes-section";
-import { MeetingEventCard } from "@/components/calendar/meeting-event-card";
-import { OrphanedNotesSection } from "@/components/calendar/orphaned-notes-section";
 import type { CalendarEvent } from "@/types/calendar";
 import type { GongCall } from "@/types/gong-call";
 import type { GranolaNote } from "@/types/granola-note";
-import { STAGE_OPTIONS, FORECAST_LABELS, CONFIDENCE_LEVELS, PRIORITY_LABELS } from "@/lib/constants";
+import { STAGE_OPTIONS } from "@/lib/constants";
 import { OrgChartSection } from "@/components/contacts/OrgChartSection";
 import { Separator } from "@/components/ui/separator";
-import { AddManualMeetingDialog } from "@/components/calendar/add-manual-meeting-dialog";
 import {
   InlineTextInput,
   InlineTextarea,
@@ -43,7 +39,7 @@ import {
 import { InlineMarkdownWithAI } from "@/components/ui/inline-markdown";
 import { DecisionMakerSection } from "@/components/opportunity/DecisionMakerSection";
 import { Contact } from "@/types/contact";
-import { TimelineSection } from "./timeline/timeline-section";
+import { ActivitySection } from "./activity/activity-section";
 import { ConsolidatedInsightsCard } from "./consolidated-insights-card";
 import { ChatWidget } from "@/components/chat/chat-widget";
 import { SecFilingsSection } from "./sec-filings-section";
@@ -219,8 +215,19 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
         const endDate = new Date();
         endDate.setDate(endDate.getDate() + 90);
 
+        // Build query params - include accountId to also show account-matched events
+        const params = new URLSearchParams({
+          opportunityId: opportunity.id,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+          externalOnly: "true",
+        });
+        if (opportunity.accountId) {
+          params.set("accountId", opportunity.accountId);
+        }
+
         const response = await fetch(
-          `/api/v1/integrations/google/calendar/events?opportunityId=${opportunity.id}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&externalOnly=true`
+          `/api/v1/integrations/google/calendar/events?${params.toString()}`
         );
 
         if (response.ok) {
@@ -235,7 +242,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
     };
 
     loadCalendarEvents();
-  }, [opportunity.id]);
+  }, [opportunity.id, opportunity.accountId]);
 
   // Sync local state when opportunity prop updates (after router.refresh())
   useEffect(() => {
@@ -373,6 +380,14 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
     setSelectedGongCallForParsing(call);
   };
 
+  // Wrapper for viewing insights from Activity timeline (accepts ID, looks up full call)
+  const handleViewGongCallInsightsById = (callId: string) => {
+    const call = allGongCalls.find((c) => c.id === callId);
+    if (call) {
+      setSelectedGongCallForViewing(call);
+    }
+  };
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-start justify-between">
@@ -420,26 +435,22 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4" />
             Overview
-          </TabsTrigger>
-          <TabsTrigger value="timeline" className="flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Timeline
           </TabsTrigger>
           <TabsTrigger value="research" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
             Notes
           </TabsTrigger>
+          <TabsTrigger value="activity" className="flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Activity
+          </TabsTrigger>
           <TabsTrigger value="account-intel" className="flex items-center gap-2">
             <Target className="h-4 w-4" />
             Account Intel
-          </TabsTrigger>
-          <TabsTrigger value="meetings" className="flex items-center gap-2">
-            <Phone className="h-4 w-4" />
-            Meetings & Calls
           </TabsTrigger>
           <TabsTrigger value="contacts" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -497,7 +508,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                 className="md:col-span-2 lg:col-span-3"
               />
               <InlineDatePicker
-                label="Call Between Call Date"
+                label="CBC Date"
                 value={opportunity.cbc || ""}
                 onSave={async (value) => handleFieldUpdate("cbc", value)}
                 placeholder="Select next call date"
@@ -594,11 +605,6 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
           </div>
         </TabsContent>
 
-        {/* Timeline Tab */}
-        <TabsContent value="timeline" className="mt-4">
-          <TimelineSection opportunityId={opportunity.id} />
-        </TabsContent>
-
         {/* Notes Tab */}
         <TabsContent value="research" className="space-y-4 mt-4">
           <div className="grid gap-4">
@@ -606,7 +612,6 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
               label="Risk Notes"
               value={opportunity.riskNotes || ""}
               onSave={async (value) => handleFieldUpdate("riskNotes", value)}
-              placeholder="Any concerns, blockers, or risk mitigation strategies..."
               rows={5}
               className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950"
             />
@@ -614,7 +619,6 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
               label="Personal Notes"
               value={opportunity.notes || ""}
               onSave={async (value) => handleFieldUpdate("notes", value)}
-              placeholder="Your personal notes about this opportunity..."
               rows={6}
             />
 
@@ -696,83 +700,12 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
           </div>
         </TabsContent>
 
-        {/* Meetings & Calls Tab */}
-        <TabsContent value="meetings" className="space-y-6 mt-4">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-semibold">External Meetings & Notes</h3>
-                <p className="text-sm text-muted-foreground">
-                  Calendar events with attached Gong and Granola notes
-                </p>
-              </div>
-              <AddManualMeetingDialog
-                opportunityId={opportunity.id}
-                onMeetingAdded={handleRefreshMeetingsData}
-              />
-            </div>
-
-            {loadingCalendar ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="text-sm text-muted-foreground">Loading calendar events...</div>
-              </div>
-            ) : calendarEvents.length === 0 ? (
-              <Card className="p-6">
-                <p className="text-sm text-muted-foreground text-center">
-                  No external meetings found. Connect Google Calendar or link this opportunity to an account.
-                </p>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {calendarEvents
-                  .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
-                  .slice(0, 10) // Show last 10 meetings
-                  .map((event, index) => {
-                    // Find Gong calls and Granola notes linked to this event
-                    const linkedGongCalls = Array.isArray(allGongCalls) ? allGongCalls.filter(call => call.calendarEventId === event.id) : [];
-                    const linkedGranolaNotes = Array.isArray(allGranolaNotes) ? allGranolaNotes.filter(note => note.calendarEventId === event.id) : [];
-
-                    return (
-                      <MeetingEventCard
-                        key={event.id}
-                        event={event}
-                        gongCalls={linkedGongCalls}
-                        granolaNotes={linkedGranolaNotes}
-                        opportunityId={opportunity.id}
-                        onRefresh={handleRefreshMeetingsData}
-                        onAddGongCall={handleAddGongCall}
-                        onAddGranolaNote={handleAddGranolaNote}
-                        onViewInsights={handleViewGongCallInsights}
-                        onParse={handleParseGongCall}
-                        defaultExpanded={index < 3} // Expand first 3 by default
-                      />
-                    );
-                  })}
-              </div>
-            )}
-          </div>
-
-          <Separator className="my-6" />
-
-          {/* Orphaned Notes Section */}
-          <OrphanedNotesSection
-            orphanedGongCalls={Array.isArray(allGongCalls) ? allGongCalls.filter(call => !call.calendarEventId) : []}
-            orphanedGranolaNotes={Array.isArray(allGranolaNotes) ? allGranolaNotes.filter(note => !note.calendarEventId) : []}
-            calendarEvents={calendarEvents}
+        {/* Activity Tab - Horizontal Timeline */}
+        <TabsContent value="activity" className="mt-4">
+          <ActivitySection
             opportunityId={opportunity.id}
-            onRefresh={handleRefreshMeetingsData}
+            onViewInsights={handleViewGongCallInsightsById}
           />
-
-          <Separator className="my-6" />
-
-          {/* Google Notes Section (kept as-is at bottom) */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Google Notes</h3>
-            <GoogleNotesSection
-              opportunityId={opportunity.id}
-              notes={opportunity.googleNotes || []}
-            />
-          </div>
         </TabsContent>
 
         {/* Account Intel Tab */}
