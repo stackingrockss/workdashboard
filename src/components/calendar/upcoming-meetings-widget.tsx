@@ -164,7 +164,7 @@ export function UpcomingMeetingsWidget() {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="h-fit">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -185,7 +185,7 @@ export function UpcomingMeetingsWidget() {
 
   if (domainNotSet) {
     return (
-      <Card>
+      <Card className="h-fit">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -219,7 +219,7 @@ export function UpcomingMeetingsWidget() {
 
   if (notConnected) {
     return (
-      <Card>
+      <Card className="h-fit">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -253,7 +253,7 @@ export function UpcomingMeetingsWidget() {
 
   if (error) {
     return (
-      <Card>
+      <Card className="h-fit">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -282,7 +282,7 @@ export function UpcomingMeetingsWidget() {
 
   if (events.length === 0) {
     return (
-      <Card>
+      <Card className="h-fit">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
@@ -314,7 +314,7 @@ export function UpcomingMeetingsWidget() {
   const groupedEvents = groupEventsByDate(events);
 
   return (
-    <Card>
+    <Card className="h-fit">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">

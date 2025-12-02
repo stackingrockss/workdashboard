@@ -4,6 +4,7 @@
 import { inngest } from "@/lib/inngest/client";
 import { analyzeCallRisk } from "@/lib/ai/analyze-call-risk"; // SHARED utility - works for any transcript
 import { prisma } from "@/lib/db";
+import { appendRiskToGranolaHistory } from "@/lib/utils/risk-assessment-history";
 
 /**
  * Background job that analyzes risk signals in a Granola note transcript using AI
@@ -79,6 +80,23 @@ export const analyzeGranolaRiskJob = inngest.createFunction(
           riskAssessment: true,
         },
       });
+    });
+
+    // Step 5: Update opportunity's risk assessment history
+    await step.run("update-risk-history", async () => {
+      try {
+        await appendRiskToGranolaHistory({
+          opportunityId: note.opportunityId,
+          granolaId,
+          meetingDate: note.meetingDate,
+          riskAssessment: riskResult.data!,
+        });
+        return { historyUpdated: true };
+      } catch (error) {
+        // Log but don't fail the job if history update fails
+        console.error("Failed to update risk assessment history:", error);
+        return { historyUpdated: false, error: String(error) };
+      }
     });
 
     return {

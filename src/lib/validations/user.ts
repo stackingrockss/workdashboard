@@ -7,10 +7,10 @@ export const userRoleSchema = z.nativeEnum(UserRole);
 // Task filter preference schema
 export const taskPreferencesUpdateSchema = z.object({
   taskFilterPreference: z.enum([
+    'today',
     'thisWeekOrNoDueDate',
-    'thisWeek',
-    'all',
-    'overdue'
+    'noDueDate',
+    'all'
   ]),
 });
 
@@ -26,10 +26,10 @@ export const userUpdateSchema = z.object({
   annualQuota: z.number().int().positive('Quota must be a positive number').nullable().optional(),
   autoCreateMeetingTasks: z.boolean().optional(),
   taskFilterPreference: z.enum([
+    'today',
     'thisWeekOrNoDueDate',
-    'thisWeek',
-    'all',
-    'overdue'
+    'noDueDate',
+    'all'
   ]).optional(),
 });
 

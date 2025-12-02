@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/format";
 import { Target, DollarSign } from "lucide-react";
-import Link from "next/link";
 import { UpcomingMeetingsWidget } from "@/components/calendar/upcoming-meetings-widget";
 import { UpcomingTasksWidget } from "@/components/tasks/upcoming-tasks-widget";
 import { createClient } from "@/lib/supabase/server";
@@ -59,10 +58,11 @@ export default async function DashboardPage() {
   const stats = calculateDashboardStats(opportunities);
 
   const stageLabels: Record<string, string> = {
-    prospect: "Prospect",
-    qualification: "Qualification",
-    proposal: "Proposal",
-    negotiation: "Negotiation",
+    discovery: "Discovery",
+    demo: "Demo",
+    validateSolution: "Validate Solution",
+    decisionMakerApproval: "Decision Maker Approval",
+    contracting: "Contracting",
     closedWon: "Closed Won",
     closedLost: "Closed Lost",
   };
@@ -155,59 +155,6 @@ export default async function DashboardPage() {
           </CardContent>
         </Card>
       </div>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {stats.recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-start justify-between">
-                <div className="space-y-1">
-                  <Link
-                    href={`/opportunities/${activity.id}`}
-                    className="font-medium hover:underline"
-                  >
-                    {activity.name}
-                  </Link>
-                  <div className="text-sm text-muted-foreground">
-                    {activity.accountName} • {activity.action}
-                  </div>
-                </div>
-                <div className="text-xs text-muted-foreground whitespace-nowrap" suppressHydrationWarning>
-                  {new Date(activity.timestamp).toLocaleDateString()}
-                </div>
-              </div>
-            ))}
-            {stats.recentActivity.length === 0 && (
-              <p className="text-sm text-muted-foreground">No recent activity</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Link
-            href="/opportunities"
-            className="inline-flex items-center rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:bg-primary/90"
-          >
-            View Opportunities
-          </Link>
-          <Link
-            href="/prospects"
-            className="inline-flex items-center rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
-          >
-            Manage Prospects
-          </Link>
-        </CardContent>
-      </Card>
     </div>
   );
 }

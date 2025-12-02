@@ -1,10 +1,10 @@
 import type { TaskWithRelations } from "@/types/task";
 
 export type TaskFilterPreference =
+  | 'today'
   | 'thisWeekOrNoDueDate'
-  | 'thisWeek'
-  | 'all'
-  | 'overdue';
+  | 'noDueDate'
+  | 'all';
 
 /**
  * Get week bounds (Sunday to Saturday)
@@ -54,7 +54,23 @@ export function isOverdue(date: Date): boolean {
 }
 
 /**
- * Filter tasks based on user preference
+ * Check if a date is today
+ */
+export function isToday(date: Date): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const checkDate = new Date(date);
+  checkDate.setHours(0, 0, 0, 0);
+
+  return checkDate.getTime() === today.getTime();
+}
+
+/**
+ * Filter tasks based on user preference.
+ *
+ * Note: Overdue tasks are always included in ALL filter views to ensure
+ * users never miss tasks that need attention, regardless of the selected filter.
  */
 export function filterTasksByPreference(
   tasks: TaskWithRelations[],
@@ -64,21 +80,25 @@ export function filterTasksByPreference(
     // Always exclude completed tasks
     if (task.status === 'completed') return false;
 
+    // Always include overdue tasks in all views to ensure visibility
+    if (task.due && isOverdue(new Date(task.due))) {
+      return true;
+    }
+
     switch (preference) {
+      case 'today':
+        // Tasks due today (overdue already included above)
+        if (!task.due) return false;
+        return isToday(new Date(task.due));
+
       case 'thisWeekOrNoDueDate':
-        // Default: show tasks due this week or with no due date
+        // Tasks due this week or with no due date
         if (!task.due) return true;
         return isThisWeek(new Date(task.due));
 
-      case 'thisWeek':
-        // Only this week, exclude no due date
-        if (!task.due) return false;
-        return isThisWeek(new Date(task.due));
-
-      case 'overdue':
-        // Only overdue tasks
-        if (!task.due) return false;
-        return isOverdue(new Date(task.due));
+      case 'noDueDate':
+        // Only tasks without a due date (overdue already included above)
+        return !task.due;
 
       case 'all':
         // All pending tasks
@@ -95,12 +115,12 @@ export function filterTasksByPreference(
  */
 export function getFilterLabel(preference: TaskFilterPreference): string {
   switch (preference) {
+    case 'today':
+      return 'Today';
     case 'thisWeekOrNoDueDate':
-      return 'This Week or No Due Date';
-    case 'thisWeek':
-      return 'This Week Only';
-    case 'overdue':
-      return 'Overdue';
+      return 'This Week';
+    case 'noDueDate':
+      return 'No Due Date';
     case 'all':
       return 'All Tasks';
     default:

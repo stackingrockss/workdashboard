@@ -90,8 +90,20 @@ export async function POST(
     });
   } catch (error) {
     console.error('Failed to complete task:', error);
+
+    // Provide more specific error messages based on error type
+    const errorMessage = error instanceof Error ? error.message : 'Failed to complete task';
+
+    // Check for common OAuth errors
+    if (errorMessage.includes('not connected') || errorMessage.includes('reconnect')) {
+      return NextResponse.json(
+        { error: errorMessage },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
-      { error: 'Failed to complete task' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

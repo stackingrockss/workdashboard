@@ -232,6 +232,7 @@ model Opportunity {
   consolidatedGoals          Json?
   consolidatedPainPoints     Json?
   consolidatedRiskAssessment Json?
+  riskAssessmentHistory      String?
   consolidationCallCount     Int?
   lastConsolidatedAt         DateTime?
   consolidationStatus        ConsolidationStatus?     @default(idle)
@@ -313,7 +314,7 @@ model User {
   role                    UserRole             @default(REP)
   annualQuota             Int?
   autoCreateMeetingTasks  Boolean              @default(true)
-  taskFilterPreference    String               @default("thisWeekOrNoDueDate")
+  taskFilterPreference    String               @default("today")
   ownedAccounts           Account[]            @relation("AccountOwner")
   calendarEvents          CalendarEvent[]
   calendarSyncStates      CalendarSyncState[]

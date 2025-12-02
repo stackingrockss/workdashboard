@@ -64,18 +64,19 @@ export function InlineDueDateEditor({
       );
 
       if (!response.ok) {
-        throw new Error("Failed to update due date");
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to update due date");
       }
 
       toast.success("Due date updated");
     } catch (error) {
-      console.error("Failed to update due date:", error);
+      const errorMsg = error instanceof Error ? error.message : "Failed to update due date";
+      console.error("failed to update task due date:", errorMsg);
 
       // Rollback on error
       setOptimisticDue(previousDue);
       onDueChange?.(previousDue);
 
-      const errorMsg = "Failed to update due date";
       toast.error(errorMsg);
       onError?.(errorMsg);
     } finally {

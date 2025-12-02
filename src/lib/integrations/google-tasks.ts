@@ -311,31 +311,69 @@ export class GoogleTasksClient {
     try {
       const tasks = await this.getClient(userId);
 
-      // Build update payload
-      const updatePayload: Record<string, unknown> = {
-        id: taskId,
-      };
-
-      if (updates.title !== undefined) {
-        updatePayload.title = updates.title;
-      }
-      if (updates.notes !== undefined) {
-        updatePayload.notes = updates.notes;
-      }
-      if (updates.due !== undefined) {
-        updatePayload.due = updates.due
-          ? updates.due.toISOString()
-          : null;
-      }
-      if (updates.status !== undefined) {
-        updatePayload.status = updates.status;
-      }
-
-      const response = await tasks.tasks.update({
+      // Google Tasks API update requires the full task object, not just changed fields
+      // First, fetch the current task to get all required fields
+      const currentTask = await tasks.tasks.get({
         tasklist: listId,
         task: taskId,
-        requestBody: updatePayload,
       });
+
+      if (!currentTask.data || !currentTask.data.title) {
+        throw new Error('Task not found in Google Tasks');
+      }
+
+      // Build update payload with current values as base
+      const updatePayload: Record<string, unknown> = {
+        id: taskId,
+        title: updates.title ?? currentTask.data.title,
+      };
+
+      // Apply updates, using current values as fallback
+      if (updates.notes !== undefined) {
+        updatePayload.notes = updates.notes;
+      } else if (currentTask.data.notes) {
+        updatePayload.notes = currentTask.data.notes;
+      }
+
+      // Handle due date - use patch for clearing, update for setting
+      // Google Tasks API doesn't accept null for due date in update, need to use patch
+      const shouldClearDueDate = updates.due === null;
+
+      if (updates.due !== undefined && updates.due !== null) {
+        // Setting a new due date
+        updatePayload.due = updates.due.toISOString();
+      } else if (updates.due === undefined && currentTask.data.due) {
+        // Not updating due date, keep existing
+        updatePayload.due = currentTask.data.due;
+      }
+      // If updates.due === null, we'll handle clearing via patch below
+
+      if (updates.status !== undefined) {
+        updatePayload.status = updates.status;
+      } else {
+        updatePayload.status = currentTask.data.status;
+      }
+
+      // Use patch when clearing due date, otherwise use update
+      // Google Tasks API update doesn't handle null due date properly
+      let response;
+      if (shouldClearDueDate) {
+        // Use patch to clear the due date field while preserving other updates
+        response = await tasks.tasks.patch({
+          tasklist: listId,
+          task: taskId,
+          requestBody: {
+            ...updatePayload,
+            due: null,
+          },
+        });
+      } else {
+        response = await tasks.tasks.update({
+          tasklist: listId,
+          task: taskId,
+          requestBody: updatePayload,
+        });
+      }
 
       const task = response.data;
 
@@ -357,7 +395,11 @@ export class GoogleTasksClient {
       };
     } catch (error) {
       console.error('Failed to update task:', error);
-      throw new Error('Failed to update task');
+      // Preserve original error message if it's an OAuth error
+      if (error instanceof Error && (error.message.includes('not connected') || error.message.includes('reconnect') || error.message.includes('OAuth'))) {
+        throw error;
+      }
+      throw new Error('Failed to update task in Google Tasks');
     }
   }
 

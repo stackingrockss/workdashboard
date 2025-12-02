@@ -6,6 +6,7 @@ import { parseGranolaTranscript } from "@/lib/ai/parse-granola-transcript";
 import { prisma } from "@/lib/db";
 import { ParsingStatus } from "@prisma/client";
 import { appendToGranolaHistory } from "@/lib/utils/granola-history";
+import { updateOpportunityNextStep } from "@/lib/utils/next-step-updater";
 
 /**
  * Background job that parses a Granola note transcript using AI
@@ -108,7 +109,13 @@ export const parseGranolaTranscriptJob = inngest.createFunction(
       });
     });
 
-    // Step 6: Update opportunity history (with duplicate prevention)
+    // Step 6: Update opportunity's nextStep field from latest call
+    await step.run("update-opportunity-next-step", async () => {
+      const result = await updateOpportunityNextStep(noteData.opportunityId);
+      return { updated: result.updated, nextStep: result.nextStep };
+    });
+
+    // Step 7: Update opportunity history (with duplicate prevention)
     await step.run("update-opportunity-history", async () => {
       try {
         await appendToGranolaHistory({
@@ -127,7 +134,7 @@ export const parseGranolaTranscriptJob = inngest.createFunction(
       }
     });
 
-    // Step 7: Trigger downstream jobs (risk analysis + consolidation check)
+    // Step 8: Trigger downstream jobs (risk analysis + consolidation check)
     // These are sent as separate events so they run independently
     await step.sendEvent("trigger-downstream-jobs", [
       {

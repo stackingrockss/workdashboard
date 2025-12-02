@@ -4,6 +4,7 @@
 import { inngest } from "@/lib/inngest/client";
 import { analyzeCallRisk } from "@/lib/ai/analyze-call-risk";
 import { prisma } from "@/lib/db";
+import { appendRiskToOpportunityHistory } from "@/lib/utils/risk-assessment-history";
 
 /**
  * Background job that analyzes risk signals in a Gong call transcript using AI
@@ -80,6 +81,23 @@ export const analyzeCallRiskJob = inngest.createFunction(
           riskAssessment: true,
         },
       });
+    });
+
+    // Step 5: Update opportunity's risk assessment history
+    await step.run("update-risk-history", async () => {
+      try {
+        await appendRiskToOpportunityHistory({
+          opportunityId: call.opportunityId,
+          gongCallId,
+          meetingDate: call.meetingDate,
+          riskAssessment: riskResult.data!,
+        });
+        return { historyUpdated: true };
+      } catch (error) {
+        // Log but don't fail the job if history update fails
+        console.error("Failed to update risk assessment history:", error);
+        return { historyUpdated: false, error: String(error) };
+      }
     });
 
     return {

@@ -229,8 +229,10 @@ export async function PATCH(
     });
   } catch (error) {
     console.error('Failed to update task:', error);
+    // Return more specific error message for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Failed to update task';
     return NextResponse.json(
-      { error: 'Failed to update task' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

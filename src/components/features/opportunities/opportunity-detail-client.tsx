@@ -55,6 +55,10 @@ import { CommentAnchorIcons } from "@/components/comments/CommentAnchorIcons";
 import { CommentScrollbarMarkers } from "@/components/comments/CommentScrollbarMarkers";
 import { SelectionCommentToolbar } from "@/components/comments/SelectionCommentToolbar";
 import type { TextSelection } from "@/lib/text-selection";
+import { ParseGongTranscriptDialog } from "./parse-gong-transcript-dialog";
+import { GongCallInsightsDialog } from "./gong-call-insights-dialog";
+import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
+import type { RiskAssessment } from "@/types/gong-call";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -118,6 +122,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
   const [loadingCalendar, setLoadingCalendar] = useState(true);
   const [addGongDialogEvent, setAddGongDialogEvent] = useState<{id: string; title: string; startTime: string | Date} | null>(null);
   const [addGranolaDialogEvent, setAddGranolaDialogEvent] = useState<{id: string; title: string; startTime: string | Date} | null>(null);
+  const [selectedGongCallForParsing, setSelectedGongCallForParsing] = useState<GongCall | null>(null);
+  const [selectedGongCallForViewing, setSelectedGongCallForViewing] = useState<GongCall | null>(null);
   const router = useRouter();
   const { setEntityContext, openSidebarWithSelection } = useCommentSidebar();
 
@@ -356,6 +362,15 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
       title: event.summary,
       startTime: event.startTime,
     });
+  };
+
+  // Handlers for Gong call insights and parsing from MeetingEventCard
+  const handleViewGongCallInsights = (call: GongCall) => {
+    setSelectedGongCallForViewing(call);
+  };
+
+  const handleParseGongCall = (call: GongCall) => {
+    setSelectedGongCallForParsing(call);
   };
 
   return (
@@ -727,6 +742,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                         onRefresh={handleRefreshMeetingsData}
                         onAddGongCall={handleAddGongCall}
                         onAddGranolaNote={handleAddGranolaNote}
+                        onViewInsights={handleViewGongCallInsights}
+                        onParse={handleParseGongCall}
                         defaultExpanded={index < 3} // Expand first 3 by default
                       />
                     );
@@ -1008,6 +1025,51 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
             />
           </DialogContent>
         </Dialog>
+      )}
+
+      {/* Parse Gong Transcript Dialog (triggered from MeetingEventCard) */}
+      {selectedGongCallForParsing && (
+        <ParseGongTranscriptDialog
+          open={!!selectedGongCallForParsing}
+          onOpenChange={(open) => {
+            if (!open) setSelectedGongCallForParsing(null);
+          }}
+          opportunityId={opportunity.id}
+          gongCallId={selectedGongCallForParsing.id}
+          onContactsImported={() => {
+            router.refresh();
+          }}
+          onParsingStarted={() => {
+            router.refresh();
+            handleRefreshMeetingsData();
+          }}
+        />
+      )}
+
+      {/* Gong Call Insights Dialog (triggered from MeetingEventCard) */}
+      {selectedGongCallForViewing && selectedGongCallForViewing.parsedAt && (
+        <GongCallInsightsDialog
+          open={!!selectedGongCallForViewing}
+          onOpenChange={(open) => {
+            if (!open) setSelectedGongCallForViewing(null);
+          }}
+          gongCallTitle={selectedGongCallForViewing.title}
+          opportunityId={opportunity.id}
+          gongCallId={selectedGongCallForViewing.id}
+          insights={{
+            painPoints: (selectedGongCallForViewing.painPoints as string[]) || [],
+            goals: (selectedGongCallForViewing.goals as string[]) || [],
+            people: (selectedGongCallForViewing.parsedPeople as PersonExtracted[]) || [],
+            nextSteps: (selectedGongCallForViewing.nextSteps as string[]) || [],
+          }}
+          riskAssessment={(selectedGongCallForViewing.riskAssessment as RiskAssessment) || null}
+          onContactsImported={() => {
+            router.refresh();
+          }}
+          onRiskAnalysisComplete={() => {
+            router.refresh();
+          }}
+        />
       )}
     </div>
   );

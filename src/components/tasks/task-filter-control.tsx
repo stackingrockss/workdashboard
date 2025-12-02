@@ -17,14 +17,14 @@ export function TaskFilterControl({
   return (
     <Tabs value={currentFilter} onValueChange={(value) => onFilterChange(value as TaskFilterPreference)}>
       <TabsList className="grid w-full grid-cols-4">
+        <TabsTrigger value="today" disabled={disabled}>
+          Today
+        </TabsTrigger>
         <TabsTrigger value="thisWeekOrNoDueDate" disabled={disabled}>
           This Week
         </TabsTrigger>
-        <TabsTrigger value="thisWeek" disabled={disabled}>
-          Week Only
-        </TabsTrigger>
-        <TabsTrigger value="overdue" disabled={disabled}>
-          Overdue
+        <TabsTrigger value="noDueDate" disabled={disabled}>
+          No Date
         </TabsTrigger>
         <TabsTrigger value="all" disabled={disabled}>
           All

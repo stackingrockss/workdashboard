@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { analyzeCallRisk } from "@/lib/ai/analyze-call-risk";
+import { appendRiskToOpportunityHistory } from "@/lib/utils/risk-assessment-history";
 
 /**
  * POST /api/v1/gong-calls/[id]/analyze-risk
@@ -23,6 +24,8 @@ export async function POST(
         transcriptText: true,
         parsingStatus: true,
         riskAssessment: true,
+        opportunityId: true,
+        meetingDate: true,
       },
     });
 
@@ -76,6 +79,20 @@ export async function POST(
         riskAssessment: true,
       },
     });
+
+    // Update opportunity's risk assessment history
+    try {
+      await appendRiskToOpportunityHistory({
+        opportunityId: call.opportunityId,
+        gongCallId: id,
+        meetingDate: call.meetingDate,
+        riskAssessment: result.data,
+      });
+      console.log(`✅ Risk assessment history updated for opportunity ${call.opportunityId}`);
+    } catch (historyError) {
+      // Log but don't fail the request if history update fails
+      console.error(`Failed to update risk assessment history:`, historyError);
+    }
 
     console.log(`✅ Risk analysis completed for call ${id}`);
 
