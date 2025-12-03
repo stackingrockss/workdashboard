@@ -112,6 +112,7 @@ export const BUILT_IN_VIEW_IDS = {
   FORECAST: "built-in-forecast",
   CLOSED_LOST: "built-in-closed-lost",
   CUSTOMERS: "built-in-customers",
+  CURRENT_QUARTER: "built-in-current-quarter",
 } as const;
 
 /**
@@ -125,7 +126,7 @@ export function isBuiltInView(viewId: string): boolean {
  * Extended view type that includes built-in virtual views
  * These are not stored in the database but used for UI display
  */
-export type ExtendedViewType = ViewType | "closedLost" | "customers";
+export type ExtendedViewType = ViewType | "closedLost" | "customers" | "currentQuarter";
 
 /**
  * Get view type from built-in view ID
@@ -142,6 +143,8 @@ export function getViewTypeFromBuiltInId(viewId: string): ExtendedViewType | nul
       return "closedLost";
     case BUILT_IN_VIEW_IDS.CUSTOMERS:
       return "customers";
+    case BUILT_IN_VIEW_IDS.CURRENT_QUARTER:
+      return "currentQuarter";
     default:
       return null;
   }
@@ -170,6 +173,7 @@ export const VIEW_TYPE_LABELS: Record<ExtendedViewType, string> = {
   forecast: "Forecast Categories",
   closedLost: "Closed Lost",
   customers: "Customers",
+  currentQuarter: "Current Quarter",
 };
 
 /**
@@ -182,6 +186,7 @@ export const VIEW_TYPE_DESCRIPTIONS: Record<ExtendedViewType, string> = {
   forecast: "Group by forecast confidence level (read-only)",
   closedLost: "Review lost opportunities by quarter (read-only)",
   customers: "Active customers grouped by contract value (read-only)",
+  currentQuarter: "Focus on opportunities closing this quarter",
 };
 
 /**

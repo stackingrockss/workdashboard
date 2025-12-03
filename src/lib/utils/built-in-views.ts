@@ -88,6 +88,8 @@ export function getBuiltInColumns(
       return generateClosedLostColumns();
     case "customers":
       return generateCustomersColumns();
+    case "currentQuarter":
+      return []; // Current Quarter is list-only view, no Kanban columns
     case "custom":
       return []; // Custom views don't have default columns
     default:
@@ -98,7 +100,7 @@ export function getBuiltInColumns(
 /**
  * Built-in view type (subset of ExtendedViewType that are built-in)
  */
-type BuiltInViewType = "quarterly" | "stages" | "forecast" | "closedLost" | "customers";
+type BuiltInViewType = "quarterly" | "stages" | "forecast" | "closedLost" | "customers" | "currentQuarter";
 
 /**
  * Generate a complete built-in view object
@@ -129,6 +131,10 @@ export function getBuiltInView(
     customers: {
       id: BUILT_IN_VIEW_IDS.CUSTOMERS,
       name: "Customers",
+    },
+    currentQuarter: {
+      id: BUILT_IN_VIEW_IDS.CURRENT_QUARTER,
+      name: "Current Quarter",
     },
   };
 
@@ -161,6 +167,7 @@ export function getAllBuiltInViews(
 ): SerializedKanbanView[] {
   return [
     getBuiltInView("quarterly", fiscalYearStartMonth, userId, organizationId),
+    getBuiltInView("currentQuarter", fiscalYearStartMonth, userId, organizationId),
     getBuiltInView("stages", fiscalYearStartMonth, userId, organizationId),
     getBuiltInView("forecast", fiscalYearStartMonth, userId, organizationId),
     getBuiltInView("closedLost", fiscalYearStartMonth, userId, organizationId),

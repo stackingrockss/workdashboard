@@ -17,6 +17,7 @@ import { refreshSecCacheJob } from "@/lib/inngest/functions/refresh-sec-cache";
 import { syncEarningsDatesJob } from "@/lib/inngest/functions/sync-earnings-dates";
 import { generateAccountResearchJob } from "@/lib/inngest/functions/generate-account-research";
 import { recalculateNextCallDatesJob } from "@/lib/inngest/functions/recalculate-next-call-dates";
+import { generateMapJob } from "@/lib/inngest/functions/generate-map";
 
 // Increase timeout for long-running AI jobs
 // Vercel Pro: 300s (5 min), Hobby: 60s max
@@ -43,6 +44,7 @@ export const { GET, POST, PUT } = serve({
     syncEarningsDatesJob, // Earnings dates sync and reminder tasks (daily at 9 AM)
     generateAccountResearchJob, // AI account research generation on opportunity creation
     recalculateNextCallDatesJob, // Next call date recalculation (daily at 2 AM)
+    generateMapJob, // Mutual Action Plan generation
   ],
   signingKey: process.env.INNGEST_SIGNING_KEY,
 });

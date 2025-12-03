@@ -209,7 +209,7 @@ export function ChatModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl h-[600px] p-0 flex flex-col">
+      <DialogContent className="sm:max-w-2xl h-[600px] p-0 flex flex-col" showCloseButton={false}>
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
           <div>

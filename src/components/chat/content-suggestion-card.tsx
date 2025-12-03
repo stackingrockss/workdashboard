@@ -15,6 +15,8 @@ import {
   File,
   Check,
   Loader2,
+  FileSpreadsheet,
+  Briefcase,
 } from "lucide-react";
 import { ContentSuggestion } from "@/types/content-suggestion";
 import { ContentType, CONTENT_TYPE_LABELS } from "@/types/content";
@@ -32,6 +34,8 @@ const contentTypeIcons: Record<ContentType, React.ReactNode> = {
   whitepaper: <File className="h-3 w-3" />,
   video: <Video className="h-3 w-3" />,
   webinar: <Presentation className="h-3 w-3" />,
+  mutual_action_plan: <FileSpreadsheet className="h-3 w-3" />,
+  business_case: <Briefcase className="h-3 w-3" />,
   other: <FileText className="h-3 w-3" />,
 };
 
@@ -41,6 +45,8 @@ const contentTypeBadgeColors: Record<ContentType, string> = {
   whitepaper: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-100",
   video: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100",
   webinar: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100",
+  mutual_action_plan: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-100",
+  business_case: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-100",
   other: "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100",
 };
 

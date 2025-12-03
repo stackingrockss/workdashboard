@@ -252,6 +252,9 @@ export async function PATCH(
     if (data.painPointsHistory !== undefined) updateData.painPointsHistory = data.painPointsHistory;
     if (data.goalsHistory !== undefined) updateData.goalsHistory = data.goalsHistory;
     if (data.nextStepsHistory !== undefined) updateData.nextStepsHistory = data.nextStepsHistory;
+    // Business case content fields
+    if (data.businessCaseContent !== undefined) updateData.businessCaseContent = data.businessCaseContent;
+    if (data.businessCaseQuestions !== undefined) updateData.businessCaseQuestions = data.businessCaseQuestions;
     if (accountId) {
       updateData.accountId = accountId;
     }

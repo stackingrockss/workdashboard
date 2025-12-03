@@ -26,11 +26,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 import { Plus, Filter, LayoutGrid, Table } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { ViewSelector } from "./ViewSelector";
-import { CurrentQuarterView } from "@/components/opportunities/CurrentQuarterView";
+import { OpportunitiesListView } from "@/components/opportunities/OpportunitiesListView";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { Opportunity, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory } from "@/types/opportunity";
 import { SerializedKanbanView } from "@/types/view";
@@ -55,7 +54,7 @@ export function KanbanBoardWrapper({
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState<"board" | "current-quarter">("board");
+  const [viewMode, setViewMode] = useState<"board" | "list">("board");
 
   // Local state for views and active view (for optimistic updates)
   const [views, setViews] = useState<SerializedKanbanView[]>(initialViews);
@@ -83,7 +82,7 @@ export function KanbanBoardWrapper({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedViewMode = localStorage.getItem("opportunities-view-mode");
-      if (savedViewMode === "board" || savedViewMode === "current-quarter") {
+      if (savedViewMode === "board" || savedViewMode === "list") {
         setViewMode(savedViewMode);
       }
     }
@@ -95,11 +94,6 @@ export function KanbanBoardWrapper({
     }
   }, [viewMode]);
 
-  // Calculate current quarter opportunities count
-  const currentQuarterCount = useMemo(() => {
-    const currentQuarter = getQuarterFromDate(new Date(), fiscalYearStartMonth);
-    return localOpportunities.filter(opp => opp.quarter === currentQuarter).length;
-  }, [localOpportunities, fiscalYearStartMonth]);
 
   // Get display columns based on active view
   const displayColumns = useMemo(() => {
@@ -158,6 +152,11 @@ export function KanbanBoardWrapper({
 
     // Optimistic update
     setActiveView(newView);
+
+    // Auto-switch to list view for Current Quarter (since it's a list-only view)
+    if (newView.viewType === "currentQuarter") {
+      setViewMode("list");
+    }
 
     // Store the selected view ID in a cookie for server-side rendering
     if (typeof document !== 'undefined') {
@@ -370,20 +369,15 @@ export function KanbanBoardWrapper({
 
       <Separator />
 
-      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "board" | "current-quarter")}>
+      <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "board" | "list")}>
         <TabsList className="grid w-full max-w-[400px] grid-cols-2">
           <TabsTrigger value="board" className="flex items-center gap-2">
             <LayoutGrid className="h-4 w-4" />
             Board
           </TabsTrigger>
-          <TabsTrigger value="current-quarter" className="flex items-center gap-2">
+          <TabsTrigger value="list" className="flex items-center gap-2">
             <Table className="h-4 w-4" />
-            Current Quarter
-            {currentQuarterCount > 0 && (
-              <Badge variant="secondary" className="ml-1">
-                {currentQuarterCount}
-              </Badge>
-            )}
+            List
           </TabsTrigger>
         </TabsList>
 
@@ -398,10 +392,11 @@ export function KanbanBoardWrapper({
           />
         </TabsContent>
 
-        <TabsContent value="current-quarter" className="mt-4">
-          <CurrentQuarterView
+        <TabsContent value="list" className="mt-4">
+          <OpportunitiesListView
             opportunities={localOpportunities}
             fiscalYearStartMonth={fiscalYearStartMonth}
+            activeView={activeView}
             onOpportunityUpdate={handleOpportunityUpdate}
           />
         </TabsContent>

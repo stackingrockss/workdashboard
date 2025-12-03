@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Building2 } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Building2, FileSpreadsheet, Sparkles, Copy, HelpCircle } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/opportunity-form";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -55,6 +55,7 @@ import { ParseGongTranscriptDialog } from "./parse-gong-transcript-dialog";
 import { GongCallInsightsDialog } from "./gong-call-insights-dialog";
 import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 import type { RiskAssessment } from "@/types/gong-call";
+import { MutualActionPlanTab } from "./map";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -111,6 +112,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
   const [isDeleting, setIsDeleting] = useState(false);
   const [isGeneratingResearch, setIsGeneratingResearch] = useState(false);
   const [researchStatus, setResearchStatus] = useState(opportunity.accountResearchStatus);
+  const [isGeneratingBusinessCase, setIsGeneratingBusinessCase] = useState(false);
+  const [businessCaseStatus, setBusinessCaseStatus] = useState(opportunity.businessCaseGenerationStatus);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [allGongCalls, setAllGongCalls] = useState<GongCall[]>(Array.isArray(opportunity.gongCalls) ? opportunity.gongCalls : []);
@@ -354,6 +357,45 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
     }
   };
 
+  const handleGenerateBusinessCase = async () => {
+    setIsGeneratingBusinessCase(true);
+    setBusinessCaseStatus("generating");
+    try {
+      const response = await fetch("/api/v1/ai/business-case", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          opportunityId: opportunity.id,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Failed to generate business case");
+      }
+
+      setBusinessCaseStatus("completed");
+      toast.success("Business case generated successfully!");
+      router.refresh();
+    } catch (error) {
+      console.error("Error generating business case:", error);
+      setBusinessCaseStatus("failed");
+      toast.error(error instanceof Error ? error.message : "Failed to generate business case");
+    } finally {
+      setIsGeneratingBusinessCase(false);
+    }
+  };
+
+  const handleCopyBusinessCase = () => {
+    if (opportunity.businessCaseContent) {
+      navigator.clipboard.writeText(opportunity.businessCaseContent);
+      toast.success("Business case copied to clipboard!");
+    }
+  };
+
   // Callbacks for adding Gong/Granola calls from calendar events
   const handleAddGongCall = (event: CalendarEvent) => {
     setAddGongDialogEvent({
@@ -435,7 +477,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4" />
             Overview
@@ -455,6 +497,10 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
           <TabsTrigger value="contacts" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Contacts
+          </TabsTrigger>
+          <TabsTrigger value="map" className="flex items-center gap-2">
+            <FileSpreadsheet className="h-4 w-4" />
+            MAP
           </TabsTrigger>
         </TabsList>
 
@@ -771,6 +817,95 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
 
               <Separator />
 
+              {/* Business Case Generator */}
+              <Collapsible defaultOpen={!!opportunity.businessCaseContent}>
+                <Card className="border-2 shadow-md hover:shadow-lg transition-shadow">
+                  <CollapsibleTrigger className="w-full group">
+                    <CardHeader className="cursor-pointer hover:bg-muted/70 transition-all duration-200 py-5">
+                      <CardTitle className="flex items-center justify-between text-lg">
+                        <div className="flex items-center gap-3">
+                          <span className="font-semibold">Business Case</span>
+                          <span className="text-xs text-muted-foreground font-normal group-data-[state=closed]:block group-data-[state=open]:hidden">
+                            Click to expand
+                          </span>
+                          <span className="text-xs text-muted-foreground font-normal group-data-[state=open]:block group-data-[state=closed]:hidden">
+                            Click to collapse
+                          </span>
+                        </div>
+                        <ChevronDown className="h-6 w-6 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </CardTitle>
+                    </CardHeader>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <CardContent className="pt-0 space-y-6">
+                      {/* Generate & Copy buttons */}
+                      <div className="flex justify-between items-center">
+                        <Button
+                          onClick={handleGenerateBusinessCase}
+                          disabled={isGeneratingBusinessCase || businessCaseStatus === "generating"}
+                          variant="default"
+                          size="sm"
+                        >
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          {isGeneratingBusinessCase || businessCaseStatus === "generating"
+                            ? "Generating..."
+                            : "Generate Business Case"}
+                        </Button>
+                        {opportunity.businessCaseContent && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleCopyBusinessCase}
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Copy
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Business Case Content */}
+                      <InlineMarkdownWithAI
+                        label="Business Case Draft"
+                        value={opportunity.businessCaseContent || ""}
+                        onSave={async (value) => handleFieldUpdate("businessCaseContent", value)}
+                        placeholder={
+                          businessCaseStatus === "generating"
+                            ? "Generating business case with AI... This may take 20-60 seconds."
+                            : businessCaseStatus === "failed"
+                            ? "AI generation failed. Click 'Generate Business Case' to retry."
+                            : "Click 'Generate Business Case' to create an AI-powered draft based on prior business cases and opportunity context."
+                        }
+                        rows={12}
+                        className="border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950"
+                      />
+
+                      {/* Business Case Questions - separate section below */}
+                      {opportunity.businessCaseQuestions && (
+                        <div className="pt-4 border-t">
+                          <div className="flex items-center gap-2 mb-3">
+                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                            <h4 className="font-semibold">Business Case Questions</h4>
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-3">
+                            Questions to ask the customer to gather ROI data and quantify pain points.
+                          </p>
+                          <InlineMarkdownWithAI
+                            label=""
+                            value={opportunity.businessCaseQuestions}
+                            onSave={async (value) => handleFieldUpdate("businessCaseQuestions", value)}
+                            placeholder="Questions will appear here after generation..."
+                            rows={8}
+                            className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950"
+                          />
+                        </div>
+                      )}
+                    </CardContent>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+
+              <Separator />
+
               {/* SEC Filings & Earnings Transcripts - Only for public companies (with ticker) */}
               {opportunity.account.ticker ? (
                 <>
@@ -823,6 +958,11 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
         {/* Contacts Tab */}
         <TabsContent value="contacts" className="mt-4">
           <OrgChartSection opportunityId={opportunity.id} />
+        </TabsContent>
+
+        {/* Mutual Action Plan Tab */}
+        <TabsContent value="map" className="mt-4">
+          <MutualActionPlanTab opportunityId={opportunity.id} />
         </TabsContent>
       </Tabs>
 

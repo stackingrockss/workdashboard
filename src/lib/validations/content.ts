@@ -11,6 +11,8 @@ export const contentCreateSchema = z.object({
     "whitepaper",
     "video",
     "webinar",
+    "mutual_action_plan",
+    "business_case",
     "other",
   ]),
 });

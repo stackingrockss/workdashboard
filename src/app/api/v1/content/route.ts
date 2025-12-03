@@ -18,6 +18,7 @@ const VALID_CONTENT_TYPES: ContentType[] = [
   "whitepaper",
   "video",
   "webinar",
+  "business_case",
   "other",
 ];
 

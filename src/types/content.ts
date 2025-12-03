@@ -4,6 +4,8 @@ export type ContentType =
   | "whitepaper"
   | "video"
   | "webinar"
+  | "mutual_action_plan"
+  | "business_case"
   | "other";
 
 export interface Content {
@@ -29,5 +31,7 @@ export const CONTENT_TYPE_LABELS: Record<ContentType, string> = {
   whitepaper: "Whitepaper",
   video: "Video",
   webinar: "Webinar",
+  mutual_action_plan: "MAP Template",
+  business_case: "Business Case",
   other: "Other",
 };

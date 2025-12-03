@@ -13,11 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import type { ColumnConfig } from "@/lib/config/current-quarter-columns";
 
 interface ColumnOrderingDropdownProps {
   columns: string[];
-  columnConfigs: Record<string, ColumnConfig>;
+  columnConfigs: Record<string, { label: string }>;
   onReorder: (newOrder: string[]) => void;
 }
 

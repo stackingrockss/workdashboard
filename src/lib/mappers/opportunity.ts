@@ -74,6 +74,11 @@ export function mapPrismaOpportunityToOpportunity(
     securityReviewStatus: (opp.securityReviewStatus as Opportunity["securityReviewStatus"]) || undefined,
     platformType: (opp.platformType as Opportunity["platformType"]) || undefined,
     businessCaseStatus: (opp.businessCaseStatus as Opportunity["businessCaseStatus"]) || undefined,
+    // Business case generation fields
+    businessCaseContent: opp.businessCaseContent || undefined,
+    businessCaseQuestions: opp.businessCaseQuestions || undefined,
+    businessCaseGeneratedAt: opp.businessCaseGeneratedAt?.toISOString() || undefined,
+    businessCaseGenerationStatus: (opp.businessCaseGenerationStatus as Opportunity["businessCaseGenerationStatus"]) || undefined,
     owner: opp.owner
       ? {
           id: opp.owner.id,

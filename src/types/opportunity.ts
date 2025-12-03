@@ -73,6 +73,8 @@ export type AccountResearchStatus = "generating" | "completed" | "failed";
 
 export type ConsolidationStatus = "idle" | "processing" | "completed" | "failed";
 
+export type BusinessCaseGenerationStatus = "generating" | "completed" | "failed";
+
 export interface OpportunityOwner {
   id: string;
   name: string;
@@ -131,6 +133,11 @@ export interface Opportunity {
   lastConsolidatedAt?: string | null;
   consolidationCallCount?: number | null;
   consolidationStatus?: ConsolidationStatus | null;
+  // Business case generation
+  businessCaseContent?: string | null;
+  businessCaseQuestions?: string | null;
+  businessCaseGeneratedAt?: string | null;
+  businessCaseGenerationStatus?: BusinessCaseGenerationStatus | null;
   owner: OpportunityOwner;
   granolaNotes?: Array<{
     id: string;

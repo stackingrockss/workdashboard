@@ -71,6 +71,9 @@ const baseOpportunitySchema = z.object({
   painPointsHistory: z.string().optional(),
   goalsHistory: z.string().optional(),
   nextStepsHistory: z.string().optional(),
+  // Business case generation fields
+  businessCaseContent: z.string().max(100000).optional().nullable().transform(val => val === "" ? null : val),
+  businessCaseQuestions: z.string().max(50000).optional().nullable().transform(val => val === "" ? null : val),
 });
 
 export const opportunityCreateSchema = baseOpportunitySchema

@@ -240,6 +240,10 @@ model Opportunity {
   consolidationCallCount     Int?
   lastConsolidatedAt         DateTime?
   consolidationStatus        ConsolidationStatus?     @default(idle)
+  businessCaseContent        String?                  @db.Text
+  businessCaseQuestions      String?                  @db.Text
+  businessCaseGeneratedAt    DateTime?
+  businessCaseGenerationStatus String?
   cbc                        DateTime?
   nextCallDate               DateTime?
   nextCallDateSource         NextCallDateSource?
@@ -255,6 +259,7 @@ model Opportunity {
   gongCalls                  GongCall[]
   googleNotes                GoogleNote[]
   granolaNotes               GranolaNote[]
+  mutualActionPlan           MutualActionPlan?
   account                    Account?                 @relation(fields: [accountId], references: [id])
   organization               Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner                      User                     @relation(fields: [ownerId], references: [id])
@@ -288,6 +293,7 @@ model Organization {
   earningsTranscripts        EarningsCallTranscript[]
   invitations                Invitation[]
   kanbanViews                KanbanView[]
+  mutualActionPlans          MutualActionPlan[]
   opportunities              Opportunity[]
   settings                   OrganizationSettings?
   secFilings                 SecFiling[]
@@ -336,6 +342,7 @@ model User {
   parsingCompleteNotifications ParsingCompleteNotification[] @relation("ParsingCompleteNotifications")
   invitations                  Invitation[]
   kanbanViews                  KanbanView[]
+  mapsLastEdited               MutualActionPlan[]          @relation("MAPLastEditedBy")
   oauthTokens                OAuthToken[]
   opportunities              Opportunity[]
   tasks                      Task[]
@@ -884,8 +891,9 @@ model Content {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  createdBy      User         @relation("ContentCreatedBy", fields: [createdById], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy               User               @relation("ContentCreatedBy", fields: [createdById], references: [id])
+  organization            Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mapsUsingAsTemplate     MutualActionPlan[] @relation("MAPTemplateContent")
 
   @@unique([organizationId, url])
   @@index([organizationId])
@@ -899,7 +907,58 @@ enum ContentType {
   whitepaper
   video
   webinar
+  mutual_action_plan
+  business_case
   other
+
+  @@schema("opportunity_tracker")
+}
+
+model MutualActionPlan {
+  id                String              @id @default(cuid())
+  opportunityId     String              @unique
+  version           Int                 @default(1)
+
+  // Generation status
+  generationStatus  MapGenerationStatus @default(pending)
+  generatedAt       DateTime?
+  generationError   String?
+
+  // Content
+  title             String?
+  actionItems       Json                @default("[]")
+
+  // Source tracking
+  sourceCallCount   Int?
+  templateContentId String?
+
+  // User edits
+  lastEditedById    String?
+  lastEditedAt      DateTime?
+
+  // Multi-tenant
+  organizationId    String
+
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  // Relations
+  opportunity       Opportunity         @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  lastEditedBy      User?               @relation("MAPLastEditedBy", fields: [lastEditedById], references: [id])
+  templateContent   Content?            @relation("MAPTemplateContent", fields: [templateContentId], references: [id])
+
+  @@index([organizationId])
+  @@index([opportunityId])
+  @@index([generationStatus])
+  @@schema("opportunity_tracker")
+}
+
+enum MapGenerationStatus {
+  pending
+  generating
+  completed
+  failed
 
   @@schema("opportunity_tracker")
 }
