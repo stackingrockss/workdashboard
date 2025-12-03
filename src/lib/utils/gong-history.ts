@@ -186,6 +186,8 @@ export async function appendToOpportunityHistory({
   painPoints = [],
   goals = [],
   nextSteps = [],
+  whyAndWhyNow = [],
+  quantifiableMetrics = [],
 }: {
   opportunityId: string;
   gongCallId: string;
@@ -193,6 +195,8 @@ export async function appendToOpportunityHistory({
   painPoints?: string[];
   goals?: string[];
   nextSteps?: string[];
+  whyAndWhyNow?: string[];
+  quantifiableMetrics?: string[];
 }) {
   // Format meeting date to US format
   const formattedDate = formatDateUS(meetingDate);
@@ -204,6 +208,8 @@ export async function appendToOpportunityHistory({
       painPointsHistory: true,
       goalsHistory: true,
       nextStepsHistory: true,
+      whyAndWhyNowHistory: true,
+      quantifiableMetricsHistory: true,
       parsedGongCallIds: true,
     },
   });
@@ -237,6 +243,18 @@ export async function appendToOpportunityHistory({
     nextSteps
   );
 
+  const updatedWhyAndWhyNowHistory = updateHistoryForDate(
+    opportunity.whyAndWhyNowHistory,
+    formattedDate,
+    whyAndWhyNow
+  );
+
+  const updatedQuantifiableMetricsHistory = updateHistoryForDate(
+    opportunity.quantifiableMetricsHistory,
+    formattedDate,
+    quantifiableMetrics
+  );
+
   // Save to database and track this parsed call
   const updatedOpportunity = await prisma.opportunity.update({
     where: { id: opportunityId },
@@ -244,6 +262,8 @@ export async function appendToOpportunityHistory({
       painPointsHistory: updatedPainPointsHistory,
       goalsHistory: updatedGoalsHistory,
       nextStepsHistory: updatedNextStepsHistory,
+      whyAndWhyNowHistory: updatedWhyAndWhyNowHistory,
+      quantifiableMetricsHistory: updatedQuantifiableMetricsHistory,
       parsedGongCallIds: {
         push: gongCallId, // Add this call ID to the tracking array
       },

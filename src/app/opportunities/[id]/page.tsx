@@ -96,6 +96,8 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     consolidatedPainPoints: opportunityFromDB.consolidatedPainPoints ? (opportunityFromDB.consolidatedPainPoints as string[]) : undefined,
     consolidatedGoals: opportunityFromDB.consolidatedGoals ? (opportunityFromDB.consolidatedGoals as string[]) : undefined,
     consolidatedRiskAssessment: opportunityFromDB.consolidatedRiskAssessment ? (opportunityFromDB.consolidatedRiskAssessment as RiskAssessment) : undefined,
+    consolidatedWhyAndWhyNow: opportunityFromDB.consolidatedWhyAndWhyNow ? (opportunityFromDB.consolidatedWhyAndWhyNow as string[]) : undefined,
+    consolidatedMetrics: opportunityFromDB.consolidatedMetrics ? (opportunityFromDB.consolidatedMetrics as string[]) : undefined,
     lastConsolidatedAt: opportunityFromDB.lastConsolidatedAt?.toISOString() || undefined,
     consolidationCallCount: opportunityFromDB.consolidationCallCount || undefined,
     consolidationStatus: opportunityFromDB.consolidationStatus || undefined,
@@ -131,6 +133,8 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
       parsedPeople: call.parsedPeople as unknown,
       nextSteps: call.nextSteps as unknown,
       riskAssessment: call.riskAssessment as unknown,
+      whyAndWhyNow: call.whyAndWhyNow as unknown,
+      quantifiableMetrics: call.quantifiableMetrics as unknown,
       calendarEventId: call.calendarEventId || undefined, // For linking to calendar events
       createdAt: call.createdAt.toISOString(),
       updatedAt: call.updatedAt.toISOString(),

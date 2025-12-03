@@ -36,6 +36,8 @@ import {
   UserPlus,
   ShieldAlert,
   Loader2,
+  Lightbulb,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -54,6 +56,8 @@ interface GongCallInsightsDialogProps {
     goals: string[];
     people: PersonExtracted[];
     nextSteps: string[];
+    whyAndWhyNow?: string[];
+    quantifiableMetrics?: string[];
   };
   riskAssessment?: RiskAssessment | null;
   onContactsImported?: () => void;
@@ -502,6 +506,26 @@ export function GongCallInsightsDialog({
               insights.goals,
               <Target className="h-5 w-5 text-blue-600" />,
               "No goals identified"
+            )}
+
+            <Separator />
+
+            {/* Why and Why Now */}
+            {renderSection(
+              "Why and Why Now?",
+              insights.whyAndWhyNow || [],
+              <Lightbulb className="h-5 w-5 text-yellow-600" />,
+              "No business drivers identified"
+            )}
+
+            <Separator />
+
+            {/* Quantifiable Metrics */}
+            {renderSection(
+              "Quantifiable Metrics",
+              insights.quantifiableMetrics || [],
+              <BarChart3 className="h-5 w-5 text-emerald-600" />,
+              "No quantifiable metrics identified"
             )}
 
             <Separator />

@@ -53,3 +53,10 @@ export type RiskCategory = z.infer<typeof riskCategorySchema>;
 export type RiskSeverity = z.infer<typeof riskSeveritySchema>;
 export type RiskFactor = z.infer<typeof riskFactorSchema>;
 export type RiskAssessment = z.infer<typeof riskAssessmentSchema>;
+
+// Why and Why Now / Quantifiable Metrics Schemas
+export const whyAndWhyNowSchema = z.array(z.string().max(500)).default([]);
+export const quantifiableMetricsSchema = z.array(z.string().max(500)).default([]);
+
+export type WhyAndWhyNow = z.infer<typeof whyAndWhyNowSchema>;
+export type QuantifiableMetrics = z.infer<typeof quantifiableMetricsSchema>;

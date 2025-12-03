@@ -9,13 +9,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TimelineNode } from "./timeline-node";
 import { TimelineDetailPanel } from "./timeline-detail-panel";
 import { groupEventsByMonth } from "@/types/timeline";
-import type { TimelineEvent } from "@/types/timeline";
+import type { TimelineEvent, PreselectedCalendarEvent } from "@/types/timeline";
 
 interface HorizontalTimelineProps {
   events: TimelineEvent[];
   selectedEventId: string | null;
   onSelectEvent: (eventId: string | null) => void;
   onViewInsights?: (eventId: string) => void;
+  onAddGong?: (calendarEvent: PreselectedCalendarEvent) => void;
+  onAddGranola?: (calendarEvent: PreselectedCalendarEvent) => void;
   isLoading: boolean;
 }
 
@@ -24,6 +26,8 @@ export function HorizontalTimeline({
   selectedEventId,
   onSelectEvent,
   onViewInsights,
+  onAddGong,
+  onAddGranola,
   isLoading,
 }: HorizontalTimelineProps) {
   // Sort events oldest to newest (left to right)
@@ -121,6 +125,8 @@ export function HorizontalTimeline({
           event={selectedEvent}
           onClose={() => onSelectEvent(null)}
           onViewInsights={onViewInsights}
+          onAddGong={onAddGong}
+          onAddGranola={onAddGranola}
         />
       )}
     </div>

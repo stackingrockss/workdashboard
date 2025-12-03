@@ -63,6 +63,8 @@ export async function appendToGranolaHistory({
   painPoints = [],
   goals = [],
   nextSteps = [],
+  whyAndWhyNow = [],
+  quantifiableMetrics = [],
 }: {
   opportunityId: string;
   granolaId: string;
@@ -70,6 +72,8 @@ export async function appendToGranolaHistory({
   painPoints?: string[];
   goals?: string[];
   nextSteps?: string[];
+  whyAndWhyNow?: string[];
+  quantifiableMetrics?: string[];
 }) {
   // Format meeting date to US format
   const formattedDate = formatDateUS(meetingDate);
@@ -81,6 +85,8 @@ export async function appendToGranolaHistory({
       painPointsHistory: true,
       goalsHistory: true,
       nextStepsHistory: true,
+      whyAndWhyNowHistory: true,
+      quantifiableMetricsHistory: true,
       parsedGranolaIds: true,
     },
   });
@@ -114,6 +120,18 @@ export async function appendToGranolaHistory({
     nextSteps
   );
 
+  const updatedWhyAndWhyNowHistory = updateHistoryForDate(
+    opportunity.whyAndWhyNowHistory,
+    formattedDate,
+    whyAndWhyNow
+  );
+
+  const updatedQuantifiableMetricsHistory = updateHistoryForDate(
+    opportunity.quantifiableMetricsHistory,
+    formattedDate,
+    quantifiableMetrics
+  );
+
   // Save to database and track this parsed note
   const updatedOpportunity = await prisma.opportunity.update({
     where: { id: opportunityId },
@@ -121,6 +139,8 @@ export async function appendToGranolaHistory({
       painPointsHistory: updatedPainPointsHistory,
       goalsHistory: updatedGoalsHistory,
       nextStepsHistory: updatedNextStepsHistory,
+      whyAndWhyNowHistory: updatedWhyAndWhyNowHistory,
+      quantifiableMetricsHistory: updatedQuantifiableMetricsHistory,
       parsedGranolaIds: {
         push: granolaId, // Add this note ID to the tracking array
       },

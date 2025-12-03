@@ -100,6 +100,8 @@ export const parseGranolaTranscriptJob = inngest.createFunction(
           goals: JSON.parse(JSON.stringify(parseResult.data!.goals)),
           parsedPeople: JSON.parse(JSON.stringify(parseResult.data!.people)),
           nextSteps: JSON.parse(JSON.stringify(parseResult.data!.nextSteps)),
+          whyAndWhyNow: JSON.parse(JSON.stringify(parseResult.data!.whyAndWhyNow)),
+          quantifiableMetrics: JSON.parse(JSON.stringify(parseResult.data!.quantifiableMetrics)),
           parsedAt: new Date(),
           parsingStatus: ParsingStatus.completed,
           parsingError: null,
@@ -231,6 +233,8 @@ export const parseGranolaTranscriptJob = inngest.createFunction(
           painPoints: parseResult.data!.painPoints,
           goals: parseResult.data!.goals,
           nextSteps: parseResult.data!.nextSteps,
+          whyAndWhyNow: parseResult.data!.whyAndWhyNow,
+          quantifiableMetrics: parseResult.data!.quantifiableMetrics,
         });
         return { historyUpdated: true };
       } catch (error) {
@@ -263,6 +267,8 @@ export const parseGranolaTranscriptJob = inngest.createFunction(
       goalsCount: parseResult.data.goals.length,
       nextStepsCount: parseResult.data.nextSteps.length,
       peopleCount: parseResult.data.people.length,
+      whyAndWhyNowCount: parseResult.data.whyAndWhyNow.length,
+      quantifiableMetricsCount: parseResult.data.quantifiableMetrics.length,
     };
   }
 );

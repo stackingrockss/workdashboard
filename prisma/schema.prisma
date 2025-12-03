@@ -88,6 +88,8 @@ model GongCall {
   parsingError               String?
   parsingStatus              ParsingStatus?
   riskAssessment             Json?
+  whyAndWhyNow               Json?                       // Array of business driver/urgency reasons: string[]
+  quantifiableMetrics        Json?                       // Array of ROI/measurable outcomes: string[]
   calendarEventId            String?
   calendarEvent                CalendarEvent?              @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
   contactsReadyNotifications   ContactsReadyNotification[]
@@ -134,6 +136,8 @@ model GranolaNote {
   parsingError               String?
   parsingStatus              ParsingStatus?
   riskAssessment             Json?
+  whyAndWhyNow               Json?                       // Array of business driver/urgency reasons: string[]
+  quantifiableMetrics        Json?                       // Array of ROI/measurable outcomes: string[]
   calendarEvent                CalendarEvent?              @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
   contactsReadyNotifications   ContactsReadyNotification[]
   parsingCompleteNotifications ParsingCompleteNotification[] @relation("GranolaParsingCompleteNotifications")
@@ -237,6 +241,10 @@ model Opportunity {
   consolidatedPainPoints     Json?
   consolidatedRiskAssessment Json?
   riskAssessmentHistory      String?
+  whyAndWhyNowHistory        String?                      // Per-call history (append-only, date-prefixed)
+  quantifiableMetricsHistory String?                      // Per-call history (append-only, date-prefixed)
+  consolidatedWhyAndWhyNow   Json?                        // Consolidated array of business drivers: string[]
+  consolidatedMetrics        Json?                        // Consolidated array of ROI metrics: string[]
   consolidationCallCount     Int?
   lastConsolidatedAt         DateTime?
   consolidationStatus        ConsolidationStatus?     @default(idle)

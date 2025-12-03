@@ -1,6 +1,25 @@
 // Timeline event types for opportunity activity visualization
 
-import type { GongCall, GranolaNote, CalendarEvent, CalendarEventSource, NoteType, ParsingStatus } from "@prisma/client";
+import type { GongCall, GranolaNote, CalendarEvent, CalendarEventSource, NoteType, ParsingStatus, Prisma } from "@prisma/client";
+
+/**
+ * Summary of a linked transcript (Gong call or Granola note) for calendar events
+ */
+export interface LinkedTranscriptSummary {
+  id: string;
+  title: string;
+  parsingStatus: ParsingStatus | null;
+  hasInsights: boolean;
+}
+
+/**
+ * Calendar event for pre-selection when adding Gong/Granola
+ */
+export interface PreselectedCalendarEvent {
+  id: string;
+  title: string;
+  startTime: Date | string;
+}
 
 /**
  * Base timeline event with common fields
@@ -24,6 +43,8 @@ export interface GongCallTimelineEvent extends BaseTimelineEvent {
   nextSteps: unknown;
   riskAssessment: unknown;
   parsedPeople: unknown;
+  whyAndWhyNow: unknown;
+  quantifiableMetrics: unknown;
 }
 
 /**
@@ -44,6 +65,9 @@ export interface CalendarEventTimelineEvent extends BaseTimelineEvent {
   meetingUrl: string | null;
   source: CalendarEventSource;
   attendees: string[];
+  // Linked transcript info (populated when calendar event has associated Gong/Granola)
+  linkedGongCall?: LinkedTranscriptSummary | null;
+  linkedGranolaNote?: LinkedTranscriptSummary | null;
 }
 
 /**
@@ -75,6 +99,8 @@ export function gongCallToTimelineEvent(call: GongCall): GongCallTimelineEvent {
     nextSteps: call.nextSteps,
     riskAssessment: call.riskAssessment,
     parsedPeople: call.parsedPeople,
+    whyAndWhyNow: call.whyAndWhyNow,
+    quantifiableMetrics: call.quantifiableMetrics,
   };
 }
 
@@ -93,7 +119,43 @@ export function granolaToTimelineEvent(note: GranolaNote): GranolaTimelineEvent 
 }
 
 /**
- * Helper to convert Calendar event to timeline event
+ * Type for calendar event with included linked transcripts from Prisma
+ */
+export type CalendarEventWithLinks = CalendarEvent & {
+  gongCalls?: Array<{
+    id: string;
+    title: string;
+    parsingStatus: ParsingStatus | null;
+    painPoints: Prisma.JsonValue;
+    goals: Prisma.JsonValue;
+    nextSteps: Prisma.JsonValue;
+  }>;
+  granolaNotes?: Array<{
+    id: string;
+    title: string;
+    parsingStatus: ParsingStatus | null;
+    painPoints: Prisma.JsonValue;
+    goals: Prisma.JsonValue;
+    nextSteps: Prisma.JsonValue;
+  }>;
+};
+
+/**
+ * Helper to check if a transcript has parsed insights
+ */
+function hasTranscriptInsights(transcript: {
+  painPoints: Prisma.JsonValue;
+  goals: Prisma.JsonValue;
+  nextSteps: Prisma.JsonValue;
+}): boolean {
+  const painPoints = Array.isArray(transcript.painPoints) ? transcript.painPoints : [];
+  const goals = Array.isArray(transcript.goals) ? transcript.goals : [];
+  const nextSteps = Array.isArray(transcript.nextSteps) ? transcript.nextSteps : [];
+  return painPoints.length > 0 || goals.length > 0 || nextSteps.length > 0;
+}
+
+/**
+ * Helper to convert Calendar event to timeline event (without linked transcripts)
  */
 export function calendarEventToTimelineEvent(event: CalendarEvent): CalendarEventTimelineEvent {
   return {
@@ -105,6 +167,45 @@ export function calendarEventToTimelineEvent(event: CalendarEvent): CalendarEven
     meetingUrl: event.meetingUrl,
     source: event.source,
     attendees: event.attendees,
+    linkedGongCall: null,
+    linkedGranolaNote: null,
+  };
+}
+
+/**
+ * Helper to convert Calendar event with linked transcripts to timeline event
+ */
+export function calendarEventWithLinksToTimelineEvent(
+  event: CalendarEventWithLinks
+): CalendarEventTimelineEvent {
+  const linkedGong = event.gongCalls?.[0];
+  const linkedGranola = event.granolaNotes?.[0];
+
+  return {
+    id: event.id,
+    type: "calendar_event",
+    date: event.startTime,
+    title: event.summary,
+    description: event.description,
+    meetingUrl: event.meetingUrl,
+    source: event.source,
+    attendees: event.attendees,
+    linkedGongCall: linkedGong
+      ? {
+          id: linkedGong.id,
+          title: linkedGong.title,
+          parsingStatus: linkedGong.parsingStatus,
+          hasInsights: hasTranscriptInsights(linkedGong),
+        }
+      : null,
+    linkedGranolaNote: linkedGranola
+      ? {
+          id: linkedGranola.id,
+          title: linkedGranola.title,
+          parsingStatus: linkedGranola.parsingStatus,
+          hasInsights: hasTranscriptInsights(linkedGranola),
+        }
+      : null,
   };
 }
 

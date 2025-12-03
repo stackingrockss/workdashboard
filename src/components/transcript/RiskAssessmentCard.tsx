@@ -91,20 +91,6 @@ export function RiskAssessmentCard({ riskAssessment }: RiskAssessmentCardProps) 
           </div>
         )}
 
-        {/* Recommended Actions */}
-        {riskAssessment.recommendedActions.length > 0 && (
-          <div>
-            <h4 className='text-sm font-medium mb-2'>Recommended Actions</h4>
-            <ul className='space-y-1'>
-              {riskAssessment.recommendedActions.map((action, idx) => (
-                <li key={idx} className='text-sm flex gap-2'>
-                  <span className='font-medium'>{idx + 1}.</span>
-                  <span>{action}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

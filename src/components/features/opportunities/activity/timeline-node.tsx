@@ -5,9 +5,10 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, StickyNote, Calendar, Loader2, Check, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Phone, StickyNote, Calendar, Loader2, Check, X, Link2 } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
-import type { TimelineEvent } from "@/types/timeline";
+import type { TimelineEvent, CalendarEventTimelineEvent } from "@/types/timeline";
 import { cn } from "@/lib/utils";
 
 interface TimelineNodeProps {
@@ -34,6 +35,19 @@ export function TimelineNode({ event, isSelected, onClick }: TimelineNodeProps) 
 
   // Get parsing status for Gong calls
   const parsingStatus = isGongCall ? event.parsingStatus : null;
+
+  // Check if calendar event has linked transcript
+  const hasLinkedTranscript = isCalendarEvent &&
+    ((event as CalendarEventTimelineEvent).linkedGongCall ||
+     (event as CalendarEventTimelineEvent).linkedGranolaNote);
+
+  const linkedType = isCalendarEvent
+    ? (event as CalendarEventTimelineEvent).linkedGongCall
+      ? "Gong"
+      : (event as CalendarEventTimelineEvent).linkedGranolaNote
+      ? "Granola"
+      : null
+    : null;
 
   return (
     <div className="flex flex-col items-center gap-2">
@@ -64,7 +78,7 @@ export function TimelineNode({ event, isSelected, onClick }: TimelineNodeProps) 
               )}
             </div>
 
-            {/* Parsing status badge */}
+            {/* Parsing status badge for Gong calls */}
             {parsingStatus && (
               <Badge
                 variant={
@@ -84,6 +98,30 @@ export function TimelineNode({ event, isSelected, onClick }: TimelineNodeProps) 
                   <X className="h-2.5 w-2.5" />
                 ) : null}
               </Badge>
+            )}
+
+            {/* Linked transcript indicator for calendar events */}
+            {hasLinkedTranscript && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] px-1.5 py-0",
+                        linkedType === "Gong"
+                          ? "border-blue-300 bg-blue-50 text-blue-600 dark:border-blue-700 dark:bg-blue-950 dark:text-blue-400"
+                          : "border-green-300 bg-green-50 text-green-600 dark:border-green-700 dark:bg-green-950 dark:text-green-400"
+                      )}
+                    >
+                      <Link2 className="h-2.5 w-2.5" />
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">Linked to {linkedType}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
 

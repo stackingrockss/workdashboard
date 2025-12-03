@@ -108,12 +108,7 @@ Return ONLY valid JSON matching this exact structure:
       "evidence": "Direct quote or paraphrased context from transcript"
     }
   ],
-  "overallSummary": "2-3 sentence summary of deal health and key concerns",
-  "recommendedActions": [
-    "Specific actionable step to mitigate risk 1",
-    "Specific actionable step to mitigate risk 2",
-    ...
-  ]
+  "overallSummary": "2-3 sentence summary of deal health and key concerns"
 }
 
 **RISK LEVEL GUIDELINES:**
@@ -131,7 +126,6 @@ Return ONLY valid JSON matching this exact structure:
 - If no risks are detected, return riskLevel "low" with empty riskFactors array
 - Focus on SIGNALS FROM THE TRANSCRIPT ONLY - don't infer risks not mentioned
 - Evidence should be direct quotes when possible, or close paraphrasing
-- Recommended actions should be specific and actionable (not generic advice)
 - Overall summary should be balanced (acknowledge both risks and positive signals)
 - Do NOT add commentary outside the JSON structure
 - Consider the COMBINATION of risks when setting overall riskLevel (multiple medium risks = high overall risk)`;
@@ -147,7 +141,6 @@ Return ONLY valid JSON matching this exact structure:
  * - Risk level (low, medium, high, critical)
  * - Risk factors across 6 categories: budget, timeline, competition, technical, alignment, resistance
  * - Overall risk summary
- * - Recommended actions to mitigate risks
  *
  * @param transcriptText - The full transcript text from the sales call (minimum 100 characters)
  * @returns Promise resolving to risk analysis result with success flag and data/error
@@ -158,7 +151,6 @@ Return ONLY valid JSON matching this exact structure:
  * if (result.success && result.data) {
  *   console.log(`Risk Level: ${result.data.riskLevel}`);
  *   console.log(`Risk Factors: ${result.data.riskFactors.length}`);
- *   result.data.recommendedActions.forEach(action => console.log(`- ${action}`));
  * } else {
  *   console.error('Risk analysis failed:', result.error);
  * }
@@ -246,13 +238,6 @@ Return your risk assessment as JSON only.`;
       return {
         success: false,
         error: "Invalid response structure: riskFactors must be an array",
-      };
-    }
-
-    if (!Array.isArray(parsedData.recommendedActions)) {
-      return {
-        success: false,
-        error: "Invalid response structure: recommendedActions must be an array",
       };
     }
 

@@ -26,6 +26,8 @@ import {
   RefreshCw,
   TrendingUp,
   ShieldAlert,
+  Lightbulb,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDateShort } from "@/lib/format";
@@ -39,6 +41,8 @@ interface ConsolidatedInsightsCardProps {
   consolidatedPainPoints: string[];
   consolidatedGoals: string[];
   consolidatedRiskAssessment: RiskAssessment;
+  consolidatedWhyAndWhyNow?: string[];
+  consolidatedMetrics?: string[];
   lastConsolidatedAt: string;
   consolidationCallCount: number;
   onReconsolidate?: () => void;
@@ -53,6 +57,8 @@ export function ConsolidatedInsightsCard({
   consolidatedPainPoints,
   consolidatedGoals,
   consolidatedRiskAssessment,
+  consolidatedWhyAndWhyNow = [],
+  consolidatedMetrics = [],
   lastConsolidatedAt,
   consolidationCallCount,
   onReconsolidate,
@@ -301,6 +307,26 @@ export function ConsolidatedInsightsCard({
           consolidatedGoals,
           <Target className="h-5 w-5 text-blue-600" />,
           "No goals identified across calls"
+        )}
+
+        <Separator />
+
+        {/* Why and Why Now */}
+        {renderSection(
+          "Why and Why Now? (Consolidated)",
+          consolidatedWhyAndWhyNow,
+          <Lightbulb className="h-5 w-5 text-yellow-600" />,
+          "No business drivers identified across calls"
+        )}
+
+        <Separator />
+
+        {/* Quantifiable Metrics */}
+        {renderSection(
+          "Quantifiable Metrics (Consolidated)",
+          consolidatedMetrics,
+          <BarChart3 className="h-5 w-5 text-emerald-600" />,
+          "No quantifiable metrics identified across calls"
         )}
 
         <Separator />

@@ -682,6 +682,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                   consolidatedPainPoints={opportunity.consolidatedPainPoints}
                   consolidatedGoals={opportunity.consolidatedGoals}
                   consolidatedRiskAssessment={opportunity.consolidatedRiskAssessment}
+                  consolidatedWhyAndWhyNow={opportunity.consolidatedWhyAndWhyNow ?? undefined}
+                  consolidatedMetrics={opportunity.consolidatedMetrics ?? undefined}
                   lastConsolidatedAt={opportunity.lastConsolidatedAt}
                   consolidationCallCount={opportunity.consolidationCallCount}
                   onReconsolidate={() => router.refresh()}

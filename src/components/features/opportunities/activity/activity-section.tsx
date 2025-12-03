@@ -6,6 +6,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { HorizontalTimeline } from "./horizontal-timeline";
 import { AddManualMeetingDialog } from "@/components/calendar/add-manual-meeting-dialog";
+import { AddGongFromCalendarDialog } from "./add-gong-from-calendar-dialog";
+import { AddGranolaFromCalendarDialog } from "./add-granola-from-calendar-dialog";
 import {
   Select,
   SelectContent,
@@ -19,6 +21,7 @@ import { toast } from "sonner";
 import type {
   TimelineEvent,
   TimelineDateRange,
+  PreselectedCalendarEvent,
 } from "@/types/timeline";
 
 interface ActivitySectionProps {
@@ -43,6 +46,12 @@ export function ActivitySection({
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<TimelineDateRange>("all");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+
+  // Dialog state for adding Gong/Granola from calendar events
+  const [addGongCalendarEvent, setAddGongCalendarEvent] =
+    useState<PreselectedCalendarEvent | null>(null);
+  const [addGranolaCalendarEvent, setAddGranolaCalendarEvent] =
+    useState<PreselectedCalendarEvent | null>(null);
 
   // Fetch timeline data
   const fetchTimeline = useCallback(async () => {
@@ -90,6 +99,19 @@ export function ActivitySection({
 
   // Handle meeting added - refresh timeline
   const handleMeetingAdded = useCallback(() => {
+    fetchTimeline();
+  }, [fetchTimeline]);
+
+  // Handle Gong/Granola added from calendar event - refresh and close dialog
+  const handleGongAdded = useCallback(() => {
+    setAddGongCalendarEvent(null);
+    setSelectedEventId(null); // Close the detail panel
+    fetchTimeline();
+  }, [fetchTimeline]);
+
+  const handleGranolaAdded = useCallback(() => {
+    setAddGranolaCalendarEvent(null);
+    setSelectedEventId(null); // Close the detail panel
     fetchTimeline();
   }, [fetchTimeline]);
 
@@ -158,8 +180,32 @@ export function ActivitySection({
         selectedEventId={selectedEventId}
         onSelectEvent={setSelectedEventId}
         onViewInsights={onViewInsights}
+        onAddGong={setAddGongCalendarEvent}
+        onAddGranola={setAddGranolaCalendarEvent}
         isLoading={isLoading}
       />
+
+      {/* Add Gong from calendar event dialog */}
+      {addGongCalendarEvent && (
+        <AddGongFromCalendarDialog
+          open={!!addGongCalendarEvent}
+          onOpenChange={(open) => !open && setAddGongCalendarEvent(null)}
+          opportunityId={opportunityId}
+          calendarEvent={addGongCalendarEvent}
+          onSuccess={handleGongAdded}
+        />
+      )}
+
+      {/* Add Granola from calendar event dialog */}
+      {addGranolaCalendarEvent && (
+        <AddGranolaFromCalendarDialog
+          open={!!addGranolaCalendarEvent}
+          onOpenChange={(open) => !open && setAddGranolaCalendarEvent(null)}
+          opportunityId={opportunityId}
+          calendarEvent={addGranolaCalendarEvent}
+          onSuccess={handleGranolaAdded}
+        />
+      )}
     </div>
   );
 }

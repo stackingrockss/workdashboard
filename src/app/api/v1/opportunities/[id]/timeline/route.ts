@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   gongCallToTimelineEvent,
   granolaToTimelineEvent,
-  calendarEventToTimelineEvent,
+  calendarEventWithLinksToTimelineEvent,
   sortTimelineEvents,
   type TimelineEvent,
 } from "@/types/timeline";
@@ -120,7 +120,7 @@ export async function GET(
         })
       : [];
 
-    // Fetch Calendar events
+    // Fetch Calendar events with linked Gong/Granola records
     const shouldFetchCalendar =
       !eventType || eventType === "all" || eventType === "calendar_events";
     const calendarEvents = shouldFetchCalendar
@@ -133,6 +133,30 @@ export async function GET(
               },
             }),
           },
+          include: {
+            gongCalls: {
+              select: {
+                id: true,
+                title: true,
+                parsingStatus: true,
+                painPoints: true,
+                goals: true,
+                nextSteps: true,
+              },
+              take: 1,
+            },
+            granolaNotes: {
+              select: {
+                id: true,
+                title: true,
+                parsingStatus: true,
+                painPoints: true,
+                goals: true,
+                nextSteps: true,
+              },
+              take: 1,
+            },
+          },
           orderBy: {
             startTime: "desc",
           },
@@ -142,7 +166,7 @@ export async function GET(
     // Convert to timeline events
     const gongEvents = gongCalls.map(gongCallToTimelineEvent);
     const granolaEvents = granolaNotes.map(granolaToTimelineEvent);
-    const calendarTimelineEvents = calendarEvents.map(calendarEventToTimelineEvent);
+    const calendarTimelineEvents = calendarEvents.map(calendarEventWithLinksToTimelineEvent);
 
     // Merge and sort
     const allEvents: TimelineEvent[] = [...gongEvents, ...granolaEvents, ...calendarTimelineEvents];

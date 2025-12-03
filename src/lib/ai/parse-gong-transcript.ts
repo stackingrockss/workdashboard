@@ -30,6 +30,8 @@ export interface GongTranscriptParsed {
   goals: string[];
   people: PersonExtracted[];
   nextSteps: string[];
+  whyAndWhyNow: string[];
+  quantifiableMetrics: string[];
 }
 
 export interface GongParseResult {
@@ -44,7 +46,7 @@ export interface GongParseResult {
 
 const SYSTEM_INSTRUCTION = `You are a sales call analyzer specializing in extracting actionable insights from Gong call transcripts.
 
-Your task is to extract 4 key areas from the transcript:
+Your task is to extract 6 key areas from the transcript:
 
 1. **PAIN POINTS** - Current problems, frustrations, challenges the prospect is facing
    - Look for complaints about current vendor/solution
@@ -79,6 +81,23 @@ Your task is to extract 4 key areas from the transcript:
    - RFP or evaluation process steps
    Examples: "Follow-up call Nov 6 at 10am", "Gather volume data", "Talk to 3 vendors", "Decision by end of year"
 
+5. **WHY AND WHY NOW?** - Business drivers and urgency behind this evaluation
+   - What is triggering this evaluation NOW vs 6 months ago?
+   - What business event or change is driving this initiative?
+   - What happens if they don't act? What's the cost of inaction?
+   - Look for: new leadership, competitive pressure, contract renewals, growth initiatives, cost pressures, regulatory changes, digital transformation, company events
+   Examples: "CEO mandated vendor consolidation", "Current contract expires in Q1", "Competitor just launched similar capability", "New CFO wants cost visibility", "Board pressure to modernize"
+   Return as a list of distinct reasons/drivers.
+
+6. **QUANTIFIABLE METRICS** - Specific numbers and measurable ROI outcomes mentioned
+   - Cost savings or revenue impact (dollar amounts, percentages)
+   - Time savings (hours, days, weeks, FTEs)
+   - Efficiency improvements (% reduction, volume increases)
+   - Business KPIs mentioned (retention, NPS, conversion rates)
+   - Scale/volume metrics (users, transactions, customers)
+   - Only include metrics with actual numbers or percentages
+   Examples: "$2M in annual savings expected", "30% faster processing time", "Reduce headcount by 4 FTEs", "Handle 10x more transaction volume", "Currently spending $500K/year"
+
 IMPORTANT RULES:
 - Return ONLY valid JSON matching this exact structure:
 {
@@ -88,13 +107,16 @@ IMPORTANT RULES:
     { "name": "string", "organization": "string", "role": "string" },
     ...
   ],
-  "nextSteps": ["string", ...]
+  "nextSteps": ["string", ...],
+  "whyAndWhyNow": ["string", ...],
+  "quantifiableMetrics": ["string", ...]
 }
 - Be specific and concise in your extractions
 - If a category has no clear information, return empty array
 - For people, include everyone mentioned who is relevant to the deal
 - For people fields: If organization or role is unclear from context, use "Unknown" instead of leaving empty
 - For next steps, preserve dates/times mentioned
+- For quantifiableMetrics, only include items with actual numbers or percentages mentioned
 - Focus on business-relevant information only (skip small talk unless it reveals relationship insights)
 - Do NOT add commentary or explanations outside the JSON structure`;
 
@@ -212,6 +234,14 @@ Return your analysis as JSON only.`;
         success: false,
         error: "Invalid response structure from AI",
       };
+    }
+
+    // Normalize new fields (default to empty arrays if missing)
+    if (!Array.isArray(parsedData.whyAndWhyNow)) {
+      parsedData.whyAndWhyNow = [];
+    }
+    if (!Array.isArray(parsedData.quantifiableMetrics)) {
+      parsedData.quantifiableMetrics = [];
     }
 
     // Validate and normalize people objects

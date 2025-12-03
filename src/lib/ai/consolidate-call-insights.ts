@@ -18,6 +18,8 @@ export interface ConsolidatedInsights {
   painPoints: string[];
   goals: string[];
   riskAssessment: RiskAssessment;
+  whyAndWhyNow: string[];
+  quantifiableMetrics: string[];
 }
 
 export interface ConsolidationResult {
@@ -32,7 +34,7 @@ export interface ConsolidationResult {
 
 const SYSTEM_INSTRUCTION = `You are an expert sales analyst specializing in synthesizing insights from multiple sales call transcripts.
 
-Your task is to consolidate pain points, goals, and risk assessments from multiple calls into concise, deduplicated summaries.
+Your task is to consolidate pain points, goals, risk assessments, business drivers, and quantifiable metrics from multiple calls into concise, deduplicated summaries.
 
 **CONSOLIDATION PRINCIPLES:**
 
@@ -82,7 +84,17 @@ Return ONLY valid JSON matching this exact structure:
       "Prioritized action based on consolidated risks",
       ...
     ]
-  }
+  },
+  "whyAndWhyNow": [
+    "Consolidated business driver/urgency reason 1",
+    "Consolidated business driver/urgency reason 2",
+    ...
+  ],
+  "quantifiableMetrics": [
+    "Consolidated ROI metric 1 (preserve exact numbers)",
+    "Consolidated ROI metric 2",
+    ...
+  ]
 }
 
 **RISK CONSOLIDATION RULES:**
@@ -92,9 +104,25 @@ Return ONLY valid JSON matching this exact structure:
 - If a risk was mentioned in earlier calls but resolved in later calls, note the resolution in evidence
 - Recommended actions should address the most critical consolidated risks first
 
+**WHY AND WHY NOW CONSOLIDATION RULES:**
+- Identify the primary business driver(s) triggering this evaluation
+- Deduplicate similar urgency factors across calls
+- Note any evolution in urgency over time (e.g., "Timeline moved up from Q2 to Q1")
+- Order by significance - most compelling urgency factors first
+- Preserve specific events, dates, or deadlines mentioned
+
+**QUANTIFIABLE METRICS CONSOLIDATION RULES:**
+- Deduplicate identical or near-identical metrics
+- Preserve specific numbers exactly as mentioned (don't average or summarize numbers)
+- Order by impact magnitude (largest savings/improvements first)
+- Include frequency context if same metric mentioned multiple times
+- Combine related metrics only if they're truly duplicates
+
 **IMPORTANT RULES:**
 - If all calls have empty painPoints, return empty painPoints array
 - If all calls have empty goals, return empty goals array
+- If all calls have empty whyAndWhyNow, return empty whyAndWhyNow array
+- If all calls have empty quantifiableMetrics, return empty quantifiableMetrics array
 - Focus on PATTERNS and THEMES across multiple calls
 - Preserve temporal context (e.g., "Initially concerned about X, but later calls showed progress")
 - Do NOT add commentary outside the JSON structure
@@ -116,6 +144,8 @@ export async function consolidateCallInsights(
     painPoints: string[];
     goals: string[];
     riskAssessment: RiskAssessment | null;
+    whyAndWhyNow: string[];
+    quantifiableMetrics: string[];
   }>
 ): Promise<ConsolidationResult> {
   try {
@@ -156,6 +186,12 @@ ${call.painPoints.length > 0 ? call.painPoints.map((p) => `- ${p}`).join("\n") :
 
 **Goals:**
 ${call.goals.length > 0 ? call.goals.map((g) => `- ${g}`).join("\n") : "- None identified"}
+
+**Why and Why Now:**
+${call.whyAndWhyNow.length > 0 ? call.whyAndWhyNow.map((w) => `- ${w}`).join("\n") : "- None identified"}
+
+**Quantifiable Metrics:**
+${call.quantifiableMetrics.length > 0 ? call.quantifiableMetrics.map((m) => `- ${m}`).join("\n") : "- None identified"}
 
 **Risk Assessment:**
 ${
@@ -221,6 +257,14 @@ Return your consolidated analysis as JSON only.`;
         success: false,
         error: "Invalid response structure: goals must be an array",
       };
+    }
+
+    // Normalize new fields (default to empty arrays if missing)
+    if (!Array.isArray(parsedData.whyAndWhyNow)) {
+      parsedData.whyAndWhyNow = [];
+    }
+    if (!Array.isArray(parsedData.quantifiableMetrics)) {
+      parsedData.quantifiableMetrics = [];
     }
 
     if (!parsedData.riskAssessment) {

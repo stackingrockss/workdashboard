@@ -36,6 +36,8 @@ export interface GongCall {
   parsedPeople?: PersonExtracted[] | null;
   nextSteps?: string[] | null;
   riskAssessment?: RiskAssessment | null;
+  whyAndWhyNow?: string[] | null; // Business driver/urgency reasons
+  quantifiableMetrics?: string[] | null; // ROI/measurable outcomes
   parsedAt?: string | null; // ISO date string when transcript was parsed
   // Background processing status
   parsingStatus?: ParsingStatus | null;

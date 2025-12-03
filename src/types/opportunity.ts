@@ -130,6 +130,8 @@ export interface Opportunity {
   consolidatedPainPoints?: string[] | null;
   consolidatedGoals?: string[] | null;
   consolidatedRiskAssessment?: RiskAssessment | null;
+  consolidatedWhyAndWhyNow?: string[] | null;
+  consolidatedMetrics?: string[] | null;
   lastConsolidatedAt?: string | null;
   consolidationCallCount?: number | null;
   consolidationStatus?: ConsolidationStatus | null;
