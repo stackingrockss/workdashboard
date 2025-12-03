@@ -9,12 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import {
   Phone,
   StickyNote,
+  Calendar,
   ExternalLink,
   Eye,
   ChevronUp,
   AlertTriangle,
   Target,
   ListChecks,
+  Users,
+  Video,
 } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
 import type { TimelineEvent } from "@/types/timeline";
@@ -31,6 +34,7 @@ export function TimelineDetailPanel({
   onViewInsights,
 }: TimelineDetailPanelProps) {
   const isGongCall = event.type === "gong_call";
+  const isCalendarEvent = event.type === "calendar_event";
 
   // Safely extract parsed data for Gong calls
   const painPoints =
@@ -63,11 +67,15 @@ export function TimelineDetailPanel({
             className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
               isGongCall
                 ? "bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400"
+                : isCalendarEvent
+                ? "bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400"
                 : "bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400"
             }`}
           >
             {isGongCall ? (
               <Phone className="h-5 w-5" />
+            ) : isCalendarEvent ? (
+              <Calendar className="h-5 w-5" />
             ) : (
               <StickyNote className="h-5 w-5" />
             )}
@@ -80,7 +88,7 @@ export function TimelineDetailPanel({
               <span className="text-sm text-muted-foreground">
                 {formatDateShort(event.date.toString())}
               </span>
-              {event.noteType && (
+              {!isCalendarEvent && event.noteType && (
                 <Badge variant="outline" className="text-xs">
                   {event.noteType}
                 </Badge>
@@ -165,8 +173,42 @@ export function TimelineDetailPanel({
         </div>
       )}
 
+      {/* Calendar event details */}
+      {isCalendarEvent && (
+        <div className="space-y-3 mb-4">
+          {/* Description */}
+          {event.description && (
+            <p className="text-sm text-muted-foreground">{event.description}</p>
+          )}
+
+          {/* Attendees */}
+          {event.attendees && event.attendees.length > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Users className="h-4 w-4 text-purple-500" />
+                Attendees
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {event.attendees.map((attendee, idx) => (
+                  <Badge key={idx} variant="secondary" className="text-xs">
+                    {attendee}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Source badge */}
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs capitalize">
+              {event.source === "google" ? "Google Calendar" : "Manual"}
+            </Badge>
+          </div>
+        </div>
+      )}
+
       {/* No parsed content message for Granola or unparsed Gong */}
-      {!hasParsedContent && (
+      {!hasParsedContent && !isCalendarEvent && (
         <p className="text-sm text-muted-foreground mb-4">
           {isGongCall && event.parsingStatus !== "completed"
             ? "This call has not been parsed yet. Parse the transcript to extract insights."
@@ -176,17 +218,35 @@ export function TimelineDetailPanel({
 
       {/* Actions */}
       <div className="flex items-center gap-2 pt-3 border-t">
-        <Button variant="outline" size="sm" asChild>
-          <a
-            href={event.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open in {isGongCall ? "Gong" : "Granola"}
-          </a>
-        </Button>
+        {/* External link for Gong/Granola */}
+        {!isCalendarEvent && (
+          <Button variant="outline" size="sm" asChild>
+            <a
+              href={event.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Open in {isGongCall ? "Gong" : "Granola"}
+            </a>
+          </Button>
+        )}
+
+        {/* Meeting URL for calendar events */}
+        {isCalendarEvent && event.meetingUrl && (
+          <Button variant="outline" size="sm" asChild>
+            <a
+              href={event.meetingUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2"
+            >
+              <Video className="h-4 w-4" />
+              Join Meeting
+            </a>
+          </Button>
+        )}
 
         {isGongCall && event.parsingStatus === "completed" && onViewInsights && (
           <Button

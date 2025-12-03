@@ -1,6 +1,6 @@
 // Timeline event types for opportunity activity visualization
 
-import type { GongCall, GranolaNote, NoteType, ParsingStatus } from "@prisma/client";
+import type { GongCall, GranolaNote, CalendarEvent, CalendarEventSource, NoteType, ParsingStatus } from "@prisma/client";
 
 /**
  * Base timeline event with common fields
@@ -36,14 +36,25 @@ export interface GranolaTimelineEvent extends BaseTimelineEvent {
 }
 
 /**
+ * Calendar event timeline event
+ */
+export interface CalendarEventTimelineEvent extends BaseTimelineEvent {
+  type: "calendar_event";
+  description: string | null;
+  meetingUrl: string | null;
+  source: CalendarEventSource;
+  attendees: string[];
+}
+
+/**
  * Union type for all timeline events
  */
-export type TimelineEvent = GongCallTimelineEvent | GranolaTimelineEvent;
+export type TimelineEvent = GongCallTimelineEvent | GranolaTimelineEvent | CalendarEventTimelineEvent;
 
 /**
  * Timeline filter options
  */
-export type TimelineFilterType = "all" | "gong_calls" | "granola_notes";
+export type TimelineFilterType = "all" | "gong_calls" | "granola_notes" | "calendar_events";
 
 export type TimelineDateRange = "30" | "60" | "90" | "all";
 
@@ -78,6 +89,22 @@ export function granolaToTimelineEvent(note: GranolaNote): GranolaTimelineEvent 
     title: note.title,
     url: note.url,
     noteType: note.noteType,
+  };
+}
+
+/**
+ * Helper to convert Calendar event to timeline event
+ */
+export function calendarEventToTimelineEvent(event: CalendarEvent): CalendarEventTimelineEvent {
+  return {
+    id: event.id,
+    type: "calendar_event",
+    date: event.startTime,
+    title: event.summary,
+    description: event.description,
+    meetingUrl: event.meetingUrl,
+    source: event.source,
+    attendees: event.attendees,
   };
 }
 

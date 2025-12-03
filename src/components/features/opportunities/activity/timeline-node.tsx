@@ -5,7 +5,7 @@
 
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Phone, StickyNote, Loader2, Check, X } from "lucide-react";
+import { Phone, StickyNote, Calendar, Loader2, Check, X } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
 import type { TimelineEvent } from "@/types/timeline";
 import { cn } from "@/lib/utils";
@@ -18,13 +18,18 @@ interface TimelineNodeProps {
 
 export function TimelineNode({ event, isSelected, onClick }: TimelineNodeProps) {
   const isGongCall = event.type === "gong_call";
+  const isCalendarEvent = event.type === "calendar_event";
 
   // Type-specific styling
   const iconBgColor = isGongCall
     ? "bg-blue-100 dark:bg-blue-900"
+    : isCalendarEvent
+    ? "bg-purple-100 dark:bg-purple-900"
     : "bg-green-100 dark:bg-green-900";
   const iconColor = isGongCall
     ? "text-blue-600 dark:text-blue-400"
+    : isCalendarEvent
+    ? "text-purple-600 dark:text-purple-400"
     : "text-green-600 dark:text-green-400";
 
   // Get parsing status for Gong calls
@@ -52,6 +57,8 @@ export function TimelineNode({ event, isSelected, onClick }: TimelineNodeProps) 
             >
               {isGongCall ? (
                 <Phone className="h-3.5 w-3.5" />
+              ) : isCalendarEvent ? (
+                <Calendar className="h-3.5 w-3.5" />
               ) : (
                 <StickyNote className="h-3.5 w-3.5" />
               )}

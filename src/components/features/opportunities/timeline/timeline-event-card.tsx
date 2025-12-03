@@ -6,7 +6,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Phone, StickyNote, ExternalLink, Eye, Loader2 } from "lucide-react";
+import { Phone, StickyNote, Calendar, ExternalLink, Eye, Loader2, Video } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
 import type { TimelineEvent } from "@/types/timeline";
 
@@ -22,10 +22,19 @@ export function TimelineEventCard({
   onViewInsights,
 }: TimelineEventCardProps) {
   const isGongCall = event.type === "gong_call";
+  const isCalendarEvent = event.type === "calendar_event";
 
   // Type-specific styling
-  const iconBgColor = isGongCall ? "bg-blue-100 dark:bg-blue-900" : "bg-green-100 dark:bg-green-900";
-  const iconColor = isGongCall ? "text-blue-600 dark:text-blue-400" : "text-green-600 dark:text-green-400";
+  const iconBgColor = isGongCall
+    ? "bg-blue-100 dark:bg-blue-900"
+    : isCalendarEvent
+    ? "bg-purple-100 dark:bg-purple-900"
+    : "bg-green-100 dark:bg-green-900";
+  const iconColor = isGongCall
+    ? "text-blue-600 dark:text-blue-400"
+    : isCalendarEvent
+    ? "text-purple-600 dark:text-purple-400"
+    : "text-green-600 dark:text-green-400";
 
   return (
     <div
@@ -40,6 +49,8 @@ export function TimelineEventCard({
         >
           {isGongCall ? (
             <Phone className="h-5 w-5" />
+          ) : isCalendarEvent ? (
+            <Calendar className="h-5 w-5" />
           ) : (
             <StickyNote className="h-5 w-5" />
           )}
@@ -66,7 +77,7 @@ export function TimelineEventCard({
 
             {/* Badges */}
             <div className="flex flex-wrap gap-2 items-start">
-              {event.noteType && (
+              {!isCalendarEvent && event.noteType && (
                 <Badge variant="outline" className="text-xs">
                   {event.noteType}
                 </Badge>
@@ -153,22 +164,52 @@ export function TimelineEventCard({
 
           {/* Actions */}
           <div className="flex items-center gap-2 pt-2 border-t">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs"
-              asChild
-            >
-              <a
-                href={event.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1"
+            {/* External link for Gong/Granola */}
+            {!isCalendarEvent && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                asChild
               >
-                <ExternalLink className="h-3 w-3" />
-                Open in {isGongCall ? "Gong" : "Granola"}
-              </a>
-            </Button>
+                <a
+                  href={event.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  Open in {isGongCall ? "Gong" : "Granola"}
+                </a>
+              </Button>
+            )}
+
+            {/* Meeting URL for calendar events */}
+            {isCalendarEvent && event.meetingUrl && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                asChild
+              >
+                <a
+                  href={event.meetingUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1"
+                >
+                  <Video className="h-3 w-3" />
+                  Join Meeting
+                </a>
+              </Button>
+            )}
+
+            {/* Calendar event source badge */}
+            {isCalendarEvent && (
+              <Badge variant="outline" className="text-xs capitalize">
+                {event.source === "google" ? "Google Calendar" : "Manual"}
+              </Badge>
+            )}
 
             {isGongCall &&
               event.parsingStatus === "completed" &&

@@ -1,5 +1,5 @@
 // GET /api/v1/opportunities/[id]/timeline
-// Fetches unified timeline of Gong calls and Granola notes for an opportunity
+// Fetches unified timeline of Gong calls, Granola notes, and Calendar events for an opportunity
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import {
   gongCallToTimelineEvent,
   granolaToTimelineEvent,
+  calendarEventToTimelineEvent,
   sortTimelineEvents,
   type TimelineEvent,
 } from "@/types/timeline";
@@ -69,7 +70,7 @@ export async function GET(
     // Parse query parameters for filtering
     const searchParams = request.nextUrl.searchParams;
     const dateRange = searchParams.get("dateRange"); // "30", "60", "90", or "all"
-    const eventType = searchParams.get("eventType"); // "all", "gong_calls", "granola_notes"
+    const eventType = searchParams.get("eventType"); // "all", "gong_calls", "granola_notes", "calendar_events"
 
     // Calculate date filter
     let dateFilter: Date | undefined;
@@ -119,12 +120,32 @@ export async function GET(
         })
       : [];
 
+    // Fetch Calendar events
+    const shouldFetchCalendar =
+      !eventType || eventType === "all" || eventType === "calendar_events";
+    const calendarEvents = shouldFetchCalendar
+      ? await prisma.calendarEvent.findMany({
+          where: {
+            opportunityId,
+            ...(dateFilter && {
+              startTime: {
+                gte: dateFilter,
+              },
+            }),
+          },
+          orderBy: {
+            startTime: "desc",
+          },
+        })
+      : [];
+
     // Convert to timeline events
     const gongEvents = gongCalls.map(gongCallToTimelineEvent);
     const granolaEvents = granolaNotes.map(granolaToTimelineEvent);
+    const calendarTimelineEvents = calendarEvents.map(calendarEventToTimelineEvent);
 
     // Merge and sort
-    const allEvents: TimelineEvent[] = [...gongEvents, ...granolaEvents];
+    const allEvents: TimelineEvent[] = [...gongEvents, ...granolaEvents, ...calendarTimelineEvents];
     const sortedEvents = sortTimelineEvents(allEvents);
 
     // Check if pagination is requested
@@ -151,6 +172,7 @@ export async function GET(
           meta: {
             gongCallCount: gongEvents.length,
             granolaNotesCount: granolaEvents.length,
+            calendarEventCount: calendarTimelineEvents.length,
           },
         },
         'frequent'
@@ -165,6 +187,7 @@ export async function GET(
             totalCount: sortedEvents.length,
             gongCallCount: gongEvents.length,
             granolaNotesCount: granolaEvents.length,
+            calendarEventCount: calendarTimelineEvents.length,
           },
         },
         'frequent'

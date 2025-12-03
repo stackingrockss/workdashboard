@@ -45,7 +45,7 @@ export const riskAssessmentSchema = z.object({
   riskLevel: riskLevelSchema,
   riskFactors: z.array(riskFactorSchema),
   overallSummary: z.string().min(1),
-  recommendedActions: z.array(z.string().min(1)),
+  recommendedActions: z.array(z.string()).default([]),
 });
 
 export type RiskLevel = z.infer<typeof riskLevelSchema>;
