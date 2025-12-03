@@ -370,11 +370,6 @@ export function TimelineDetailPanel({
       {/* Calendar event details */}
       {isCalendarEvent && (
         <div className="space-y-3 mb-4">
-          {/* Description */}
-          {event.description && (
-            <p className="text-sm text-muted-foreground">{event.description}</p>
-          )}
-
           {/* Attendees */}
           {event.attendees && event.attendees.length > 0 && (
             <div className="space-y-2">

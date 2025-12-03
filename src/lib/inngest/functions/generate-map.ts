@@ -64,6 +64,7 @@ export const generateMapJob = inngest.createFunction(
                 id: true,
                 title: true,
                 meetingDate: true,
+                nextSteps: true,
               },
               orderBy: { meetingDate: "desc" },
               take: 10,
@@ -76,6 +77,7 @@ export const generateMapJob = inngest.createFunction(
                 id: true,
                 title: true,
                 meetingDate: true,
+                nextSteps: true,
               },
               orderBy: { meetingDate: "desc" },
               take: 10,
@@ -139,6 +141,7 @@ export const generateMapJob = inngest.createFunction(
             title: call.title,
             date: new Date(call.meetingDate).toISOString(),
             type: "gong",
+            nextSteps: (call.nextSteps as string[]) || undefined,
           });
         });
 
@@ -148,6 +151,7 @@ export const generateMapJob = inngest.createFunction(
             title: note.title,
             date: new Date(note.meetingDate).toISOString(),
             type: "granola",
+            nextSteps: (note.nextSteps as string[]) || undefined,
           });
         });
 

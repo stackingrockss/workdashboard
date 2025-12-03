@@ -654,22 +654,6 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
         {/* Notes Tab */}
         <TabsContent value="research" className="space-y-4 mt-4">
           <div className="grid gap-4">
-            <InlineTextarea
-              label="Risk Notes"
-              value={opportunity.riskNotes || ""}
-              onSave={async (value) => handleFieldUpdate("riskNotes", value)}
-              rows={5}
-              className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950"
-            />
-            <InlineTextarea
-              label="Personal Notes"
-              value={opportunity.notes || ""}
-              onSave={async (value) => handleFieldUpdate("notes", value)}
-              rows={6}
-            />
-
-            <Separator className="my-6" />
-
             {/* Consolidated Insights (shown when 2+ calls parsed) */}
             {opportunity.consolidatedPainPoints &&
              opportunity.consolidatedGoals &&

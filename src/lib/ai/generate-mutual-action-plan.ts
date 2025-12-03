@@ -37,6 +37,7 @@ Generate a practical, actionable MAP based on the opportunity context and meetin
 3. Account for known stakeholders
 4. Follow the sales process: Discovery → Demo → Technical Review → Security Review → Legal → Contract
 5. Include regular check-in meetings (weekly syncs)
+6. Incorporate existing commitments from meeting "Next Steps" - these are real actions already agreed upon
 
 **MAP STRUCTURE:**
 Each action item must have:
@@ -60,6 +61,13 @@ Each action item must have:
 - Include weekly check-ins throughout the process
 - Mark past meetings/milestones as "completed"
 - Mark current phase items as "in_progress"
+
+**USING NEXT STEPS FROM MEETINGS:**
+When "Next Steps" are provided from meetings, incorporate them into the MAP:
+- These are real commitments made during calls - prioritize including them
+- If a next step was from a past meeting and appears done, mark it "completed"
+- If a next step is still pending, include it with appropriate target date
+- Preserve the specific wording when possible - these are customer-agreed actions
 
 **IF A TEMPLATE IS PROVIDED:**
 Use the template structure as a guide. Match the phases, milestones, and style from the template while customizing dates, owners, and specific items for this opportunity.
@@ -210,7 +218,7 @@ export async function generateMutualActionPlan(
 function buildMAPPrompt(context: MAPGenerationContext): string {
   const today = new Date().toISOString().split("T")[0];
 
-  // Format meetings
+  // Format meetings with next steps
   const meetingsText =
     context.meetings.length > 0
       ? context.meetings
@@ -220,7 +228,11 @@ function buildMAPPrompt(context: MAPGenerationContext): string {
               day: "numeric",
               year: "numeric",
             });
-            return `- ${m.title} (${dateStr}) - ${m.type}`;
+            let text = `- ${m.title} (${dateStr}) - ${m.type}`;
+            if (m.nextSteps && m.nextSteps.length > 0) {
+              text += `\n  Next Steps: ${m.nextSteps.join("; ")}`;
+            }
+            return text;
           })
           .join("\n")
       : "No meetings recorded yet";
