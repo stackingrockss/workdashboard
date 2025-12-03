@@ -74,16 +74,32 @@ export async function POST(
 
           // If merge requested, update existing contact instead of creating new
           if (contactData.mergeWithExistingId) {
+            // Build update data based on fieldsToMerge settings
+            // If fieldsToMerge is not provided, update all fields (backward compatible)
+            const fields = contactData.fieldsToMerge;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const updateData: Record<string, any> = {
+              opportunityId: opportunityId, // Always link to current opportunity
+            };
+
+            // Only update fields that are explicitly enabled (or all if fieldsToMerge not provided)
+            if (!fields || fields.title !== false) {
+              updateData.title = contactData.title || undefined;
+            }
+            if (!fields || fields.role !== false) {
+              updateData.role = contactData.role;
+            }
+            // Always update these when merging
+            if (contactData.email) {
+              updateData.email = contactData.email;
+            }
+            if (contactData.notes) {
+              updateData.notes = contactData.notes;
+            }
+
             await prisma.contact.update({
               where: { id: contactData.mergeWithExistingId },
-              data: {
-                title: contactData.title || undefined,
-                email: contactData.email || undefined,
-                role: contactData.role,
-                sentiment: contactData.sentiment,
-                notes: contactData.notes || undefined,
-                opportunityId: opportunityId, // Link to current opportunity
-              },
+              data: updateData,
             });
 
             results.created.push({

@@ -56,6 +56,8 @@ export const consolidateInsightsJob = inngest.createFunction(
               painPoints: true,
               goals: true,
               riskAssessment: true,
+              whyAndWhyNow: true,
+              quantifiableMetrics: true,
             },
           }),
           // Fetch Granola notes
@@ -72,6 +74,8 @@ export const consolidateInsightsJob = inngest.createFunction(
               painPoints: true,
               goals: true,
               riskAssessment: true,
+              whyAndWhyNow: true,
+              quantifiableMetrics: true,
             },
           }),
         ]);
@@ -97,6 +101,8 @@ export const consolidateInsightsJob = inngest.createFunction(
             painPoints?: string[] | null;
             goals?: string[] | null;
             riskAssessment?: unknown | null;
+            whyAndWhyNow?: string[] | null;
+            quantifiableMetrics?: string[] | null;
           }>,
           granolaNotes as unknown as Array<{
             id: string;
@@ -106,6 +112,8 @@ export const consolidateInsightsJob = inngest.createFunction(
             painPoints?: string[] | null;
             goals?: string[] | null;
             riskAssessment?: unknown | null;
+            whyAndWhyNow?: string[] | null;
+            quantifiableMetrics?: string[] | null;
           }>
         );
 
@@ -139,6 +147,12 @@ export const consolidateInsightsJob = inngest.createFunction(
       // Convert meetingDate to ISO string
       const meetingDate = new Date(meeting.meetingDate).toISOString();
 
+      // Type assertion for the meeting with new fields
+      const meetingWithNewFields = meeting as typeof meeting & {
+        whyAndWhyNow?: unknown;
+        quantifiableMetrics?: unknown;
+      };
+
       return {
         callId: meeting.id,
         meetingDate,
@@ -151,6 +165,12 @@ export const consolidateInsightsJob = inngest.createFunction(
         riskAssessment: meeting.riskAssessment
           ? (meeting.riskAssessment as unknown as RiskAssessment)
           : null,
+        whyAndWhyNow: Array.isArray(meetingWithNewFields.whyAndWhyNow)
+          ? (meetingWithNewFields.whyAndWhyNow as string[])
+          : [],
+        quantifiableMetrics: Array.isArray(meetingWithNewFields.quantifiableMetrics)
+          ? (meetingWithNewFields.quantifiableMetrics as string[])
+          : [],
       };
     });
 
@@ -201,6 +221,12 @@ export const consolidateInsightsJob = inngest.createFunction(
             consolidatedRiskAssessment: JSON.parse(
               JSON.stringify(consolidationResult.data!.riskAssessment)
             ),
+            consolidatedWhyAndWhyNow: JSON.parse(
+              JSON.stringify(consolidationResult.data!.whyAndWhyNow)
+            ),
+            consolidatedMetrics: JSON.parse(
+              JSON.stringify(consolidationResult.data!.quantifiableMetrics)
+            ),
             lastConsolidatedAt: new Date(),
             consolidationCallCount: uniqueMeetings.length, // Count unique meetings (after deduplication)
             consolidationStatus: "completed",
@@ -210,6 +236,8 @@ export const consolidateInsightsJob = inngest.createFunction(
             consolidatedPainPoints: true,
             consolidatedGoals: true,
             consolidatedRiskAssessment: true,
+            consolidatedWhyAndWhyNow: true,
+            consolidatedMetrics: true,
             lastConsolidatedAt: true,
             consolidationCallCount: true,
             consolidationStatus: true,
@@ -228,6 +256,8 @@ export const consolidateInsightsJob = inngest.createFunction(
       callsConsolidated: uniqueMeetings.length,
       painPointsCount: consolidationResult.data.painPoints.length,
       goalsCount: consolidationResult.data.goals.length,
+      whyAndWhyNowCount: consolidationResult.data.whyAndWhyNow.length,
+      quantifiableMetricsCount: consolidationResult.data.quantifiableMetrics.length,
       riskLevel: consolidationResult.data.riskAssessment.riskLevel,
       lastConsolidatedAt: updatedOpportunity.lastConsolidatedAt,
     };

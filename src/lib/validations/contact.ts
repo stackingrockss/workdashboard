@@ -42,6 +42,12 @@ export const contactPositionUpdateSchema = z.object({
   positionY: z.number(),
 });
 
+// Schema for per-field merge control when updating existing contacts
+export const fieldsToMergeSchema = z.object({
+  title: z.boolean().optional(),
+  role: z.boolean().optional(),
+}).optional();
+
 // Schema for bulk contact import (from parsed transcripts)
 export const contactBulkImportItemSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(100),
@@ -54,6 +60,8 @@ export const contactBulkImportItemSchema = z.object({
   // Internal fields for duplicate handling
   skipDuplicateCheck: z.boolean().optional().default(false),
   mergeWithExistingId: z.string().cuid().optional().nullable(),
+  // Per-field merge control (when mergeWithExistingId is set)
+  fieldsToMerge: fieldsToMergeSchema,
 });
 
 export const contactBulkImportSchema = z.object({
@@ -79,3 +87,4 @@ export type ContactBulkImportItem = z.infer<typeof contactBulkImportItemSchema>;
 export type ContactBulkImportInput = z.infer<typeof contactBulkImportSchema>;
 export type ContactBatchDuplicateCheckItem = z.infer<typeof contactBatchDuplicateCheckItemSchema>;
 export type ContactBatchDuplicateCheckInput = z.infer<typeof contactBatchDuplicateCheckSchema>;
+export type FieldsToMerge = z.infer<typeof fieldsToMergeSchema>;
