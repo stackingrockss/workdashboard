@@ -229,7 +229,7 @@ export function ChatModal({
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+        <ScrollArea className="flex-1 min-h-0 p-4" ref={scrollAreaRef}>
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
               <MessageCircleIcon className="h-12 w-12 mb-4 opacity-50" />

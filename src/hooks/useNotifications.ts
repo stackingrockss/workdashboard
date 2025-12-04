@@ -117,6 +117,12 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       return;
     }
 
+    // Don't fetch on auth pages (prevents redirect loops)
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/auth")) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
       setError(null);
 
@@ -128,8 +134,10 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       ]);
 
       if (mentionsRes.status === 401 || contactsRes.status === 401 || parsingRes.status === 401) {
-        // Session expired, redirect to login
-        window.location.href = "/auth/login";
+        // Session expired - only redirect if not already on auth page
+        if (typeof window !== "undefined" && !window.location.pathname.startsWith("/auth")) {
+          window.location.href = "/auth/login";
+        }
         return;
       }
 
@@ -170,12 +178,19 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
   useEffect(() => {
     if (!enabled || !enableRealtime) return;
 
+    // Don't fetch on auth pages (prevents redirect loops)
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/auth")) {
+      return;
+    }
+
     const fetchUserId = async () => {
       try {
         const response = await fetch("/api/v1/users/me");
         if (response.status === 401) {
-          // Session expired, redirect to login
-          window.location.href = "/auth/login";
+          // Session expired - only redirect if not already on auth page
+          if (typeof window !== "undefined" && !window.location.pathname.startsWith("/auth")) {
+            window.location.href = "/auth/login";
+          }
           return;
         }
         if (!response.ok) {

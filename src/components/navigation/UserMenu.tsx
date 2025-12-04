@@ -24,6 +24,12 @@ export function UserMenu() {
   const router = useRouter();
 
   useEffect(() => {
+    // Skip auth checks on auth pages (prevents redirect loops and unnecessary API calls)
+    if (typeof window !== "undefined" && window.location.pathname.startsWith("/auth")) {
+      setLoading(false);
+      return;
+    }
+
     // Only create Supabase client in the browser (useEffect)
     const supabase = createClient();
 
