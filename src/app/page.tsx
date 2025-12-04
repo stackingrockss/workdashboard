@@ -45,6 +45,7 @@ export default async function DashboardPage() {
     closeDate: opp.closeDate?.toISOString() || undefined,
     quarter: opp.quarter || undefined,
     stage: opp.stage,
+    forecastCategory: opp.forecastCategory || undefined,
     owner: {
       id: opp.owner.id,
       name: opp.owner.name || "Unknown",
