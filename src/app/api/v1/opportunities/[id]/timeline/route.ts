@@ -1,12 +1,10 @@
 // GET /api/v1/opportunities/[id]/timeline
-// Fetches unified timeline of Gong calls, Granola notes, and Calendar events for an opportunity
+// Fetches timeline of Calendar events for an opportunity (with linked Gong/Granola)
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { createClient } from "@/lib/supabase/server";
 import {
-  gongCallToTimelineEvent,
-  granolaToTimelineEvent,
   calendarEventWithLinksToTimelineEvent,
   sortTimelineEvents,
   type TimelineEvent,
@@ -70,7 +68,6 @@ export async function GET(
     // Parse query parameters for filtering
     const searchParams = request.nextUrl.searchParams;
     const dateRange = searchParams.get("dateRange"); // "30", "60", "90", or "all"
-    const eventType = searchParams.get("eventType"); // "all", "gong_calls", "granola_notes", "calendar_events"
 
     // Calculate date filter
     let dateFilter: Date | undefined;
@@ -82,95 +79,48 @@ export async function GET(
       }
     }
 
-    // Fetch Gong calls
-    const shouldFetchGong =
-      !eventType || eventType === "all" || eventType === "gong_calls";
-    const gongCalls = shouldFetchGong
-      ? await prisma.gongCall.findMany({
-          where: {
-            opportunityId,
-            ...(dateFilter && {
-              meetingDate: {
-                gte: dateFilter,
-              },
-            }),
-          },
-          orderBy: {
-            meetingDate: "desc",
-          },
-        })
-      : [];
-
-    // Fetch Granola notes
-    const shouldFetchGranola =
-      !eventType || eventType === "all" || eventType === "granola_notes";
-    const granolaNotes = shouldFetchGranola
-      ? await prisma.granolaNote.findMany({
-          where: {
-            opportunityId,
-            ...(dateFilter && {
-              meetingDate: {
-                gte: dateFilter,
-              },
-            }),
-          },
-          orderBy: {
-            meetingDate: "desc",
-          },
-        })
-      : [];
-
     // Fetch Calendar events with linked Gong/Granola records
-    const shouldFetchCalendar =
-      !eventType || eventType === "all" || eventType === "calendar_events";
-    const calendarEvents = shouldFetchCalendar
-      ? await prisma.calendarEvent.findMany({
-          where: {
-            opportunityId,
-            ...(dateFilter && {
-              startTime: {
-                gte: dateFilter,
-              },
-            }),
+    const calendarEvents = await prisma.calendarEvent.findMany({
+      where: {
+        opportunityId,
+        ...(dateFilter && {
+          startTime: {
+            gte: dateFilter,
           },
-          include: {
-            gongCalls: {
-              select: {
-                id: true,
-                title: true,
-                parsingStatus: true,
-                painPoints: true,
-                goals: true,
-                nextSteps: true,
-              },
-              take: 1,
-            },
-            granolaNotes: {
-              select: {
-                id: true,
-                title: true,
-                parsingStatus: true,
-                painPoints: true,
-                goals: true,
-                nextSteps: true,
-              },
-              take: 1,
-            },
+        }),
+      },
+      include: {
+        gongCalls: {
+          select: {
+            id: true,
+            title: true,
+            parsingStatus: true,
+            painPoints: true,
+            goals: true,
+            nextSteps: true,
           },
-          orderBy: {
-            startTime: "desc",
+          take: 1,
+        },
+        granolaNotes: {
+          select: {
+            id: true,
+            title: true,
+            parsingStatus: true,
+            painPoints: true,
+            goals: true,
+            nextSteps: true,
           },
-        })
-      : [];
+          take: 1,
+        },
+      },
+      orderBy: {
+        startTime: "desc",
+      },
+    });
 
-    // Convert to timeline events
-    const gongEvents = gongCalls.map(gongCallToTimelineEvent);
-    const granolaEvents = granolaNotes.map(granolaToTimelineEvent);
-    const calendarTimelineEvents = calendarEvents.map(calendarEventWithLinksToTimelineEvent);
-
-    // Merge and sort
-    const allEvents: TimelineEvent[] = [...gongEvents, ...granolaEvents, ...calendarTimelineEvents];
-    const sortedEvents = sortTimelineEvents(allEvents);
+    // Convert to timeline events and sort
+    const events: TimelineEvent[] = calendarEvents.map(calendarEventWithLinksToTimelineEvent);
+    const sortedEvents = sortTimelineEvents(events);
 
     // Check if pagination is requested
     const usePagination = wantsPagination(searchParams);
@@ -194,9 +144,7 @@ export async function GET(
         {
           ...response,
           meta: {
-            gongCallCount: gongEvents.length,
-            granolaNotesCount: granolaEvents.length,
-            calendarEventCount: calendarTimelineEvents.length,
+            meetingCount: events.length,
           },
         },
         'frequent'
@@ -209,9 +157,7 @@ export async function GET(
           ...response,
           meta: {
             totalCount: sortedEvents.length,
-            gongCallCount: gongEvents.length,
-            granolaNotesCount: granolaEvents.length,
-            calendarEventCount: calendarTimelineEvents.length,
+            meetingCount: events.length,
           },
         },
         'frequent'

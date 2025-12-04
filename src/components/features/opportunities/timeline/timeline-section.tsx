@@ -1,7 +1,7 @@
 "use client";
 
 // Main timeline section component with filtering controls
-// Fetches unified timeline data and manages filter state
+// Fetches calendar events timeline (with linked Gong/Granola content)
 
 import { useState, useEffect, useCallback } from "react";
 import { TimelineView } from "./timeline-view";
@@ -18,7 +18,6 @@ import { toast } from "sonner";
 import type {
   TimelineEvent,
   TimelineDateRange,
-  TimelineFilterType,
 } from "@/types/timeline";
 
 interface TimelineSectionProps {
@@ -30,8 +29,7 @@ interface TimelineResponse {
   events: TimelineEvent[];
   meta: {
     totalCount: number;
-    gongCallCount: number;
-    granolaNotesCount: number;
+    meetingCount: number;
   };
 }
 
@@ -42,7 +40,6 @@ export function TimelineSection({
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<TimelineDateRange>("all");
-  const [eventType, setEventType] = useState<TimelineFilterType>("all");
 
   // Fetch timeline data
   const fetchTimeline = useCallback(async () => {
@@ -51,9 +48,6 @@ export function TimelineSection({
       const params = new URLSearchParams();
       if (dateRange !== "all") {
         params.set("dateRange", dateRange);
-      }
-      if (eventType !== "all") {
-        params.set("eventType", eventType);
       }
 
       const response = await fetch(
@@ -84,7 +78,7 @@ export function TimelineSection({
     } finally {
       setIsLoading(false);
     }
-  }, [opportunityId, dateRange, eventType]);
+  }, [opportunityId, dateRange]);
 
   // Fetch on mount and when filters change
   useEffect(() => {
@@ -118,28 +112,6 @@ export function TimelineSection({
           </Select>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label
-            htmlFor="event-type-select"
-            className="text-sm font-medium text-muted-foreground"
-          >
-            Event Type:
-          </label>
-          <Select
-            value={eventType}
-            onValueChange={(value) => setEventType(value as TimelineFilterType)}
-          >
-            <SelectTrigger id="event-type-select" className="w-[180px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Events</SelectItem>
-              <SelectItem value="gong_calls">Gong Calls Only</SelectItem>
-              <SelectItem value="granola_notes">Granola Notes Only</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         <Button
           variant="outline"
           size="sm"
@@ -160,7 +132,7 @@ export function TimelineSection({
           aria-live="polite"
           aria-atomic="true"
         >
-          Showing {events.length} event{events.length !== 1 ? "s" : ""}
+          Showing {events.length} meeting{events.length !== 1 ? "s" : ""}
         </div>
       )}
 

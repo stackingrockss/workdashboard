@@ -1,6 +1,7 @@
 // Timeline event types for opportunity activity visualization
+// Timeline now shows only calendar events, with Gong/Granola as linked content
 
-import type { GongCall, GranolaNote, CalendarEvent, CalendarEventSource, NoteType, ParsingStatus, Prisma } from "@prisma/client";
+import type { CalendarEvent, CalendarEventSource, ParsingStatus, Prisma } from "@prisma/client";
 
 /**
  * Summary of a linked transcript (Gong call or Granola note) for calendar events
@@ -22,45 +23,13 @@ export interface PreselectedCalendarEvent {
 }
 
 /**
- * Base timeline event with common fields
+ * Calendar event timeline event (the only timeline event type)
  */
-export interface BaseTimelineEvent {
+export interface CalendarEventTimelineEvent {
   id: string;
+  type: "calendar_event";
   date: Date;
   title: string;
-}
-
-/**
- * Gong call timeline event
- */
-export interface GongCallTimelineEvent extends BaseTimelineEvent {
-  type: "gong_call";
-  url: string;
-  noteType: NoteType | null;
-  parsingStatus: ParsingStatus | null;
-  painPoints: unknown;
-  goals: unknown;
-  nextSteps: unknown;
-  riskAssessment: unknown;
-  parsedPeople: unknown;
-  whyAndWhyNow: unknown;
-  quantifiableMetrics: unknown;
-}
-
-/**
- * Granola note timeline event
- */
-export interface GranolaTimelineEvent extends BaseTimelineEvent {
-  type: "granola_note";
-  url: string;
-  noteType: NoteType | null;
-}
-
-/**
- * Calendar event timeline event
- */
-export interface CalendarEventTimelineEvent extends BaseTimelineEvent {
-  type: "calendar_event";
   description: string | null;
   meetingUrl: string | null;
   source: CalendarEventSource;
@@ -71,52 +40,14 @@ export interface CalendarEventTimelineEvent extends BaseTimelineEvent {
 }
 
 /**
- * Union type for all timeline events
+ * Timeline event type (now only calendar events)
  */
-export type TimelineEvent = GongCallTimelineEvent | GranolaTimelineEvent | CalendarEventTimelineEvent;
+export type TimelineEvent = CalendarEventTimelineEvent;
 
 /**
- * Timeline filter options
+ * Timeline date range filter options
  */
-export type TimelineFilterType = "all" | "gong_calls" | "granola_notes" | "calendar_events";
-
 export type TimelineDateRange = "30" | "60" | "90" | "all";
-
-/**
- * Helper to convert Gong call to timeline event
- */
-export function gongCallToTimelineEvent(call: GongCall): GongCallTimelineEvent {
-  return {
-    id: call.id,
-    type: "gong_call",
-    date: call.meetingDate,
-    title: call.title,
-    url: call.url,
-    noteType: call.noteType,
-    parsingStatus: call.parsingStatus,
-    painPoints: call.painPoints,
-    goals: call.goals,
-    nextSteps: call.nextSteps,
-    riskAssessment: call.riskAssessment,
-    parsedPeople: call.parsedPeople,
-    whyAndWhyNow: call.whyAndWhyNow,
-    quantifiableMetrics: call.quantifiableMetrics,
-  };
-}
-
-/**
- * Helper to convert Granola note to timeline event
- */
-export function granolaToTimelineEvent(note: GranolaNote): GranolaTimelineEvent {
-  return {
-    id: note.id,
-    type: "granola_note",
-    date: note.meetingDate,
-    title: note.title,
-    url: note.url,
-    noteType: note.noteType,
-  };
-}
 
 /**
  * Type for calendar event with included linked transcripts from Prisma
@@ -152,24 +83,6 @@ function hasTranscriptInsights(transcript: {
   const goals = Array.isArray(transcript.goals) ? transcript.goals : [];
   const nextSteps = Array.isArray(transcript.nextSteps) ? transcript.nextSteps : [];
   return painPoints.length > 0 || goals.length > 0 || nextSteps.length > 0;
-}
-
-/**
- * Helper to convert Calendar event to timeline event (without linked transcripts)
- */
-export function calendarEventToTimelineEvent(event: CalendarEvent): CalendarEventTimelineEvent {
-  return {
-    id: event.id,
-    type: "calendar_event",
-    date: event.startTime,
-    title: event.summary,
-    description: event.description,
-    meetingUrl: event.meetingUrl,
-    source: event.source,
-    attendees: event.attendees,
-    linkedGongCall: null,
-    linkedGranolaNote: null,
-  };
 }
 
 /**
