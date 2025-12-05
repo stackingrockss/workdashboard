@@ -237,27 +237,6 @@ export function ConsolidatedInsightsCard({
           </div>
         )}
 
-        {/* Recommended Actions */}
-        {consolidatedRiskAssessment.recommendedActions.length > 0 && (
-          <div className="space-y-2">
-            <h5 className="text-sm font-medium text-slate-700 dark:text-slate-300">
-              Recommended Actions
-            </h5>
-            <ul className="space-y-1">
-              {consolidatedRiskAssessment.recommendedActions.map(
-                (action, index) => (
-                  <li
-                    key={index}
-                    className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2"
-                  >
-                    <span className="text-blue-500 mt-1">→</span>
-                    <span>{action}</span>
-                  </li>
-                )
-              )}
-            </ul>
-          </div>
-        )}
       </div>
     );
   };

@@ -62,6 +62,12 @@ Each action item must have:
 - Mark past meetings/milestones as "completed"
 - Mark current phase items as "in_progress"
 
+**USING MEETING ATTENDEES:**
+When attendee emails are provided for meetings, use them to understand who was actually present:
+- Only reference people in meeting descriptions if they were actually on that specific call
+- Do NOT assume someone attended a meeting unless their email is in the attendees list
+- Use attendee information to accurately describe what happened in each meeting
+
 **USING NEXT STEPS FROM MEETINGS:**
 When "Next Steps" are provided from meetings, incorporate them into the MAP:
 - These are real commitments made during calls - prioritize including them
@@ -218,7 +224,7 @@ export async function generateMutualActionPlan(
 function buildMAPPrompt(context: MAPGenerationContext): string {
   const today = new Date().toISOString().split("T")[0];
 
-  // Format meetings with next steps
+  // Format meetings with next steps and attendees
   const meetingsText =
     context.meetings.length > 0
       ? context.meetings
@@ -229,6 +235,9 @@ function buildMAPPrompt(context: MAPGenerationContext): string {
               year: "numeric",
             });
             let text = `- ${m.title} (${dateStr}) - ${m.type}`;
+            if (m.attendees && m.attendees.length > 0) {
+              text += `\n  Attendees: ${m.attendees.join(", ")}`;
+            }
             if (m.nextSteps && m.nextSteps.length > 0) {
               text += `\n  Next Steps: ${m.nextSteps.join("; ")}`;
             }

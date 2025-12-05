@@ -105,7 +105,6 @@ export const analyzeCallRiskJob = inngest.createFunction(
       gongCallId,
       riskLevel: riskResult.data.riskLevel,
       riskFactorsCount: riskResult.data.riskFactors.length,
-      recommendedActionsCount: riskResult.data.recommendedActions.length,
     };
   }
 );

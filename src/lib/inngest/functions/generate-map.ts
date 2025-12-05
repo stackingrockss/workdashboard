@@ -65,6 +65,11 @@ export const generateMapJob = inngest.createFunction(
                 title: true,
                 meetingDate: true,
                 nextSteps: true,
+                calendarEvent: {
+                  select: {
+                    attendees: true,
+                  },
+                },
               },
               orderBy: { meetingDate: "desc" },
               take: 10,
@@ -78,6 +83,11 @@ export const generateMapJob = inngest.createFunction(
                 title: true,
                 meetingDate: true,
                 nextSteps: true,
+                calendarEvent: {
+                  select: {
+                    attendees: true,
+                  },
+                },
               },
               orderBy: { meetingDate: "desc" },
               take: 10,
@@ -99,6 +109,7 @@ export const generateMapJob = inngest.createFunction(
                 id: true,
                 summary: true,
                 startTime: true,
+                attendees: true,
               },
               orderBy: { startTime: "desc" },
               take: 10,
@@ -142,6 +153,7 @@ export const generateMapJob = inngest.createFunction(
             date: new Date(call.meetingDate).toISOString(),
             type: "gong",
             nextSteps: (call.nextSteps as string[]) || undefined,
+            attendees: call.calendarEvent?.attendees || undefined,
           });
         });
 
@@ -152,6 +164,7 @@ export const generateMapJob = inngest.createFunction(
             date: new Date(note.meetingDate).toISOString(),
             type: "granola",
             nextSteps: (note.nextSteps as string[]) || undefined,
+            attendees: note.calendarEvent?.attendees || undefined,
           });
         });
 
@@ -178,6 +191,7 @@ export const generateMapJob = inngest.createFunction(
               title: event.summary || "Meeting",
               date: new Date(event.startTime).toISOString(),
               type: "calendar",
+              attendees: event.attendees || undefined,
             });
           }
         });

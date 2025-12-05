@@ -346,7 +346,6 @@ export function MutualActionPlanTab({ opportunityId }: MutualActionPlanTabProps)
           generatedAt={map.generatedAt}
           lastEditedAt={map.lastEditedAt}
           lastEditedBy={map.lastEditedBy}
-          templateName={map.templateContent?.title}
           onTitleChange={handleUpdateTitle}
           onRegenerate={() => setShowGenerationDialog(true)}
           actionItems={map.actionItems as MAPActionItem[]}

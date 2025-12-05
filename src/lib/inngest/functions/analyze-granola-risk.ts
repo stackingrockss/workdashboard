@@ -104,7 +104,6 @@ export const analyzeGranolaRiskJob = inngest.createFunction(
       granolaId,
       riskLevel: riskResult.data.riskLevel,
       riskFactorsCount: riskResult.data.riskFactors.length,
-      recommendedActionsCount: riskResult.data.recommendedActions.length,
     };
   }
 );

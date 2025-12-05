@@ -5,12 +5,16 @@ import type { CalendarEvent, CalendarEventSource, ParsingStatus, Prisma } from "
 
 /**
  * Summary of a linked transcript (Gong call or Granola note) for calendar events
+ * Includes parsed insights data for inline display
  */
 export interface LinkedTranscriptSummary {
   id: string;
   title: string;
   parsingStatus: ParsingStatus | null;
   hasInsights: boolean;
+  painPoints: string[];
+  goals: string[];
+  nextSteps: string[];
 }
 
 /**
@@ -72,6 +76,14 @@ export type CalendarEventWithLinks = CalendarEvent & {
 };
 
 /**
+ * Helper to safely extract string array from JsonValue
+ */
+function extractStringArray(value: Prisma.JsonValue): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+/**
  * Helper to check if a transcript has parsed insights
  */
 function hasTranscriptInsights(transcript: {
@@ -79,9 +91,9 @@ function hasTranscriptInsights(transcript: {
   goals: Prisma.JsonValue;
   nextSteps: Prisma.JsonValue;
 }): boolean {
-  const painPoints = Array.isArray(transcript.painPoints) ? transcript.painPoints : [];
-  const goals = Array.isArray(transcript.goals) ? transcript.goals : [];
-  const nextSteps = Array.isArray(transcript.nextSteps) ? transcript.nextSteps : [];
+  const painPoints = extractStringArray(transcript.painPoints);
+  const goals = extractStringArray(transcript.goals);
+  const nextSteps = extractStringArray(transcript.nextSteps);
   return painPoints.length > 0 || goals.length > 0 || nextSteps.length > 0;
 }
 
@@ -109,6 +121,9 @@ export function calendarEventWithLinksToTimelineEvent(
           title: linkedGong.title,
           parsingStatus: linkedGong.parsingStatus,
           hasInsights: hasTranscriptInsights(linkedGong),
+          painPoints: extractStringArray(linkedGong.painPoints),
+          goals: extractStringArray(linkedGong.goals),
+          nextSteps: extractStringArray(linkedGong.nextSteps),
         }
       : null,
     linkedGranolaNote: linkedGranola
@@ -117,6 +132,9 @@ export function calendarEventWithLinksToTimelineEvent(
           title: linkedGranola.title,
           parsingStatus: linkedGranola.parsingStatus,
           hasInsights: hasTranscriptInsights(linkedGranola),
+          painPoints: extractStringArray(linkedGranola.painPoints),
+          goals: extractStringArray(linkedGranola.goals),
+          nextSteps: extractStringArray(linkedGranola.nextSteps),
         }
       : null,
   };

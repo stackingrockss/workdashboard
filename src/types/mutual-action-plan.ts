@@ -97,6 +97,7 @@ export interface MAPGenerationContext {
     date: string;
     type: "gong" | "granola" | "google" | "calendar";
     nextSteps?: string[]; // Extracted action items from parsed Gong/Granola meetings
+    attendees?: string[]; // Email addresses from linked calendar event invite
   }>;
   templateBody?: string; // Template text from Content Library
 }

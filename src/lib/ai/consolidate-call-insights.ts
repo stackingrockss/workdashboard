@@ -79,11 +79,7 @@ Return ONLY valid JSON matching this exact structure:
         "evidence": "Combined evidence from multiple calls (cite call dates when possible)"
       }
     ],
-    "overallSummary": "2-3 sentence summary of overall deal health across all calls",
-    "recommendedActions": [
-      "Prioritized action based on consolidated risks",
-      ...
-    ]
+    "overallSummary": "2-3 sentence summary of overall deal health across all calls"
   },
   "whyAndWhyNow": [
     "Consolidated business driver/urgency reason 1",
@@ -102,7 +98,6 @@ Return ONLY valid JSON matching this exact structure:
 - Escalate severity if the same risk appears multiple times or worsens over time
 - Set overall riskLevel based on the most recent call's trends and cumulative concerns
 - If a risk was mentioned in earlier calls but resolved in later calls, note the resolution in evidence
-- Recommended actions should address the most critical consolidated risks first
 
 **WHY AND WHY NOW CONSOLIDATION RULES:**
 - Identify the primary business driver(s) triggering this evaluation
@@ -288,13 +283,6 @@ Return your consolidated analysis as JSON only.`;
       return {
         success: false,
         error: "Invalid risk assessment: riskFactors must be an array",
-      };
-    }
-
-    if (!Array.isArray(riskAssessment.recommendedActions)) {
-      return {
-        success: false,
-        error: "Invalid risk assessment: recommendedActions must be an array",
       };
     }
 

@@ -124,7 +124,6 @@ export function HorizontalTimeline({
         <TimelineDetailPanel
           event={selectedEvent}
           onClose={() => onSelectEvent(null)}
-          onViewInsights={onViewInsights}
           onAddGong={onAddGong}
           onAddGranola={onAddGranola}
         />

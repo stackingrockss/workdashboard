@@ -45,7 +45,6 @@ interface MAPHeaderProps {
     name: string | null;
     avatarUrl: string | null;
   };
-  templateName?: string;
   onTitleChange: (title: string) => void;
   onRegenerate: () => void;
   actionItems: MAPActionItem[];
@@ -60,7 +59,6 @@ export function MAPHeader({
   generatedAt,
   lastEditedAt,
   lastEditedBy,
-  templateName,
   onTitleChange,
   onRegenerate,
   actionItems,
@@ -164,7 +162,6 @@ export function MAPHeader({
                   {formatDateShort(lastEditedAt)}
                 </span>
               )}
-              {templateName && <span>Template: {templateName}</span>}
             </div>
           </div>
 
