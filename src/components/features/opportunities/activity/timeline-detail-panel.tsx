@@ -1,9 +1,9 @@
 "use client";
 
-// Inline expandable detail panel for calendar events
-// Shows meeting details with linked Gong/Granola content and inline insights
+// Inline detail panel for calendar events
+// Shows meeting details with linked Gong/Granola content
+// Gong insights auto-display with priority; Granola insights only shown when no Gong exists
 
-import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,6 @@ import {
   StickyNote,
   Calendar,
   ChevronUp,
-  ChevronDown,
   Users,
   Video,
   Loader2,
@@ -105,9 +104,6 @@ function LinkedTranscriptInfo({
   onAddGong?: (calendarEvent: PreselectedCalendarEvent) => void;
   onAddGranola?: (calendarEvent: PreselectedCalendarEvent) => void;
 }) {
-  const [gongExpanded, setGongExpanded] = useState(false);
-  const [granolaExpanded, setGranolaExpanded] = useState(false);
-
   const linkedGong = event.linkedGongCall;
   const linkedGranola = event.linkedGranolaNote;
 
@@ -140,39 +136,23 @@ function LinkedTranscriptInfo({
     );
   };
 
-  // Show both Gong and Granola sections independently
+  // Show Gong insights with priority, Granola as fallback
   return (
     <div className="space-y-3">
       {/* Gong section - show linked or add button */}
       {linkedGong ? (
         <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 p-3 space-y-2">
-          <button
-            type="button"
-            className="w-full text-left"
-            onClick={() => setGongExpanded(!gongExpanded)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Link2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm font-medium">Linked Gong Recording</span>
-              </div>
-              {linkedGong.hasInsights && (
-                gongExpanded ? (
-                  <ChevronUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                )
-              )}
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              <span className="text-sm">{linkedGong.title}</span>
-              {renderParsingBadge(linkedGong.parsingStatus)}
-            </div>
-          </button>
-          {gongExpanded && linkedGong.hasInsights && (
-            <InsightsDisplay transcript={linkedGong} />
-          )}
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <span className="text-sm font-medium">Linked Gong Recording</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <span className="text-sm">{linkedGong.title}</span>
+            {renderParsingBadge(linkedGong.parsingStatus)}
+          </div>
+          {/* Auto-display Gong insights */}
+          <InsightsDisplay transcript={linkedGong} />
         </div>
       ) : onAddGong && (
         <div className="rounded-lg border border-dashed bg-muted/30 p-3">
@@ -188,35 +168,20 @@ function LinkedTranscriptInfo({
       )}
 
       {/* Granola section - show linked or add button */}
+      {/* Only auto-display Granola insights when there's no Gong (Gong takes priority) */}
       {linkedGranola ? (
         <div className="rounded-lg border bg-green-50 dark:bg-green-950/30 p-3 space-y-2">
-          <button
-            type="button"
-            className="w-full text-left"
-            onClick={() => setGranolaExpanded(!granolaExpanded)}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Link2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-                <span className="text-sm font-medium">Linked Granola Note</span>
-              </div>
-              {linkedGranola.hasInsights && (
-                granolaExpanded ? (
-                  <ChevronUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-green-600 dark:text-green-400" />
-                )
-              )}
-            </div>
-            <div className="flex items-center gap-2 mt-1">
-              <StickyNote className="h-4 w-4 text-green-600 dark:text-green-400" />
-              <span className="text-sm">{linkedGranola.title}</span>
-              {renderParsingBadge(linkedGranola.parsingStatus)}
-            </div>
-          </button>
-          {granolaExpanded && linkedGranola.hasInsights && (
-            <InsightsDisplay transcript={linkedGranola} />
-          )}
+          <div className="flex items-center gap-2">
+            <Link2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <span className="text-sm font-medium">Linked Granola Note</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <StickyNote className="h-4 w-4 text-green-600 dark:text-green-400" />
+            <span className="text-sm">{linkedGranola.title}</span>
+            {renderParsingBadge(linkedGranola.parsingStatus)}
+          </div>
+          {/* Only show Granola insights if no Gong call exists */}
+          {!linkedGong && <InsightsDisplay transcript={linkedGranola} />}
         </div>
       ) : onAddGranola && (
         <div className="rounded-lg border border-dashed bg-muted/30 p-3">

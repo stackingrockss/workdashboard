@@ -222,6 +222,21 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     }
   }, []);
 
+  // Fetch single parsing complete notification by ID (includes full insights from API)
+  const fetchNotificationByParsingId = useCallback(async (notificationId: string): Promise<ParsingCompleteNotification | null> => {
+    try {
+      const response = await fetch("/api/v1/notifications/parsing-complete?limit=20&includeRead=true");
+      if (!response.ok) return null;
+
+      const data = await response.json();
+      const notification = data.notifications.find((n: ParsingCompleteNotification) => n.id === notificationId);
+      return notification || null;
+    } catch (err) {
+      logError("fetch-parsing-notification", err);
+      return null;
+    }
+  }, []);
+
   // Handle real-time mention event
   const handleMentionCreated = useCallback(
     async (data: { mentionId: string; commentId: string }) => {
@@ -318,8 +333,8 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       // Optimistically increment unread count
       setUnreadCount((prev) => prev + 1);
 
-      // Create notification object from event data
-      const newNotification: ParsingCompleteNotification = {
+      // Create placeholder notification object from event data (for immediate UI update)
+      const placeholderNotification: ParsingCompleteNotification = {
         id: data.notificationId,
         type: "parsing_complete",
         opportunityId: data.opportunityId,
@@ -334,22 +349,38 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         readAt: null,
       };
 
-      // Add to notification list
-      setNotifications((prev) => [newNotification, ...prev]);
+      // Add placeholder to notification list immediately
+      setNotifications((prev) => [placeholderNotification, ...prev]);
 
-      // Show toast notification
+      // Show toast notification - fetch full data when View is clicked
       toast.info("Transcript parsed successfully", {
         description: `"${data.callTitle}" insights are ready`,
         action: {
           label: "View",
-          onClick: () => {
-            handleNotificationClick(newNotification);
+          onClick: async () => {
+            // Fetch full notification with insights from API before opening dialog
+            const fullNotification = await fetchNotificationByParsingId(data.notificationId);
+            if (fullNotification) {
+              // Update the notification in state with full data
+              setNotifications((prev) =>
+                prev.map((n) => (n.id === data.notificationId ? fullNotification : n))
+              );
+              // Call the handler if provided, otherwise navigate to opportunity
+              if (onParsingCompleteClick) {
+                onParsingCompleteClick(fullNotification);
+              } else {
+                router.push(`/opportunities/${fullNotification.opportunityId}`);
+              }
+            } else {
+              // Fallback: navigate to opportunity if fetch fails
+              router.push(`/opportunities/${data.opportunityId}`);
+            }
           },
         },
         duration: 6000,
       });
     },
-    []
+    [fetchNotificationByParsingId, onParsingCompleteClick, router]
   );
 
   // Mark mention notifications as read

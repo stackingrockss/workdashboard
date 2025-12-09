@@ -16,8 +16,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import {
+  RefreshCw,
+  Phone,
+  StickyNote,
+  AlertTriangle,
+  Target,
+  ListChecks,
+} from "lucide-react";
 import { toast } from "sonner";
+import { formatDateShort } from "@/lib/format";
 import type {
   TimelineEvent,
   TimelineDateRange,
@@ -29,8 +38,19 @@ interface ActivitySectionProps {
   onViewInsights?: (callId: string) => void;
 }
 
+interface MostRecentCall {
+  id: string;
+  title: string;
+  meetingDate: string;
+  painPoints: string[] | null;
+  goals: string[] | null;
+  nextSteps: string[] | null;
+  type: "gong" | "granola";
+}
+
 interface TimelineResponse {
   events: TimelineEvent[];
+  mostRecentCall: MostRecentCall | null;
   meta: {
     totalCount: number;
     gongCallCount: number;
@@ -38,11 +58,97 @@ interface TimelineResponse {
   };
 }
 
+/**
+ * Component to display the most recent call insights
+ */
+function LatestCallInsights({ call }: { call: MostRecentCall }) {
+  const painPoints = Array.isArray(call.painPoints) ? call.painPoints : [];
+  const goals = Array.isArray(call.goals) ? call.goals : [];
+  const nextSteps = Array.isArray(call.nextSteps) ? call.nextSteps : [];
+  const hasAnyInsights = painPoints.length > 0 || goals.length > 0 || nextSteps.length > 0;
+
+  const isGong = call.type === "gong";
+  const bgColor = isGong
+    ? "bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800"
+    : "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800";
+  const iconColor = isGong
+    ? "text-blue-600 dark:text-blue-400"
+    : "text-green-600 dark:text-green-400";
+  const Icon = isGong ? Phone : StickyNote;
+
+  return (
+    <Card className={`p-4 ${bgColor}`}>
+      {/* Header */}
+      <div className="flex items-center gap-2 mb-3">
+        <Icon className={`h-5 w-5 ${iconColor}`} />
+        <div>
+          <h3 className="font-medium text-sm">Latest Call Insights</h3>
+          <p className="text-sm text-muted-foreground">
+            {call.title} &middot; {formatDateShort(call.meetingDate)}
+          </p>
+        </div>
+      </div>
+
+      {/* Insights */}
+      {!hasAnyInsights ? (
+        <p className="text-sm text-muted-foreground italic">
+          No insights extracted yet.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {painPoints.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium text-orange-600 dark:text-orange-400">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                Pain Points
+              </div>
+              <ul className="text-sm space-y-0.5 list-disc list-inside text-muted-foreground ml-1">
+                {painPoints.map((point, idx) => (
+                  <li key={idx}>{point}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {goals.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400">
+                <Target className="h-3.5 w-3.5" />
+                Goals
+              </div>
+              <ul className="text-sm space-y-0.5 list-disc list-inside text-muted-foreground ml-1">
+                {goals.map((goal, idx) => (
+                  <li key={idx}>{goal}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {nextSteps.length > 0 && (
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium text-green-600 dark:text-green-400">
+                <ListChecks className="h-3.5 w-3.5" />
+                Next Steps
+              </div>
+              <ul className="text-sm space-y-0.5 list-disc list-inside text-muted-foreground ml-1">
+                {nextSteps.map((step, idx) => (
+                  <li key={idx}>{step}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function ActivitySection({
   opportunityId,
   onViewInsights,
 }: ActivitySectionProps) {
   const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const [mostRecentCall, setMostRecentCall] = useState<MostRecentCall | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<TimelineDateRange>("all");
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
@@ -80,6 +186,7 @@ export function ActivitySection({
       }));
 
       setEvents(eventsWithDates);
+      setMostRecentCall(data.mostRecentCall || null);
     } catch (error) {
       console.error("Error fetching activity:", error);
       const errorMessage =
@@ -184,6 +291,11 @@ export function ActivitySection({
         onAddGranola={setAddGranolaCalendarEvent}
         isLoading={isLoading}
       />
+
+      {/* Latest call insights - shown below timeline */}
+      {!isLoading && mostRecentCall && (
+        <LatestCallInsights call={mostRecentCall} />
+      )}
 
       {/* Add Gong from calendar event dialog */}
       {addGongCalendarEvent && (

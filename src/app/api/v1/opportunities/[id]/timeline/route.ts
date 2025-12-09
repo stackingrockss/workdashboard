@@ -118,6 +118,42 @@ export async function GET(
       },
     });
 
+    // Query most recent parsed Gong call (priority)
+    const mostRecentGong = await prisma.gongCall.findFirst({
+      where: { opportunityId, parsingStatus: "completed" },
+      orderBy: { meetingDate: "desc" },
+      select: {
+        id: true,
+        title: true,
+        meetingDate: true,
+        painPoints: true,
+        goals: true,
+        nextSteps: true,
+      },
+    });
+
+    // Fallback to Granola if no Gong
+    const mostRecentGranola = !mostRecentGong
+      ? await prisma.granolaNote.findFirst({
+          where: { opportunityId, parsingStatus: "completed" },
+          orderBy: { meetingDate: "desc" },
+          select: {
+            id: true,
+            title: true,
+            meetingDate: true,
+            painPoints: true,
+            goals: true,
+            nextSteps: true,
+          },
+        })
+      : null;
+
+    const mostRecentCall = mostRecentGong
+      ? { ...mostRecentGong, type: "gong" as const }
+      : mostRecentGranola
+        ? { ...mostRecentGranola, type: "granola" as const }
+        : null;
+
     // Convert to timeline events and sort
     const events: TimelineEvent[] = calendarEvents.map(calendarEventWithLinksToTimelineEvent);
     const sortedEvents = sortTimelineEvents(events);
@@ -143,6 +179,7 @@ export async function GET(
       return cachedResponse(
         {
           ...response,
+          mostRecentCall,
           meta: {
             meetingCount: events.length,
           },
@@ -155,6 +192,7 @@ export async function GET(
       return cachedResponse(
         {
           ...response,
+          mostRecentCall,
           meta: {
             totalCount: sortedEvents.length,
             meetingCount: events.length,
