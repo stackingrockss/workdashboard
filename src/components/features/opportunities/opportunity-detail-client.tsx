@@ -178,8 +178,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
       }
     };
 
-    // Start polling every 3 seconds
-    const pollInterval = setInterval(pollResearchStatus, 3000);
+    // Start polling every 10 seconds
+    const pollInterval = setInterval(pollResearchStatus, 10000); // 10s (reduced from 3s to save compute)
 
     // Cleanup on unmount or when status changes
     return () => {

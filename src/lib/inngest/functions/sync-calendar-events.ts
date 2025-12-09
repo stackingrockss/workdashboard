@@ -129,6 +129,46 @@ export async function recalculateExternalEventsForOrganization(organizationId: s
 }
 
 /**
+ * Common TLDs that have two-part extensions (e.g., .co.uk, .com.au)
+ * Used to correctly extract base domains
+ */
+const TWO_PART_TLDS = new Set([
+  'co.uk', 'com.au', 'co.nz', 'co.za', 'com.br', 'co.jp', 'co.kr',
+  'com.mx', 'com.cn', 'com.sg', 'com.hk', 'co.in', 'com.ar', 'com.tw',
+  'org.uk', 'net.au', 'org.au', 'ac.uk', 'gov.uk', 'edu.au',
+]);
+
+/**
+ * Extracts the base domain from a full domain, handling subdomains correctly.
+ *
+ * Examples:
+ * - usa.twinhealth.com → twinhealth.com
+ * - www.example.co.uk → example.co.uk
+ * - twinhealth.com → twinhealth.com
+ * - mail.subdomain.company.com → company.com
+ *
+ * @param domain - Full domain (without protocol), e.g., "usa.twinhealth.com"
+ * @returns Base domain, e.g., "twinhealth.com"
+ */
+function extractBaseDomain(domain: string): string {
+  const parts = domain.toLowerCase().split('.');
+
+  if (parts.length <= 2) {
+    return domain.toLowerCase();
+  }
+
+  // Check for two-part TLDs (e.g., co.uk, com.au)
+  const lastTwo = parts.slice(-2).join('.');
+  if (TWO_PART_TLDS.has(lastTwo)) {
+    // Return last 3 parts (e.g., example.co.uk)
+    return parts.slice(-3).join('.');
+  }
+
+  // Standard TLD: return last 2 parts (e.g., twinhealth.com)
+  return parts.slice(-2).join('.');
+}
+
+/**
  * Helper: Perform auto-matching of event to opportunity/account
  */
 async function matchEventToOpportunityAndAccount(
@@ -174,14 +214,30 @@ async function matchEventToOpportunityAndAccount(
   }
 
   // Strategy 2: Match by attendee email domain → account website domain
+  // Tries exact domain match first, then falls back to base domain matching
   if (!matchedOpportunityId && !matchedAccountId) {
     for (const attendeeEmail of event.attendees) {
       const domain = extractDomain(attendeeEmail);
       if (!domain) continue;
 
-      if (domainToAccountsMap.has(domain)) {
-        const matchedAccounts = domainToAccountsMap.get(domain)!;
+      // Try exact domain match first, then base domain fallback
+      // e.g., email @twinhealth.com will match account with usa.twinhealth.com
+      const baseDomain = extractBaseDomain(domain);
+      const domainsToTry = [domain];
+      if (baseDomain !== domain) {
+        domainsToTry.push(baseDomain);
+      }
 
+      let matchedAccounts: Array<{ id: string; name: string; opportunities: Array<{ id: string; name: string }> }> | null = null;
+
+      for (const domainToMatch of domainsToTry) {
+        if (domainToAccountsMap.has(domainToMatch)) {
+          matchedAccounts = domainToAccountsMap.get(domainToMatch)!;
+          break;
+        }
+      }
+
+      if (matchedAccounts) {
         // Prioritize accounts that have opportunities over those that don't
         const accountsWithOpps = matchedAccounts.filter(a => a.opportunities.length > 0);
         const accountToUse = accountsWithOpps.length > 0 ? accountsWithOpps[0] : matchedAccounts[0];
@@ -269,17 +325,32 @@ async function buildMatchingMaps(organizationId: string) {
     }
   }
 
-  // Map account domains to accounts
+  // Map account domains to accounts (both full domain and base domain for subdomain matching)
   for (const account of allAccounts) {
     if (account.website) {
       try {
         const url = new URL(account.website.startsWith('http') ? account.website : `https://${account.website}`);
-        const domain = url.hostname.replace(/^www\./, '').toLowerCase();
+        const fullDomain = url.hostname.replace(/^www\./, '').toLowerCase();
+        const baseDomain = extractBaseDomain(fullDomain);
 
-        if (!domainToAccountsMap.has(domain)) {
-          domainToAccountsMap.set(domain, []);
+        // Always add to full domain map
+        if (!domainToAccountsMap.has(fullDomain)) {
+          domainToAccountsMap.set(fullDomain, []);
         }
-        domainToAccountsMap.get(domain)!.push(account);
+        domainToAccountsMap.get(fullDomain)!.push(account);
+
+        // Also add to base domain map if different (for subdomain matching)
+        // e.g., usa.twinhealth.com → also index under twinhealth.com
+        if (baseDomain !== fullDomain) {
+          if (!domainToAccountsMap.has(baseDomain)) {
+            domainToAccountsMap.set(baseDomain, []);
+          }
+          // Only add if not already present (avoid duplicates)
+          const existingAccounts = domainToAccountsMap.get(baseDomain)!;
+          if (!existingAccounts.some(a => a.id === account.id)) {
+            existingAccounts.push(account);
+          }
+        }
       } catch {
         // Invalid URL, skip
       }
@@ -959,7 +1030,7 @@ export const syncAllCalendarEventsJob = inngest.createFunction(
     name: "Sync All Calendar Events (Incremental)",
     retries: 2, // Retry entire batch up to 2 times on infrastructure failures
   },
-  { cron: "0 */15 * * *" }, // Every 15 minutes
+  { cron: "0 * * * *" }, // Every hour (reduced from 15min to save compute)
   async ({ step }) => {
     // Step 1: Fetch all users with active Google OAuth tokens
     const usersWithCalendar = await step.run("fetch-users-with-calendar", async () => {
