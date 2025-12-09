@@ -101,6 +101,10 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     lastConsolidatedAt: opportunityFromDB.lastConsolidatedAt?.toISOString() || undefined,
     consolidationCallCount: opportunityFromDB.consolidationCallCount || undefined,
     consolidationStatus: opportunityFromDB.consolidationStatus || undefined,
+    // Business Impact Proposal fields
+    businessProposalContent: opportunityFromDB.businessProposalContent || undefined,
+    businessProposalGeneratedAt: opportunityFromDB.businessProposalGeneratedAt?.toISOString() || undefined,
+    businessProposalGenerationStatus: (opportunityFromDB.businessProposalGenerationStatus as "generating" | "completed" | "failed") || undefined,
     owner: {
       id: opportunityFromDB.owner.id,
       name: opportunityFromDB.owner.name || opportunityFromDB.owner.email || "Unknown",
