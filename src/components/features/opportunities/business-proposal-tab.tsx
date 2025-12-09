@@ -10,10 +10,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Sparkles, Copy, ChevronDown, Info } from "lucide-react";
+import { Sparkles, Copy, ChevronDown, Info, FileText } from "lucide-react";
 import { InlineMarkdownWithAI } from "@/components/ui/inline-markdown";
 import { formatDateShort } from "@/lib/format";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
+import { markdownToHtml } from "@/lib/utils/markdown-to-html";
 
 interface BusinessProposalTabProps {
   opportunityId: string;
@@ -70,10 +71,36 @@ export function BusinessProposalTab({
     }
   };
 
-  const handleCopy = () => {
+  const handleCopyPlainText = () => {
     if (businessProposalContent) {
       navigator.clipboard.writeText(businessProposalContent);
-      toast.success("Proposal copied to clipboard!");
+      toast.success("Copied as plain text!");
+    }
+  };
+
+  const handleCopyRichText = async () => {
+    if (!businessProposalContent) return;
+
+    try {
+      const html = markdownToHtml(businessProposalContent);
+
+      // Use the Clipboard API to copy both HTML and plain text
+      const blob = new Blob([html], { type: "text/html" });
+      const textBlob = new Blob([businessProposalContent], { type: "text/plain" });
+
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/html": blob,
+          "text/plain": textBlob,
+        }),
+      ]);
+
+      toast.success("Copied! Paste into Google Docs for formatted text.");
+    } catch (error) {
+      // Fallback to plain text if rich text copy fails
+      console.error("Rich text copy failed:", error);
+      navigator.clipboard.writeText(businessProposalContent);
+      toast.success("Copied as plain text (rich text not supported in this browser)");
     }
   };
 
@@ -144,10 +171,16 @@ export function BusinessProposalTab({
                     : "Generate Proposal"}
                 </Button>
                 {businessProposalContent && (
-                  <Button variant="outline" size="sm" onClick={handleCopy}>
-                    <Copy className="h-4 w-4 mr-2" />
-                    Copy
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={handleCopyRichText}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Copy for Google Docs
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleCopyPlainText}>
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copy Plain
+                    </Button>
+                  </div>
                 )}
               </div>
 
