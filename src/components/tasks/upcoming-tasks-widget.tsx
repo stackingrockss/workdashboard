@@ -17,7 +17,7 @@ import { TaskCard } from "./task-card";
 import { TaskFilterControl } from "./task-filter-control";
 import { toast } from "sonner";
 import type { TaskWithRelations } from "@/types/task";
-import { filterTasksByPreference, type TaskFilterPreference } from "@/lib/utils/task-filtering";
+import { filterTasksByPreference, parseAsLocalDate, type TaskFilterPreference } from "@/lib/utils/task-filtering";
 
 /**
  * Groups tasks by timeframe relative to today
@@ -42,7 +42,8 @@ function groupTasksByTimeframe(
     if (!task.due) {
       label = "No Due Date";
     } else {
-      const dueDate = new Date(task.due);
+      // Use parseAsLocalDate to handle UTC date strings correctly
+      const dueDate = parseAsLocalDate(task.due);
       dueDate.setHours(0, 0, 0, 0);
 
       if (dueDate < today) {

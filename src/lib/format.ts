@@ -18,9 +18,27 @@ export function formatCurrencyCompact(amountInDollars: number, locale = "en-US")
   return formatter.format(amountInDollars);
 }
 
-export function formatDateShort(isoDate?: string, locale = "en-US") {
+export function formatDateShort(isoDate?: string | Date, locale = "en-US") {
   if (!isoDate) return "TBD";
-  const date = new Date(isoDate);
+
+  let date: Date;
+
+  if (isoDate instanceof Date) {
+    date = isoDate;
+  } else {
+    // Handle date-only strings (YYYY-MM-DD) to avoid timezone shifting
+    // Google Tasks API returns dates like "2024-12-09T00:00:00.000Z"
+    // which when parsed as UTC and displayed in local time can shift to previous day
+    const dateOnlyMatch = isoDate.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (dateOnlyMatch) {
+      // Parse as local date to preserve the intended date
+      const [, year, month, day] = dateOnlyMatch;
+      date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+    } else {
+      date = new Date(isoDate);
+    }
+  }
+
   if (Number.isNaN(date.getTime())) return "TBD";
   return new Intl.DateTimeFormat(locale, {
     year: "numeric",

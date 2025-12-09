@@ -9,6 +9,7 @@ import { CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import type { TaskWithRelations } from "@/types/task";
 import { InlineDueDateEditor } from "./inline-due-date-editor";
+import { parseAsLocalDate } from "@/lib/utils/task-filtering";
 
 interface TaskCardProps {
   task: TaskWithRelations;
@@ -23,14 +24,14 @@ interface TaskCardProps {
  * - Future: secondary (gray)
  */
 function getDueDateVariant(
-  dueDate?: Date | null
+  dueDate?: Date | string | null
 ): "destructive" | "default" | "secondary" {
   if (!dueDate) return "secondary";
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const due = new Date(dueDate);
+  const due = parseAsLocalDate(dueDate);
   due.setHours(0, 0, 0, 0);
 
   if (due < today) return "destructive"; // Overdue

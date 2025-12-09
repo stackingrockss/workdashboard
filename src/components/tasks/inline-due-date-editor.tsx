@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { Clock, X } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
+import { parseAsLocalDate } from "@/lib/utils/task-filtering";
 import { toast } from "sonner";
 
 interface InlineDueDateEditorProps {
@@ -92,7 +93,7 @@ export function InlineDueDateEditor({
     ? formatDateShort(optimisticDue)
     : "No due date";
 
-  const selectedDate = optimisticDue ? new Date(optimisticDue) : undefined;
+  const selectedDate = optimisticDue ? parseAsLocalDate(optimisticDue) : undefined;
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>

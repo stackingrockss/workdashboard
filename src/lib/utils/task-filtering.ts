@@ -7,6 +7,29 @@ export type TaskFilterPreference =
   | 'all';
 
 /**
+ * Parse a date value (string or Date) as a local date.
+ * Handles ISO date strings like "2024-12-09T00:00:00.000Z" by extracting
+ * just the date portion and creating a local date to avoid timezone shifting.
+ */
+export function parseAsLocalDate(value: string | Date): Date {
+  if (value instanceof Date) {
+    // If it's already a Date, extract the UTC date parts and create local date
+    // This handles dates that were parsed from UTC strings
+    return new Date(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate());
+  }
+
+  // Extract YYYY-MM-DD from ISO string
+  const dateOnlyMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch;
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+  }
+
+  // Fallback to standard parsing
+  return new Date(value);
+}
+
+/**
  * Get week bounds (Sunday to Saturday)
  * Sunday is day 0
  */
@@ -32,9 +55,9 @@ export function getWeekBounds(date: Date = new Date()): { start: Date; end: Date
 /**
  * Check if a date is within this week
  */
-export function isThisWeek(date: Date): boolean {
+export function isThisWeek(date: Date | string): boolean {
   const { start, end } = getWeekBounds();
-  const checkDate = new Date(date);
+  const checkDate = parseAsLocalDate(date);
   checkDate.setHours(0, 0, 0, 0);
 
   return checkDate >= start && checkDate <= end;
@@ -43,11 +66,11 @@ export function isThisWeek(date: Date): boolean {
 /**
  * Check if a date is overdue (before today)
  */
-export function isOverdue(date: Date): boolean {
+export function isOverdue(date: Date | string): boolean {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const checkDate = new Date(date);
+  const checkDate = parseAsLocalDate(date);
   checkDate.setHours(0, 0, 0, 0);
 
   return checkDate < today;
@@ -56,11 +79,11 @@ export function isOverdue(date: Date): boolean {
 /**
  * Check if a date is today
  */
-export function isToday(date: Date): boolean {
+export function isToday(date: Date | string): boolean {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const checkDate = new Date(date);
+  const checkDate = parseAsLocalDate(date);
   checkDate.setHours(0, 0, 0, 0);
 
   return checkDate.getTime() === today.getTime();
@@ -81,7 +104,7 @@ export function filterTasksByPreference(
     if (task.status === 'completed') return false;
 
     // Always include overdue tasks in all views to ensure visibility
-    if (task.due && isOverdue(new Date(task.due))) {
+    if (task.due && isOverdue(task.due)) {
       return true;
     }
 
@@ -89,12 +112,12 @@ export function filterTasksByPreference(
       case 'today':
         // Tasks due today (overdue already included above)
         if (!task.due) return false;
-        return isToday(new Date(task.due));
+        return isToday(task.due);
 
       case 'thisWeekOrNoDueDate':
         // Tasks due this week or with no due date
         if (!task.due) return true;
-        return isThisWeek(new Date(task.due));
+        return isThisWeek(task.due);
 
       case 'noDueDate':
         // Only tasks without a due date (overdue already included above)

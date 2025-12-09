@@ -74,6 +74,8 @@ const baseOpportunitySchema = z.object({
   // Business case generation fields
   businessCaseContent: z.string().max(100000).optional().nullable().transform(val => val === "" ? null : val),
   businessCaseQuestions: z.string().max(50000).optional().nullable().transform(val => val === "" ? null : val),
+  // Business Impact Proposal fields
+  businessProposalContent: z.string().max(100000).optional().nullable().transform(val => val === "" ? null : val),
 });
 
 export const opportunityCreateSchema = baseOpportunitySchema

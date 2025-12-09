@@ -75,6 +75,8 @@ export type ConsolidationStatus = "idle" | "processing" | "completed" | "failed"
 
 export type BusinessCaseGenerationStatus = "generating" | "completed" | "failed";
 
+export type BusinessProposalGenerationStatus = "generating" | "completed" | "failed";
+
 export interface OpportunityOwner {
   id: string;
   name: string;
@@ -140,6 +142,10 @@ export interface Opportunity {
   businessCaseQuestions?: string | null;
   businessCaseGeneratedAt?: string | null;
   businessCaseGenerationStatus?: BusinessCaseGenerationStatus | null;
+  // Business Impact Proposal generation
+  businessProposalContent?: string | null;
+  businessProposalGeneratedAt?: string | null;
+  businessProposalGenerationStatus?: BusinessProposalGenerationStatus | null;
   owner: OpportunityOwner;
   granolaNotes?: Array<{
     id: string;
