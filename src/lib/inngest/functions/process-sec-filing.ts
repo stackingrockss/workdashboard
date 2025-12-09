@@ -74,15 +74,32 @@ export const processSecFilingJob = inngest.createFunction(
       const sections = extractFilingSections(htmlContent);
 
       // Check if extraction was successful
-      if (
+      // Both "Extraction failed" (cheerio error) and "Section not found" (regex miss) indicate failure
+      const extractionFailed =
         sections.business === "Extraction failed" ||
-        sections.riskFactors === "Extraction failed"
-      ) {
+        sections.business === "Section not found" ||
+        sections.riskFactors === "Extraction failed" ||
+        sections.riskFactors === "Section not found" ||
+        sections.mdAndA === "Extraction failed" ||
+        sections.mdAndA === "Section not found";
+
+      if (extractionFailed) {
+        const missingParts = [];
+        if (sections.business === "Section not found" || sections.business === "Extraction failed") {
+          missingParts.push("Business (Item 1)");
+        }
+        if (sections.riskFactors === "Section not found" || sections.riskFactors === "Extraction failed") {
+          missingParts.push("Risk Factors (Item 1A)");
+        }
+        if (sections.mdAndA === "Section not found" || sections.mdAndA === "Extraction failed") {
+          missingParts.push("MD&A (Item 7)");
+        }
+
         await prisma.secFiling.update({
           where: { id: filingId },
           data: {
             processingStatus: FilingProcessingStatus.failed,
-            processingError: "Failed to extract filing sections from HTML",
+            processingError: `Failed to extract filing sections: ${missingParts.join(", ")}. The filing format may not be supported.`,
           },
         });
         throw new Error("Filing section extraction failed");

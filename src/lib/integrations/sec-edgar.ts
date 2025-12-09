@@ -312,6 +312,15 @@ export interface FilingSections {
 /**
  * Extract key sections from 10-K HTML/text content
  * Note: SEC filings have inconsistent HTML structure, so this uses simple text extraction
+ *
+ * Common 10-K section header formats:
+ * - "Item 1. Business"
+ * - "ITEM 1. BUSINESS"
+ * - "Item 1—Business" (em-dash)
+ * - "Item 1 - Business" (hyphen)
+ * - "ITEM 1A. RISK FACTORS"
+ * - "Item 1A—Risk Factors"
+ * - "Part I, Item 1"
  */
 export function extractFilingSections(htmlContent: string): FilingSections {
   try {
@@ -319,30 +328,69 @@ export function extractFilingSections(htmlContent: string): FilingSections {
     const $ = cheerio.load(htmlContent);
     const fullText = $("body").text() || "";
 
-    // Extract sections based on common item markers in 10-K filings
-    const businessSection = extractSection(
+    // More robust patterns that handle common 10-K formatting variations
+    // Pattern explanation:
+    // - \bitem\s* - word boundary + "item" + optional whitespace
+    // - [:\.\s]* - optional colon, period, or whitespace after number
+    // - (?:[\.\s\-—:]+|[\s]+) - separator (period, space, dash, em-dash, colon)
+    // - The section title keywords help avoid matching table of contents entries
+
+    // Item 1 Business - match "Item 1" followed by "Business" keyword (skips TOC entries)
+    const businessSection = extractSectionWithKeyword(
       fullText,
-      /item\s*1\b[^a]/i,
-      /item\s*1a\b/i,
+      // Start: "Item 1" followed by separator and "Business" keyword
+      /\bitem\s*1[:\.\s]*(?:[\.\s\-—:]+|[\s]+)business\b/i,
+      // End: "Item 1A" or "Item 1B" or "Part II"
+      /\bitem\s*1\s*a\b|\bitem\s*1\s*b\b|\bpart\s*ii\b/i,
       20000
     );
-    const riskFactors = extractSection(
+
+    // Item 1A Risk Factors - match "Item 1A" followed by "Risk" keyword
+    const riskFactors = extractSectionWithKeyword(
       fullText,
-      /item\s*1a\b/i,
-      /item\s*1b\b/i,
+      // Start: "Item 1A" followed by separator and "Risk" keyword
+      /\bitem\s*1\s*a[:\.\s]*(?:[\.\s\-—:]+|[\s]+)risk/i,
+      // End: "Item 1B" or "Item 2" or "Part II"
+      /\bitem\s*1\s*b\b|\bitem\s*2\b|\bpart\s*ii\b/i,
       20000
     );
-    const mdAndA = extractSection(
+
+    // Item 7 MD&A - match "Item 7" followed by "Management" keyword
+    const mdAndA = extractSectionWithKeyword(
       fullText,
-      /item\s*7\b[^a]/i,
-      /item\s*7a\b/i,
+      // Start: "Item 7" followed by separator and "Management" keyword
+      /\bitem\s*7[:\.\s]*(?:[\.\s\-—:]+|[\s]+)management/i,
+      // End: "Item 7A" or "Item 8"
+      /\bitem\s*7\s*a\b|\bitem\s*8\b/i,
+      20000
+    );
+
+    // Fallback to simpler patterns if keyword matching failed
+    const fallbackBusiness = businessSection || extractSection(
+      fullText,
+      /\bitem\s*1\b(?!\s*a)/i,
+      /\bitem\s*1\s*a\b/i,
+      20000
+    );
+
+    const fallbackRiskFactors = riskFactors || extractSection(
+      fullText,
+      /\bitem\s*1\s*a\b/i,
+      /\bitem\s*1\s*b\b|\bitem\s*2\b/i,
+      20000
+    );
+
+    const fallbackMdAndA = mdAndA || extractSection(
+      fullText,
+      /\bitem\s*7\b(?!\s*a)/i,
+      /\bitem\s*7\s*a\b|\bitem\s*8\b/i,
       20000
     );
 
     return {
-      business: businessSection || "Section not found",
-      riskFactors: riskFactors || "Section not found",
-      mdAndA: mdAndA || "Section not found",
+      business: fallbackBusiness || "Section not found",
+      riskFactors: fallbackRiskFactors || "Section not found",
+      mdAndA: fallbackMdAndA || "Section not found",
     };
   } catch (error) {
     console.error("Error extracting filing sections:", error);
@@ -352,6 +400,45 @@ export function extractFilingSections(htmlContent: string): FilingSections {
       mdAndA: "Extraction failed",
     };
   }
+}
+
+/**
+ * Extract section using a keyword-aware pattern that finds the actual section content
+ * (not table of contents entries)
+ */
+function extractSectionWithKeyword(
+  fullText: string,
+  startPattern: RegExp,
+  endPattern: RegExp,
+  maxChars: number
+): string | null {
+  // Find all matches of the start pattern
+  const matches: number[] = [];
+  let match: RegExpExecArray | null;
+  const globalPattern = new RegExp(startPattern.source, startPattern.flags + (startPattern.flags.includes('g') ? '' : 'g'));
+
+  while ((match = globalPattern.exec(fullText)) !== null) {
+    matches.push(match.index);
+  }
+
+  if (matches.length === 0) return null;
+
+  // Use the LAST match, which is more likely to be the actual section
+  // (table of contents entries come first in 10-Ks)
+  // But skip if it's too close to the end (might be an index)
+  let startIdx = matches[matches.length - 1];
+
+  // If there are multiple matches and the last one is near the end, use second-to-last
+  if (matches.length > 1 && startIdx > fullText.length * 0.9) {
+    startIdx = matches[matches.length - 2];
+  }
+
+  const textFromStart = fullText.substring(startIdx);
+  const endMatch = textFromStart.match(endPattern);
+  const endIdx = endMatch?.index || Math.min(textFromStart.length, maxChars * 2);
+
+  const sectionText = textFromStart.substring(0, endIdx);
+  return sectionText.substring(0, maxChars).trim();
 }
 
 /**
