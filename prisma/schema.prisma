@@ -265,9 +265,10 @@ model Opportunity {
   calendarEvents               CalendarEvent[]
   chatMessages                 ChatMessage[]
   contacts                     Contact[]
-  contactsReadyNotifications   ContactsReadyNotification[]
-  parsingCompleteNotifications ParsingCompleteNotification[] @relation("OpportunityParsingCompleteNotifications")
-  earningsTranscripts          EarningsCallTranscript[]
+  contactsReadyNotifications     ContactsReadyNotification[]
+  parsingCompleteNotifications   ParsingCompleteNotification[]   @relation("OpportunityParsingCompleteNotifications")
+  accountResearchNotification    AccountResearchNotification?    @relation("OpportunityAccountResearchNotification")
+  earningsTranscripts            EarningsCallTranscript[]
   gongCalls                  GongCall[]
   googleNotes                GoogleNote[]
   granolaNotes               GranolaNote[]
@@ -299,9 +300,10 @@ model Organization {
   accounts                   Account[]
   comments                     Comment[]
   commentMentions              CommentMention[]
-  contactsReadyNotifications   ContactsReadyNotification[]
-  parsingCompleteNotifications ParsingCompleteNotification[]
-  contents                     Content[]
+  contactsReadyNotifications     ContactsReadyNotification[]
+  parsingCompleteNotifications   ParsingCompleteNotification[]
+  accountResearchNotifications   AccountResearchNotification[]
+  contents                       Content[]
   earningsTranscripts        EarningsCallTranscript[]
   invitations                Invitation[]
   kanbanViews                KanbanView[]
@@ -350,9 +352,10 @@ model User {
   resolvedComments           Comment[]                   @relation("ResolvedComments")
   mentions                   CommentMention[]            @relation("UserMentions")
   reactions                  CommentReaction[]           @relation("UserReactions")
-  contactsReadyNotifications   ContactsReadyNotification[]   @relation("ContactsReadyNotifications")
-  parsingCompleteNotifications ParsingCompleteNotification[] @relation("ParsingCompleteNotifications")
-  invitations                  Invitation[]
+  contactsReadyNotifications     ContactsReadyNotification[]     @relation("ContactsReadyNotifications")
+  parsingCompleteNotifications   ParsingCompleteNotification[]   @relation("ParsingCompleteNotifications")
+  accountResearchNotifications   AccountResearchNotification[]   @relation("AccountResearchNotifications")
+  invitations                    Invitation[]
   kanbanViews                  KanbanView[]
   mapsLastEdited               MutualActionPlan[]          @relation("MAPLastEditedBy")
   oauthTokens                OAuthToken[]
@@ -721,6 +724,31 @@ model ParsingCompleteNotification {
 
   @@unique([userId, gongCallId])
   @@unique([userId, granolaNoteId])
+  @@index([userId, organizationId, isRead])
+  @@index([userId, isRead, createdAt])
+  @@schema("opportunity_tracker")
+}
+
+model AccountResearchNotification {
+  id              String       @id @default(cuid())
+  userId          String
+  organizationId  String
+
+  // Metadata for display and navigation
+  opportunityId   String       @unique  // One notification per opportunity
+  opportunityName String
+  accountName     String
+
+  // Status
+  isRead          Boolean      @default(false)
+  readAt          DateTime?
+  createdAt       DateTime     @default(now())
+
+  // Relations
+  user            User         @relation("AccountResearchNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  opportunity     Opportunity  @relation("OpportunityAccountResearchNotification", fields: [opportunityId], references: [id], onDelete: Cascade)
+
   @@index([userId, organizationId, isRead])
   @@index([userId, isRead, createdAt])
   @@schema("opportunity_tracker")

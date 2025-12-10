@@ -115,6 +115,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
   const [researchStatus, setResearchStatus] = useState(opportunity.accountResearchStatus);
   const [isGeneratingBusinessCase, setIsGeneratingBusinessCase] = useState(false);
   const [businessCaseStatus, setBusinessCaseStatus] = useState(opportunity.businessCaseGenerationStatus);
+  const [businessCaseContent, setBusinessCaseContent] = useState(opportunity.businessCaseContent);
+  const [businessCaseQuestions, setBusinessCaseQuestions] = useState(opportunity.businessCaseQuestions);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [allGongCalls, setAllGongCalls] = useState<GongCall[]>(Array.isArray(opportunity.gongCalls) ? opportunity.gongCalls : []);
@@ -378,9 +380,11 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
         throw new Error(data.error || "Failed to generate business case");
       }
 
+      // Update local state with the generated content
+      setBusinessCaseContent(data.businessCase);
+      setBusinessCaseQuestions(data.questions || null);
       setBusinessCaseStatus("completed");
       toast.success("Business case generated successfully!");
-      router.refresh();
     } catch (error) {
       console.error("Error generating business case:", error);
       setBusinessCaseStatus("failed");
@@ -391,8 +395,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
   };
 
   const handleCopyBusinessCase = () => {
-    if (opportunity.businessCaseContent) {
-      navigator.clipboard.writeText(opportunity.businessCaseContent);
+    if (businessCaseContent) {
+      navigator.clipboard.writeText(businessCaseContent);
       toast.success("Business case copied to clipboard!");
     }
   };
@@ -809,7 +813,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
               <Separator />
 
               {/* Business Case Generator */}
-              <Collapsible defaultOpen={!!opportunity.businessCaseContent}>
+              <Collapsible defaultOpen={true}>
                 <Card className="border-2 shadow-md hover:shadow-lg transition-shadow">
                   <CollapsibleTrigger className="w-full group">
                     <CardHeader className="cursor-pointer hover:bg-muted/70 transition-all duration-200 py-5">
@@ -842,7 +846,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                             ? "Generating..."
                             : "Generate Business Case"}
                         </Button>
-                        {opportunity.businessCaseContent && (
+                        {businessCaseContent && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -857,8 +861,11 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                       {/* Business Case Content */}
                       <InlineMarkdownWithAI
                         label="Business Case Draft"
-                        value={opportunity.businessCaseContent || ""}
-                        onSave={async (value) => handleFieldUpdate("businessCaseContent", value)}
+                        value={businessCaseContent || ""}
+                        onSave={async (value) => {
+                          await handleFieldUpdate("businessCaseContent", value);
+                          setBusinessCaseContent(value);
+                        }}
                         placeholder={
                           businessCaseStatus === "generating"
                             ? "Generating business case with AI... This may take 20-60 seconds."
@@ -871,7 +878,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                       />
 
                       {/* Business Case Questions - separate section below */}
-                      {opportunity.businessCaseQuestions && (
+                      {businessCaseQuestions && (
                         <div className="pt-4 border-t">
                           <div className="flex items-center gap-2 mb-3">
                             <HelpCircle className="h-4 w-4 text-muted-foreground" />
@@ -882,8 +889,11 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                           </p>
                           <InlineMarkdownWithAI
                             label=""
-                            value={opportunity.businessCaseQuestions}
-                            onSave={async (value) => handleFieldUpdate("businessCaseQuestions", value)}
+                            value={businessCaseQuestions}
+                            onSave={async (value) => {
+                              await handleFieldUpdate("businessCaseQuestions", value);
+                              setBusinessCaseQuestions(value);
+                            }}
                             placeholder="Questions will appear here after generation..."
                             rows={8}
                             className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950"

@@ -14,10 +14,11 @@ import { cn } from "@/lib/utils";
 interface TimelineNodeProps {
   event: TimelineEvent;
   isSelected: boolean;
+  position?: 'top' | 'bottom';
   onClick: () => void;
 }
 
-export function TimelineNode({ event, isSelected, onClick }: TimelineNodeProps) {
+export function TimelineNode({ event, isSelected, position = 'bottom', onClick }: TimelineNodeProps) {
   // Check if calendar event has linked transcript
   const hasLinkedTranscript = event.linkedGongCall || event.linkedGranolaNote;
 
@@ -28,7 +29,10 @@ export function TimelineNode({ event, isSelected, onClick }: TimelineNodeProps) 
     : null;
 
   return (
-    <div className="flex flex-col items-center gap-2">
+    <div className={cn(
+      "flex items-center gap-2",
+      position === 'top' ? "flex-col-reverse" : "flex-col"
+    )}>
       {/* Card */}
       <Card
         className={cn(

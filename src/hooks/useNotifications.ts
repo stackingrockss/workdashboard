@@ -75,8 +75,22 @@ export interface ParsingCompleteNotification {
   readAt: string | null;
 }
 
+// Account research notification (AI research complete for new opportunity)
+export interface AccountResearchNotification {
+  id: string;
+  type: "account_research";
+  opportunityId: string;
+  opportunityName: string;
+  accountName: string;
+  researchStatus: string | null;
+  researchGeneratedAt: string | null;
+  isRead: boolean;
+  createdAt: string;
+  readAt: string | null;
+}
+
 // Union type for all notification types
-export type Notification = MentionNotification | ContactsReadyNotification | ParsingCompleteNotification;
+export type Notification = MentionNotification | ContactsReadyNotification | ParsingCompleteNotification | AccountResearchNotification;
 
 // Legacy type for backward compatibility
 export interface LegacyNotification {
@@ -94,10 +108,11 @@ interface UseNotificationsOptions {
   enableRealtime?: boolean; // Enable WebSocket-based real-time updates
   onContactsReadyClick?: (notification: ContactsReadyNotification) => void; // Handler for contact import clicks
   onParsingCompleteClick?: (notification: ParsingCompleteNotification) => void; // Handler for parsing complete clicks
+  onAccountResearchClick?: (notification: AccountResearchNotification) => void; // Handler for account research clicks
 }
 
 export function useNotifications(options: UseNotificationsOptions = {}) {
-  const { enabled = true, pollingInterval = 30000, enableRealtime = true, onContactsReadyClick, onParsingCompleteClick } = options;
+  const { enabled = true, pollingInterval = 30000, enableRealtime = true, onContactsReadyClick, onParsingCompleteClick, onAccountResearchClick } = options;
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -127,13 +142,14 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       setError(null);
 
       // Fetch all notification types in parallel
-      const [mentionsRes, contactsRes, parsingRes] = await Promise.all([
+      const [mentionsRes, contactsRes, parsingRes, researchRes] = await Promise.all([
         fetch("/api/v1/notifications/mentions?limit=10&includeRead=false"),
         fetch("/api/v1/notifications/contacts?limit=10&includeRead=false"),
         fetch("/api/v1/notifications/parsing-complete?limit=10&includeRead=false"),
+        fetch("/api/v1/notifications/account-research?limit=10&includeRead=false"),
       ]);
 
-      if (mentionsRes.status === 401 || contactsRes.status === 401 || parsingRes.status === 401) {
+      if (mentionsRes.status === 401 || contactsRes.status === 401 || parsingRes.status === 401 || researchRes.status === 401) {
         // Session expired - only redirect if not already on auth page
         if (typeof window !== "undefined" && !window.location.pathname.startsWith("/auth")) {
           window.location.href = "/auth/login";
@@ -144,6 +160,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       const mentionsData = mentionsRes.ok ? await mentionsRes.json() : { notifications: [], unreadCount: 0 };
       const contactsData = contactsRes.ok ? await contactsRes.json() : { notifications: [], unreadCount: 0 };
       const parsingData = parsingRes.ok ? await parsingRes.json() : { notifications: [], unreadCount: 0 };
+      const researchData = researchRes.ok ? await researchRes.json() : { notifications: [], unreadCount: 0 };
 
       // Transform mention notifications to include type
       const mentionNotifications: MentionNotification[] = (mentionsData.notifications || []).map(
@@ -159,13 +176,16 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       // Parsing complete notifications already have type from API
       const parsingNotifications: ParsingCompleteNotification[] = parsingData.notifications || [];
 
+      // Account research notifications already have type from API
+      const researchNotifications: AccountResearchNotification[] = researchData.notifications || [];
+
       // Merge and sort by createdAt (newest first)
-      const allNotifications: Notification[] = [...mentionNotifications, ...contactNotifications, ...parsingNotifications].sort(
+      const allNotifications: Notification[] = [...mentionNotifications, ...contactNotifications, ...parsingNotifications, ...researchNotifications].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 
       setNotifications(allNotifications);
-      setUnreadCount((mentionsData.unreadCount || 0) + (contactsData.unreadCount || 0) + (parsingData.unreadCount || 0));
+      setUnreadCount((mentionsData.unreadCount || 0) + (contactsData.unreadCount || 0) + (parsingData.unreadCount || 0) + (researchData.unreadCount || 0));
     } catch (err) {
       logError("fetch-notifications", err);
       setError(getErrorMessage(err, "Failed to fetch notifications"));
@@ -383,6 +403,49 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     [fetchNotificationByParsingId, onParsingCompleteClick, router]
   );
 
+  // Handle real-time account research complete event
+  const handleResearchComplete = useCallback(
+    async (data: {
+      notificationId: string;
+      opportunityId: string;
+      opportunityName: string;
+      accountName: string;
+    }) => {
+      // Optimistically increment unread count
+      setUnreadCount((prev) => prev + 1);
+
+      // Create notification object from event data
+      const newNotification: AccountResearchNotification = {
+        id: data.notificationId,
+        type: "account_research",
+        opportunityId: data.opportunityId,
+        opportunityName: data.opportunityName,
+        accountName: data.accountName,
+        researchStatus: "completed",
+        researchGeneratedAt: new Date().toISOString(),
+        isRead: false,
+        createdAt: new Date().toISOString(),
+        readAt: null,
+      };
+
+      // Add to notification list
+      setNotifications((prev) => [newNotification, ...prev]);
+
+      // Show toast notification
+      toast.info(`Account research ready for ${data.accountName}`, {
+        description: `Research for "${data.opportunityName}" is complete`,
+        action: {
+          label: "View",
+          onClick: () => {
+            handleNotificationClick(newNotification);
+          },
+        },
+        duration: 6000,
+      });
+    },
+    []
+  );
+
   // Mark mention notifications as read
   const markMentionsAsRead = useCallback(
     async (mentionIds: string[]) => {
@@ -440,6 +503,25 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
     []
   );
 
+  // Mark account research notifications as read
+  const markAccountResearchAsRead = useCallback(
+    async (notificationIds: string[]) => {
+      if (notificationIds.length === 0) return true;
+      try {
+        const response = await fetch("/api/v1/notifications/account-research", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notificationIds }),
+        });
+        return response.ok;
+      } catch (err) {
+        logError("mark-account-research-read", err);
+        return false;
+      }
+    },
+    []
+  );
+
   // Mark specific notifications as read (handles all types)
   const markAsRead = useCallback(
     async (ids: string[]) => {
@@ -453,14 +535,18 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       const parsingIds = notifications
         .filter((n) => n.type === "parsing_complete" && ids.includes(n.id))
         .map((n) => n.id);
+      const researchIds = notifications
+        .filter((n) => n.type === "account_research" && ids.includes(n.id))
+        .map((n) => n.id);
 
-      const [mentionsResult, contactsResult, parsingResult] = await Promise.all([
+      const [mentionsResult, contactsResult, parsingResult, researchResult] = await Promise.all([
         markMentionsAsRead(mentionIds),
         markContactsAsRead(contactIds),
         markParsingCompleteAsRead(parsingIds),
+        markAccountResearchAsRead(researchIds),
       ]);
 
-      if (mentionsResult && contactsResult && parsingResult) {
+      if (mentionsResult && contactsResult && parsingResult && researchResult) {
         // Update local state
         setNotifications((prev) =>
           prev.filter((notification) => !ids.includes(notification.id))
@@ -471,7 +557,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
 
       return false;
     },
-    [notifications, markMentionsAsRead, markContactsAsRead, markParsingCompleteAsRead]
+    [notifications, markMentionsAsRead, markContactsAsRead, markParsingCompleteAsRead, markAccountResearchAsRead]
   );
 
   // Mark all notifications as read
@@ -503,6 +589,14 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
           // Fallback: navigate to opportunity
           router.push(`/opportunities/${notification.opportunityId}`);
         }
+      } else if (notification.type === "account_research") {
+        // For account research notifications, call the custom handler if provided
+        if (onAccountResearchClick) {
+          onAccountResearchClick(notification);
+        } else {
+          // Fallback: navigate to opportunity
+          router.push(`/opportunities/${notification.opportunityId}`);
+        }
       } else {
         // For mention notifications, navigate to the comment
         const { entityType, entityId, pageContext } = notification.comment;
@@ -511,7 +605,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         router.push(url);
       }
     },
-    [markAsRead, router, onContactsReadyClick, onParsingCompleteClick]
+    [markAsRead, router, onContactsReadyClick, onParsingCompleteClick, onAccountResearchClick]
   );
 
   // Set up real-time subscription
@@ -525,6 +619,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
       onMentionCreated: handleMentionCreated,
       onContactsReady: handleContactsReady,
       onParsingComplete: handleParsingComplete,
+      onResearchComplete: handleResearchComplete,
       onConnected: () => {
         setIsConnected(true);
         console.log("✅ Real-time notifications connected");
@@ -549,7 +644,7 @@ export function useNotifications(options: UseNotificationsOptions = {}) {
         unsubscribeRef.current();
       }
     };
-  }, [enabled, enableRealtime, userId, handleMentionCreated, handleContactsReady, handleParsingComplete]);
+  }, [enabled, enableRealtime, userId, handleMentionCreated, handleContactsReady, handleParsingComplete, handleResearchComplete]);
 
   // Initial fetch
   useEffect(() => {

@@ -15,10 +15,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bell, CheckCheck, Inbox, AlertCircle } from "lucide-react";
-import { useNotifications, ContactsReadyNotification, MentionNotification, ParsingCompleteNotification } from "@/hooks/useNotifications";
+import { useNotifications, ContactsReadyNotification, MentionNotification, ParsingCompleteNotification, AccountResearchNotification } from "@/hooks/useNotifications";
 import { MentionNotificationItem } from "./MentionNotificationItem";
 import { ContactNotificationItem } from "./ContactNotificationItem";
 import { ParsingCompleteNotificationItem } from "./ParsingCompleteNotificationItem";
+import { AccountResearchNotificationItem } from "./AccountResearchNotificationItem";
 import { ContactImportDialog } from "@/components/contacts/ContactImportDialog";
 import { GongCallInsightsDialog } from "@/components/features/opportunities/gong-call-insights-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -177,6 +178,14 @@ export function NotificationDropdown() {
                     <ParsingCompleteNotificationItem
                       key={notification.id}
                       notification={notification}
+                      onClick={() => handleNotificationClick(notification)}
+                    />
+                  );
+                } else if (notification.type === "account_research") {
+                  return (
+                    <AccountResearchNotificationItem
+                      key={notification.id}
+                      notification={notification as AccountResearchNotification}
                       onClick={() => handleNotificationClick(notification)}
                     />
                   );

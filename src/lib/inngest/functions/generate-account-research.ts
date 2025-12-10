@@ -5,6 +5,7 @@ import { inngest } from "@/lib/inngest/client";
 import { generatePreMeetingNotes } from "@/lib/ai/meeting-notes";
 import { prisma } from "@/lib/db";
 import { AccountResearchStatus } from "@prisma/client";
+import { broadcastNotificationEvent } from "@/lib/realtime";
 
 /**
  * Event data for account research generation
@@ -59,15 +60,64 @@ export const generateAccountResearchJob = inngest.createFunction(
 
     // Step 3: Handle result and update opportunity
     if (result.success && result.fullBrief) {
-      await step.run("save-research-success", async () => {
-        await prisma.opportunity.update({
+      const updatedOpportunity = await step.run("save-research-success", async () => {
+        return await prisma.opportunity.update({
           where: { id: opportunityId },
           data: {
             accountResearch: result.fullBrief,
             accountResearchGeneratedAt: new Date(),
             accountResearchStatus: AccountResearchStatus.completed,
           },
+          select: {
+            id: true,
+            name: true,
+            ownerId: true,
+            organizationId: true,
+            accountName: true,
+          },
         });
+      });
+
+      // Step 4: Create notification and broadcast
+      await step.run("create-research-notification", async () => {
+        try {
+          // Check if notification already exists (idempotency)
+          const existingNotification = await prisma.accountResearchNotification.findUnique({
+            where: { opportunityId: opportunityId },
+          });
+
+          if (existingNotification) {
+            return { notificationCreated: false, reason: "notification already exists" };
+          }
+
+          // Create notification record
+          const notification = await prisma.accountResearchNotification.create({
+            data: {
+              userId: updatedOpportunity.ownerId,
+              organizationId: updatedOpportunity.organizationId,
+              opportunityId: updatedOpportunity.id,
+              opportunityName: updatedOpportunity.name,
+              accountName: updatedOpportunity.accountName || accountName,
+            },
+          });
+
+          // Broadcast real-time notification
+          await broadcastNotificationEvent(updatedOpportunity.ownerId, {
+            type: "research:complete",
+            payload: {
+              notificationId: notification.id,
+              opportunityId: updatedOpportunity.id,
+              opportunityName: updatedOpportunity.name,
+              accountName: updatedOpportunity.accountName || accountName,
+            },
+          });
+
+          return { notificationCreated: true, notificationId: notification.id };
+        } catch (error) {
+          // Log but don't fail the job if notification creation fails
+          console.error("Failed to create account research notification:", error);
+          return { notificationCreated: false, error: String(error) };
+        }
       });
 
       return {

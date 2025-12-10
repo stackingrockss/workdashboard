@@ -101,6 +101,11 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     lastConsolidatedAt: opportunityFromDB.lastConsolidatedAt?.toISOString() || undefined,
     consolidationCallCount: opportunityFromDB.consolidationCallCount || undefined,
     consolidationStatus: opportunityFromDB.consolidationStatus || undefined,
+    // Business Case generation fields
+    businessCaseContent: opportunityFromDB.businessCaseContent || undefined,
+    businessCaseQuestions: opportunityFromDB.businessCaseQuestions || undefined,
+    businessCaseGeneratedAt: opportunityFromDB.businessCaseGeneratedAt?.toISOString() || undefined,
+    businessCaseGenerationStatus: (opportunityFromDB.businessCaseGenerationStatus as "generating" | "completed" | "failed") || undefined,
     // Business Impact Proposal fields
     businessProposalContent: opportunityFromDB.businessProposalContent || undefined,
     businessProposalGeneratedAt: opportunityFromDB.businessProposalGeneratedAt?.toISOString() || undefined,
@@ -151,6 +156,12 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
       createdAt: note.createdAt.toISOString(),
       updatedAt: note.updatedAt.toISOString(),
     })),
+    // Next call date fields (auto-calculated or manual)
+    nextCallDate: opportunityFromDB.nextCallDate?.toISOString() || undefined,
+    nextCallDateSource: opportunityFromDB.nextCallDateSource || undefined,
+    nextCallDateManuallySet: opportunityFromDB.nextCallDateManuallySet || undefined,
+    nextCallDateLastCalculated: opportunityFromDB.nextCallDateLastCalculated?.toISOString() || undefined,
+    nextCallDateEventId: opportunityFromDB.nextCallDateEventId || undefined,
     createdAt: opportunityFromDB.createdAt.toISOString(),
     updatedAt: opportunityFromDB.updatedAt.toISOString(),
   };

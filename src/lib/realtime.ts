@@ -67,7 +67,7 @@ export function getNotificationChannelName(userId: string): string {
 export async function broadcastNotificationEvent(
   userId: string,
   event: {
-    type: "mention:created" | "contacts:ready" | "parsing:complete";
+    type: "mention:created" | "contacts:ready" | "parsing:complete" | "research:complete";
     payload: Record<string, unknown>;
   }
 ): Promise<void> {
@@ -119,6 +119,12 @@ export function subscribeToNotifications(
       opportunityName: string;
       callTitle: string;
     }) => void;
+    onResearchComplete?: (data: {
+      notificationId: string;
+      opportunityId: string;
+      opportunityName: string;
+      accountName: string;
+    }) => void;
     onConnected?: () => void;
     onDisconnected?: () => void;
     onError?: (error: Error) => void;
@@ -164,6 +170,17 @@ export function subscribeToNotifications(
           opportunityId: payload.opportunityId,
           opportunityName: payload.opportunityName,
           callTitle: payload.callTitle,
+        });
+      }
+    })
+    // Subscribe to account research complete events
+    .on("broadcast", { event: "research:complete" }, ({ payload }) => {
+      if (payload.userId === userId && callbacks.onResearchComplete) {
+        callbacks.onResearchComplete({
+          notificationId: payload.notificationId,
+          opportunityId: payload.opportunityId,
+          opportunityName: payload.opportunityName,
+          accountName: payload.accountName,
         });
       }
     })

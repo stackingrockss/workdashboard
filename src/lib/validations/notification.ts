@@ -59,3 +59,22 @@ export const parsingCompleteNotificationQuerySchema = z.object({
 });
 
 export type ParsingCompleteNotificationQueryInput = z.infer<typeof parsingCompleteNotificationQuerySchema>;
+
+/**
+ * Schema for marking account research notifications as read
+ */
+export const accountResearchNotificationMarkReadSchema = z.object({
+  notificationIds: z.array(z.string()).min(1, "At least one notification ID is required"),
+});
+
+export type AccountResearchNotificationMarkReadInput = z.infer<typeof accountResearchNotificationMarkReadSchema>;
+
+/**
+ * Schema for query parameters when fetching account research notifications
+ */
+export const accountResearchNotificationQuerySchema = z.object({
+  limit: z.coerce.number().int().positive().max(100).optional().default(10),
+  includeRead: z.coerce.boolean().optional().default(false),
+});
+
+export type AccountResearchNotificationQueryInput = z.infer<typeof accountResearchNotificationQuerySchema>;

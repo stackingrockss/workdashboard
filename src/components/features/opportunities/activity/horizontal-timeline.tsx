@@ -77,32 +77,33 @@ export function HorizontalTimeline({
     <div className="space-y-4">
       {/* Horizontal scrolling timeline */}
       <ScrollArea className="w-full">
-        <div className="relative pb-4">
-          {/* Timeline line */}
-          <div className="absolute bottom-[22px] left-0 right-0 h-0.5 bg-border" />
+        <div className="relative min-h-[220px]">
+          {/* Timeline line - centered vertically */}
+          <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 bg-border" />
 
           {/* Month groups */}
-          <div className="flex gap-8 px-4">
+          <div className="flex gap-8 px-4 h-full items-center pt-6">
             {monthEntries.map(([monthKey, monthEvents]) => (
-              <div key={monthKey} className="flex-shrink-0">
-                {/* Month header */}
-                <div className="mb-4">
+              <div key={monthKey} className="flex-shrink-0 relative">
+                {/* Month header - positioned at top */}
+                <div className="absolute -top-6 left-0">
                   <h3 className="text-sm font-semibold text-muted-foreground whitespace-nowrap">
                     {monthKey}
                   </h3>
                 </div>
 
-                {/* Events in this month */}
-                <div className="flex gap-3">
+                {/* Events in this month - staggered top/bottom */}
+                <div className="flex gap-3 items-center">
                   {monthEvents
                     .sort(
                       (a, b) =>
                         new Date(a.date).getTime() - new Date(b.date).getTime()
                     )
-                    .map((event) => (
+                    .map((event, index) => (
                       <TimelineNode
                         key={event.id}
                         event={event}
+                        position={index % 2 === 0 ? 'bottom' : 'top'}
                         isSelected={event.id === selectedEventId}
                         onClick={() =>
                           onSelectEvent(
@@ -135,22 +136,29 @@ export function HorizontalTimeline({
 function TimelineSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="flex gap-8 px-4">
-        {[1, 2, 3].map((month) => (
-          <div key={month} className="flex-shrink-0">
-            <Skeleton className="h-4 w-24 mb-4" />
-            <div className="flex gap-3">
-              {[1, 2].map((event) => (
-                <div key={event} className="flex flex-col items-center gap-2">
-                  <Skeleton className="w-[160px] h-[100px] rounded-lg" />
-                  <Skeleton className="w-3 h-3 rounded-full" />
-                </div>
-              ))}
+      <div className="relative min-h-[220px]">
+        {/* Timeline line skeleton */}
+        <Skeleton className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5" />
+
+        <div className="flex gap-8 px-4 h-full items-center pt-6">
+          {[1, 2, 3].map((month) => (
+            <div key={month} className="flex-shrink-0 relative">
+              <Skeleton className="absolute -top-6 left-0 h-4 w-24" />
+              <div className="flex gap-3 items-center">
+                {[1, 2].map((event, index) => (
+                  <div
+                    key={event}
+                    className={`flex items-center gap-2 ${index % 2 === 0 ? 'flex-col' : 'flex-col-reverse'}`}
+                  >
+                    <Skeleton className="w-[160px] h-[100px] rounded-lg" />
+                    <Skeleton className="w-3 h-3 rounded-full" />
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
-      <Skeleton className="h-0.5 w-full" />
     </div>
   );
 }

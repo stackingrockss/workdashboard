@@ -167,8 +167,12 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
 
         {opportunity.nextStep && (
           <div className="flex items-start gap-2 text-sm">
-            <ArrowRight size={16} className="mt-[2px] text-muted-foreground" />
-            <span className="line-clamp-3">{opportunity.nextStep}</span>
+            <ArrowRight size={16} className="mt-[2px] text-muted-foreground shrink-0" />
+            <ul className="space-y-0.5 min-w-0">
+              {opportunity.nextStep.split('\n').filter(Boolean).slice(0, 3).map((step, idx) => (
+                <li key={idx} className="truncate">• {step}</li>
+              ))}
+            </ul>
           </div>
         )}
 
