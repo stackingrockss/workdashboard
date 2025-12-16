@@ -16,17 +16,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Filter, LayoutGrid, Table } from "lucide-react";
+import { Plus, LayoutGrid, Table } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { ViewSelector } from "./ViewSelector";
 import { OpportunitiesListView } from "@/components/opportunities/OpportunitiesListView";
@@ -52,7 +45,6 @@ export function KanbanBoardWrapper({
   fiscalYearStartMonth = 1
 }: KanbanBoardWrapperProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [selectedQuarter, setSelectedQuarter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"board" | "list">("board");
 
@@ -106,44 +98,19 @@ export function KanbanBoardWrapper({
     return activeView.columns;
   }, [activeView, localOpportunities, fiscalYearStartMonth]);
 
-  // Filter columns based on selected quarter
-  const filteredColumns = useMemo(() => {
-    if (selectedQuarter !== "all") {
-      return displayColumns.filter((col: { title: string }) => col.title === selectedQuarter);
-    }
-    return displayColumns;
-  }, [displayColumns, selectedQuarter]);
-
-  // Get unique quarters from opportunities (for filter dropdown)
-  const quarters = useMemo(() => {
-    const uniqueQuarters = new Set<string>();
-    localOpportunities.forEach(opp => {
-      if (opp.quarter) {
-        uniqueQuarters.add(opp.quarter);
-      }
-    });
-    return Array.from(uniqueQuarters).sort();
-  }, [localOpportunities]);
-
-  // Filter opportunities based on quarter and search
+  // Filter opportunities based on search
   const filteredOpportunities = useMemo(() => {
+    if (!searchQuery) return localOpportunities;
+
+    const query = searchQuery.toLowerCase();
     return localOpportunities.filter(opp => {
-      if (selectedQuarter !== "all") {
-        if (opp.quarter !== selectedQuarter) return false;
-      }
-
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const accountName = opp.account?.name || opp.accountName || "";
-        return (
-          opp.name.toLowerCase().includes(query) ||
-          accountName.toLowerCase().includes(query)
-        );
-      }
-
-      return true;
+      const accountName = opp.account?.name || opp.accountName || "";
+      return (
+        opp.name.toLowerCase().includes(query) ||
+        accountName.toLowerCase().includes(query)
+      );
     });
-  }, [localOpportunities, selectedQuarter, searchQuery]);
+  }, [localOpportunities, searchQuery]);
 
   // Handle view selection
   const handleSelectView = (viewId: string) => {
@@ -337,20 +304,6 @@ export function KanbanBoardWrapper({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
-          <Select value={selectedQuarter} onValueChange={setSelectedQuarter}>
-            <SelectTrigger className="w-[180px]">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="All Quarters" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Quarters</SelectItem>
-              {quarters.map(quarter => (
-                <SelectItem key={quarter} value={quarter}>
-                  {quarter}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
 
         <div className="flex items-center gap-3">
@@ -384,7 +337,7 @@ export function KanbanBoardWrapper({
         <TabsContent value="board" className="mt-4">
           <KanbanBoard
             opportunities={filteredOpportunities}
-            columns={filteredColumns}
+            columns={displayColumns}
             onStageChange={handleStageChange}
             onColumnChange={handleColumnChange}
             isVirtualMode={true}

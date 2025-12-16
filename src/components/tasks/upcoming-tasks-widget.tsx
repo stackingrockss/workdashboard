@@ -375,17 +375,17 @@ export function UpcomingTasksWidget() {
 
         {/* Success state - grouped tasks */}
         {!loading && !notConnected && !error && filteredTasks.length > 0 && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {groupOrder.map((groupLabel) => {
               const groupTasks = groupedTasks[groupLabel];
               if (!groupTasks || groupTasks.length === 0) return null;
 
               return (
-                <div key={groupLabel} className="space-y-2">
+                <div key={groupLabel} className="space-y-1.5">
                   <h3 className="font-semibold text-sm text-muted-foreground">
                     {groupLabel}
                   </h3>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {groupTasks.map((task) => (
                       <TaskCard
                         key={task.id}

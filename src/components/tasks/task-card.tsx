@@ -84,47 +84,45 @@ export function TaskCard({ task, onComplete, onDueDateChange }: TaskCardProps) {
 
   return (
     <Card className="hover:border-primary/50 transition-colors">
-      <CardContent className="p-4">
-        <div className="space-y-3">
+      <CardContent className="p-3">
+        <div className="space-y-2">
           {/* Task title */}
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-sm line-clamp-2 flex-1">
-              {task.title}
-            </h3>
-          </div>
+          <h3 className="font-semibold text-sm line-clamp-2">
+            {task.title}
+          </h3>
 
-          {/* Due date and opportunity */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <InlineDueDateEditor
-              taskId={task.id}
-              listId={task.taskListId}
-              currentDue={task.due || null}
-              onDueChange={handleDueDateChange}
-              variant={getDueDateVariant(task.due)}
-            />
+          {/* Due date, opportunity, and quick action */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <InlineDueDateEditor
+                taskId={task.id}
+                listId={task.taskListId}
+                currentDue={task.due || null}
+                onDueChange={handleDueDateChange}
+                variant={getDueDateVariant(task.due)}
+              />
 
-            {task.opportunity && (
-              <Link href={`/opportunities/${task.opportunityId}`}>
-                <Badge
-                  variant="outline"
-                  className="hover:bg-accent cursor-pointer text-xs"
-                >
-                  {task.opportunity.name}
-                </Badge>
-              </Link>
-            )}
-          </div>
+              {task.opportunity && (
+                <Link href={`/opportunities/${task.opportunityId}`}>
+                  <Badge
+                    variant="outline"
+                    className="hover:bg-accent cursor-pointer text-xs truncate max-w-[120px]"
+                  >
+                    {task.opportunity.name}
+                  </Badge>
+                </Link>
+              )}
+            </div>
 
-          {/* Quick action */}
-          <div className="flex justify-end">
             <Button
               size="sm"
               variant="ghost"
+              className="h-7 px-2 flex-shrink-0"
               onClick={handleMarkComplete}
               disabled={isCompleting}
+              title="Mark Complete"
             >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              {isCompleting ? "Completing..." : "Mark Complete"}
+              <CheckCircle className="h-3.5 w-3.5" />
             </Button>
           </div>
         </div>

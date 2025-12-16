@@ -40,8 +40,13 @@ export function generateQuarterlyColumns(
   const currentAndFutureQuarters = getNextQuarters(DEFAULT_FUTURE_QUARTERS + 1, fiscalYearStartMonth); // +1 includes current
   const quarterSet = new Set<string>(currentAndFutureQuarters);
 
-  // Step 2: Find any past quarters that have opportunities
-  opportunities.forEach((opp) => {
+  // Step 2: Find any past quarters that have ACTIVE opportunities
+  // Filter out closed opportunities - they don't need to show in past due columns
+  const activeOpportunities = opportunities.filter(
+    (opp) => opp.stage !== "closedWon" && opp.stage !== "closedLost"
+  );
+
+  activeOpportunities.forEach((opp) => {
     if (opp.closeDate) {
       try {
         const quarter = getQuarterFromDate(new Date(opp.closeDate), fiscalYearStartMonth);
@@ -94,8 +99,8 @@ export function generateQuarterlyColumns(
     };
   });
 
-  // Add "Unassigned" column for opportunities without close dates
-  const hasUnassigned = opportunities.some((opp) => !opp.closeDate);
+  // Add "Unassigned" column for active opportunities without close dates
+  const hasUnassigned = activeOpportunities.some((opp) => !opp.closeDate);
   if (hasUnassigned) {
     columns.push({
       id: UNASSIGNED_QUARTER_ID,

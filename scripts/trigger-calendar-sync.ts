@@ -61,10 +61,13 @@ async function triggerSync() {
       },
     });
 
-    // Fetch events for the missing range (Sept 16 to Nov 24, 2025)
-    // But also include Aug 25 to Feb 2026 to be safe
-    const startDate = new Date('2025-08-25T00:00:00Z');
-    const endDate = new Date('2026-02-28T23:59:59Z');
+    // Fetch events based on the sync state time range
+    // Get sync state to use configured time range
+    const syncState = await prisma.calendarSyncState.findFirst({
+      where: { userId: user.id, provider: 'google' }
+    });
+    const startDate = syncState?.timeMin || new Date('2025-01-01T00:00:00Z');
+    const endDate = syncState?.timeMax || new Date('2026-03-31T23:59:59Z');
 
     console.log(`Fetching events from ${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}...\n`);
 
