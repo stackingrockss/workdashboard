@@ -4,9 +4,20 @@
 // Shows meeting details with linked Gong/Granola content
 // Gong insights auto-display with priority; Granola insights only shown when no Gong exists
 
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Phone,
   StickyNote,
@@ -19,8 +30,12 @@ import {
   AlertTriangle,
   Target,
   ListChecks,
+  MoreHorizontal,
+  Unlink,
+  ArrowRightLeft,
 } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
+import { toast } from "sonner";
 import type { TimelineEvent, PreselectedCalendarEvent, LinkedTranscriptSummary } from "@/types/timeline";
 
 interface TimelineDetailPanelProps {
@@ -28,6 +43,9 @@ interface TimelineDetailPanelProps {
   onClose: () => void;
   onAddGong?: (calendarEvent: PreselectedCalendarEvent) => void;
   onAddGranola?: (calendarEvent: PreselectedCalendarEvent) => void;
+  opportunityId?: string;
+  allEvents?: TimelineEvent[];
+  onRefresh?: () => void;
 }
 
 /**
@@ -99,11 +117,22 @@ function LinkedTranscriptInfo({
   event,
   onAddGong,
   onAddGranola,
+  opportunityId,
+  allEvents,
+  onRefresh,
 }: {
   event: TimelineEvent;
   onAddGong?: (calendarEvent: PreselectedCalendarEvent) => void;
   onAddGranola?: (calendarEvent: PreselectedCalendarEvent) => void;
+  opportunityId?: string;
+  allEvents?: TimelineEvent[];
+  onRefresh?: () => void;
 }) {
+  const [isUnlinkingGong, setIsUnlinkingGong] = useState(false);
+  const [isUnlinkingGranola, setIsUnlinkingGranola] = useState(false);
+  const [movingGongToEventId, setMovingGongToEventId] = useState<string | null>(null);
+  const [movingGranolaToEventId, setMovingGranolaToEventId] = useState<string | null>(null);
+
   const linkedGong = event.linkedGongCall;
   const linkedGranola = event.linkedGranolaNote;
 
@@ -112,6 +141,105 @@ function LinkedTranscriptInfo({
     id: event.id,
     title: event.title,
     startTime: event.date,
+  };
+
+  // Filter out current event from move options
+  const otherEvents = allEvents?.filter((e) => e.id !== event.id) || [];
+
+  // Handle unlink Gong call
+  const handleUnlinkGong = async () => {
+    if (!opportunityId || !linkedGong) return;
+    setIsUnlinkingGong(true);
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/gong-calls/${linkedGong.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ calendarEventId: null }),
+        }
+      );
+      if (!response.ok) throw new Error("Failed to unlink");
+      toast.success("Gong call unlinked from meeting");
+      onRefresh?.();
+    } catch (error) {
+      console.error("Failed to unlink Gong call:", error);
+      toast.error("Failed to unlink Gong call");
+    } finally {
+      setIsUnlinkingGong(false);
+    }
+  };
+
+  // Handle move Gong call to another meeting
+  const handleMoveGong = async (targetEventId: string) => {
+    if (!opportunityId || !linkedGong) return;
+    setMovingGongToEventId(targetEventId);
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/gong-calls/${linkedGong.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ calendarEventId: targetEventId }),
+        }
+      );
+      if (!response.ok) throw new Error("Failed to move");
+      toast.success("Gong call moved to another meeting");
+      onRefresh?.();
+    } catch (error) {
+      console.error("Failed to move Gong call:", error);
+      toast.error("Failed to move Gong call");
+    } finally {
+      setMovingGongToEventId(null);
+    }
+  };
+
+  // Handle unlink Granola note
+  const handleUnlinkGranola = async () => {
+    if (!opportunityId || !linkedGranola) return;
+    setIsUnlinkingGranola(true);
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/granola-notes/${linkedGranola.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ calendarEventId: null }),
+        }
+      );
+      if (!response.ok) throw new Error("Failed to unlink");
+      toast.success("Granola note unlinked from meeting");
+      onRefresh?.();
+    } catch (error) {
+      console.error("Failed to unlink Granola note:", error);
+      toast.error("Failed to unlink Granola note");
+    } finally {
+      setIsUnlinkingGranola(false);
+    }
+  };
+
+  // Handle move Granola note to another meeting
+  const handleMoveGranola = async (targetEventId: string) => {
+    if (!opportunityId || !linkedGranola) return;
+    setMovingGranolaToEventId(targetEventId);
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/granola-notes/${linkedGranola.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ calendarEventId: targetEventId }),
+        }
+      );
+      if (!response.ok) throw new Error("Failed to move");
+      toast.success("Granola note moved to another meeting");
+      onRefresh?.();
+    } catch (error) {
+      console.error("Failed to move Granola note:", error);
+      toast.error("Failed to move Granola note");
+    } finally {
+      setMovingGranolaToEventId(null);
+    }
   };
 
   // Helper to render parsing status badge
@@ -136,15 +264,70 @@ function LinkedTranscriptInfo({
     );
   };
 
+  // Check if we can show management actions
+  const canManage = opportunityId && onRefresh;
+
   // Show Gong insights with priority, Granola as fallback
   return (
     <div className="space-y-3">
       {/* Gong section - show linked or add button */}
       {linkedGong ? (
         <div className="rounded-lg border bg-blue-50 dark:bg-blue-950/30 p-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <Link2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span className="text-sm font-medium">Linked Gong Recording</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <span className="text-sm font-medium">Linked Gong Recording</span>
+            </div>
+            {canManage && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    disabled={isUnlinkingGong || !!movingGongToEventId}
+                  >
+                    {isUnlinkingGong || movingGongToEventId ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <MoreHorizontal className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">Actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleUnlinkGong}>
+                    <Unlink className="h-4 w-4 mr-2" />
+                    Unlink from Meeting
+                  </DropdownMenuItem>
+                  {otherEvents.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <ArrowRightLeft className="h-4 w-4 mr-2" />
+                          Move to...
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto">
+                          {otherEvents.map((targetEvent) => (
+                            <DropdownMenuItem
+                              key={targetEvent.id}
+                              onClick={() => handleMoveGong(targetEvent.id)}
+                            >
+                              <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+                              <span className="truncate">{targetEvent.title}</span>
+                              <span className="ml-2 text-xs text-muted-foreground flex-shrink-0">
+                                {formatDateShort(targetEvent.date.toString())}
+                              </span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -171,9 +354,61 @@ function LinkedTranscriptInfo({
       {/* Only auto-display Granola insights when there's no Gong (Gong takes priority) */}
       {linkedGranola ? (
         <div className="rounded-lg border bg-green-50 dark:bg-green-950/30 p-3 space-y-2">
-          <div className="flex items-center gap-2">
-            <Link2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <span className="text-sm font-medium">Linked Granola Note</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <span className="text-sm font-medium">Linked Granola Note</span>
+            </div>
+            {canManage && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0"
+                    disabled={isUnlinkingGranola || !!movingGranolaToEventId}
+                  >
+                    {isUnlinkingGranola || movingGranolaToEventId ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <MoreHorizontal className="h-4 w-4" />
+                    )}
+                    <span className="sr-only">Actions</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleUnlinkGranola}>
+                    <Unlink className="h-4 w-4 mr-2" />
+                    Unlink from Meeting
+                  </DropdownMenuItem>
+                  {otherEvents.length > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuSub>
+                        <DropdownMenuSubTrigger>
+                          <ArrowRightLeft className="h-4 w-4 mr-2" />
+                          Move to...
+                        </DropdownMenuSubTrigger>
+                        <DropdownMenuSubContent className="max-h-[300px] overflow-y-auto">
+                          {otherEvents.map((targetEvent) => (
+                            <DropdownMenuItem
+                              key={targetEvent.id}
+                              onClick={() => handleMoveGranola(targetEvent.id)}
+                            >
+                              <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+                              <span className="truncate">{targetEvent.title}</span>
+                              <span className="ml-2 text-xs text-muted-foreground flex-shrink-0">
+                                {formatDateShort(targetEvent.date.toString())}
+                              </span>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuSubContent>
+                      </DropdownMenuSub>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <StickyNote className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -204,6 +439,9 @@ export function TimelineDetailPanel({
   onClose,
   onAddGong,
   onAddGranola,
+  opportunityId,
+  allEvents,
+  onRefresh,
 }: TimelineDetailPanelProps) {
   return (
     <Card className="p-4 mt-4 animate-in slide-in-from-top-2 duration-200">
@@ -254,6 +492,9 @@ export function TimelineDetailPanel({
           event={event}
           onAddGong={onAddGong}
           onAddGranola={onAddGranola}
+          opportunityId={opportunityId}
+          allEvents={allEvents}
+          onRefresh={onRefresh}
         />
 
         {/* Source badge */}

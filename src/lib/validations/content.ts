@@ -13,6 +13,7 @@ export const contentCreateSchema = z.object({
     "webinar",
     "mutual_action_plan",
     "business_case",
+    "customers",
     "other",
   ]),
 });

@@ -290,6 +290,8 @@ export function ActivitySection({
         onAddGong={setAddGongCalendarEvent}
         onAddGranola={setAddGranolaCalendarEvent}
         isLoading={isLoading}
+        opportunityId={opportunityId}
+        onRefresh={fetchTimeline}
       />
 
       {/* Latest call insights - shown below timeline */}

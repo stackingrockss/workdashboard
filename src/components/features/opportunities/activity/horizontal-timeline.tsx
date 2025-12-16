@@ -19,6 +19,8 @@ interface HorizontalTimelineProps {
   onAddGong?: (calendarEvent: PreselectedCalendarEvent) => void;
   onAddGranola?: (calendarEvent: PreselectedCalendarEvent) => void;
   isLoading: boolean;
+  opportunityId?: string;
+  onRefresh?: () => void;
 }
 
 export function HorizontalTimeline({
@@ -29,6 +31,8 @@ export function HorizontalTimeline({
   onAddGong,
   onAddGranola,
   isLoading,
+  opportunityId,
+  onRefresh,
 }: HorizontalTimelineProps) {
   // Sort events oldest to newest (left to right)
   const sortedEvents = useMemo(() => {
@@ -127,6 +131,9 @@ export function HorizontalTimeline({
           onClose={() => onSelectEvent(null)}
           onAddGong={onAddGong}
           onAddGranola={onAddGranola}
+          opportunityId={opportunityId}
+          allEvents={events}
+          onRefresh={onRefresh}
         />
       )}
     </div>
