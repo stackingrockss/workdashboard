@@ -973,11 +973,6 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
             businessProposalContent={opportunity.businessProposalContent}
             businessProposalGeneratedAt={opportunity.businessProposalGeneratedAt}
             businessProposalGenerationStatus={opportunity.businessProposalGenerationStatus}
-            hasConsolidatedData={!!(
-              opportunity.consolidatedPainPoints?.length ||
-              opportunity.consolidatedGoals?.length ||
-              opportunity.consolidatedMetrics?.length
-            )}
             onFieldUpdate={handleFieldUpdate}
           />
         </TabsContent>
