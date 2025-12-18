@@ -59,7 +59,7 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
 
   return (
     <Card
-      className="cursor-pointer hover:shadow-md transition-shadow"
+      className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30 active:scale-[0.99]"
       onClick={() => onClick?.(opportunity.id)}
     >
       <CardContent className="p-4 space-y-3">

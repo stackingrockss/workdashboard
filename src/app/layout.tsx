@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
-import { MainNav } from "@/components/navigation/MainNav";
-import { UserMenu } from "@/components/navigation/UserMenu";
-import { NotificationDropdown } from "@/components/notifications/NotificationDropdown";
 import { CommentSidebarProvider } from "@/components/comments/CommentSidebarContext";
 import { CommentSidebarWrapper } from "@/components/comments/CommentSidebarWrapper";
+import { SidebarProvider } from "@/components/layout/SidebarContext";
+import { AppSidebar, MobileMenuTrigger } from "@/components/layout/AppSidebar";
+import { SidebarContent } from "@/components/layout/SidebarContent";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,21 +33,23 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <CommentSidebarProvider>
-          <header className="border-b">
-            <div className="mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
-              <Link href="/" className="font-semibold text-lg">DealVibes</Link>
-              <div className="flex items-center gap-6">
-                <MainNav />
-                <div className="flex items-center gap-2">
-                  <NotificationDropdown />
-                  <UserMenu />
-                </div>
-              </div>
+          <SidebarProvider>
+            <div className="sidebar-layout">
+              <AppSidebar />
+              <SidebarContent>
+                {/* Mobile header */}
+                <header className="md:hidden sticky top-0 z-30 flex items-center h-14 px-4 border-b bg-background">
+                  <MobileMenuTrigger />
+                  <Link href="/" className="ml-3 font-semibold text-lg">
+                    DealVibes
+                  </Link>
+                </header>
+                <main className="p-6">{children}</main>
+              </SidebarContent>
             </div>
-          </header>
-          <main className="mx-auto max-w-7xl px-6">{children}</main>
-          <CommentSidebarWrapper />
-          <Toaster position="top-right" richColors />
+            <CommentSidebarWrapper />
+            <Toaster position="top-right" richColors />
+          </SidebarProvider>
         </CommentSidebarProvider>
       </body>
     </html>

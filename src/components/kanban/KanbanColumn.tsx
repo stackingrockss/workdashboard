@@ -92,8 +92,11 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
 
   return (
     <>
-      <div className="flex flex-col bg-muted/30 rounded-lg border group" style={{ borderTopColor: column.color || undefined, borderTopWidth: column.color ? "3px" : undefined }}>
-        <div className="p-3 flex items-center justify-between gap-2">
+      <div
+        className="flex flex-col bg-background-subtle/50 dark:bg-background-subtle rounded-xl border border-border/50 group transition-colors"
+        style={{ borderTopColor: column.color || 'var(--primary)', borderTopWidth: "2px" }}
+      >
+        <div className="p-4 flex items-center justify-between gap-2">
           {isEditing ? (
             <div className="flex items-center gap-2 flex-1">
               <Input
@@ -117,12 +120,8 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
             <>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-medium">
+                  <h3 className="text-sm font-semibold tracking-tight">
                     {column.title}
-                    <span className="text-muted-foreground font-normal"> ({count})</span>
-                    {count > 0 && (
-                      <span className="text-emerald-600 dark:text-emerald-400 font-normal"> • {formatCurrencyCompact(totalArr)} ARR</span>
-                    )}
                   </h3>
                   {quarterStatus === "past" && (
                     <Badge variant="destructive" className="text-xs">
@@ -135,6 +134,14 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
                       <Sparkles className="h-3 w-3 mr-1" />
                       Current
                     </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-muted-foreground">{count} deals</span>
+                  {count > 0 && (
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      {formatCurrencyCompact(totalArr)} ARR
+                    </span>
                   )}
                 </div>
                 {column.subtitle && (
@@ -171,7 +178,7 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
             </>
           )}
         </div>
-      <Separator />
+      <Separator className="bg-border/30" />
       <ScrollArea className="h-[70vh] p-3">
         <div ref={setNodeRef} className="space-y-3 min-h-[200px]">
           {opportunities.map((opp) => (
@@ -182,8 +189,12 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
             />
           ))}
           {count === 0 && (
-            <div className="text-sm text-muted-foreground text-center py-6">
-              No opportunities
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mb-3">
+                <span className="text-muted-foreground text-lg">0</span>
+              </div>
+              <p className="text-sm text-muted-foreground">No opportunities</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">Drag deals here or create new ones</p>
             </div>
           )}
         </div>
