@@ -33,6 +33,7 @@ import {
   MoreHorizontal,
   Unlink,
   ArrowRightLeft,
+  ExternalLink,
 } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
 import { toast } from "sonner";
@@ -331,7 +332,15 @@ function LinkedTranscriptInfo({
           </div>
           <div className="flex items-center gap-2">
             <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            <span className="text-sm">{linkedGong.title}</span>
+            <a
+              href={linkedGong.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm hover:underline inline-flex items-center gap-1"
+            >
+              {linkedGong.title}
+              <ExternalLink className="h-3 w-3" />
+            </a>
             {renderParsingBadge(linkedGong.parsingStatus)}
           </div>
           {/* Auto-display Gong insights */}
@@ -412,7 +421,15 @@ function LinkedTranscriptInfo({
           </div>
           <div className="flex items-center gap-2">
             <StickyNote className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <span className="text-sm">{linkedGranola.title}</span>
+            <a
+              href={linkedGranola.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm hover:underline inline-flex items-center gap-1"
+            >
+              {linkedGranola.title}
+              <ExternalLink className="h-3 w-3" />
+            </a>
             {renderParsingBadge(linkedGranola.parsingStatus)}
           </div>
           {/* Only show Granola insights if no Gong call exists */}

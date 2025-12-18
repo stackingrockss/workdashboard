@@ -10,6 +10,7 @@ import type { CalendarEvent, CalendarEventSource, ParsingStatus, Prisma } from "
 export interface LinkedTranscriptSummary {
   id: string;
   title: string;
+  url: string;
   parsingStatus: ParsingStatus | null;
   hasInsights: boolean;
   painPoints: string[];
@@ -60,6 +61,7 @@ export type CalendarEventWithLinks = CalendarEvent & {
   gongCalls?: Array<{
     id: string;
     title: string;
+    url: string;
     parsingStatus: ParsingStatus | null;
     painPoints: Prisma.JsonValue;
     goals: Prisma.JsonValue;
@@ -68,6 +70,7 @@ export type CalendarEventWithLinks = CalendarEvent & {
   granolaNotes?: Array<{
     id: string;
     title: string;
+    url: string;
     parsingStatus: ParsingStatus | null;
     painPoints: Prisma.JsonValue;
     goals: Prisma.JsonValue;
@@ -119,6 +122,7 @@ export function calendarEventWithLinksToTimelineEvent(
       ? {
           id: linkedGong.id,
           title: linkedGong.title,
+          url: linkedGong.url,
           parsingStatus: linkedGong.parsingStatus,
           hasInsights: hasTranscriptInsights(linkedGong),
           painPoints: extractStringArray(linkedGong.painPoints),
@@ -130,6 +134,7 @@ export function calendarEventWithLinksToTimelineEvent(
       ? {
           id: linkedGranola.id,
           title: linkedGranola.title,
+          url: linkedGranola.url,
           parsingStatus: linkedGranola.parsingStatus,
           hasInsights: hasTranscriptInsights(linkedGranola),
           painPoints: extractStringArray(linkedGranola.painPoints),

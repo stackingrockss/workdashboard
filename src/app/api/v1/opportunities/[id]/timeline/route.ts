@@ -94,6 +94,7 @@ export async function GET(
           select: {
             id: true,
             title: true,
+            url: true,
             parsingStatus: true,
             painPoints: true,
             goals: true,
@@ -105,6 +106,7 @@ export async function GET(
           select: {
             id: true,
             title: true,
+            url: true,
             parsingStatus: true,
             painPoints: true,
             goals: true,
