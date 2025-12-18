@@ -23,6 +23,7 @@ function extractDomainFromWebsite(website: string): string | null {
 /**
  * Backfills calendar events that match an account's domain
  * Links unassociated calendar events to the account based on attendee email domains
+ * Also attempts to match to specific opportunities by title
  */
 async function backfillCalendarEventsForAccount(
   accountId: string,
@@ -45,15 +46,21 @@ async function backfillCalendarEventsForAccount(
     return 0;
   }
 
-  // Get all unassociated calendar events for org users
+  // Get all unassociated calendar events for org users (no accountId or no opportunityId)
   const unmatchedEvents = await prisma.calendarEvent.findMany({
     where: {
       userId: { in: userIds },
-      accountId: null,
+      OR: [
+        { accountId: null },
+        { opportunityId: null },
+      ],
     },
     select: {
       id: true,
+      summary: true,
       attendees: true,
+      accountId: true,
+      opportunityId: true,
     },
   });
 
@@ -69,7 +76,7 @@ async function backfillCalendarEventsForAccount(
     return 0;
   }
 
-  // Check if account has opportunities for linking
+  // Get account with opportunities for linking
   const accountWithOpps = await prisma.account.findUnique({
     where: { id: accountId },
     include: {
@@ -77,24 +84,46 @@ async function backfillCalendarEventsForAccount(
     },
   });
 
-  // Determine opportunityId to set (only if exactly 1 opportunity)
-  const opportunityId =
-    accountWithOpps?.opportunities.length === 1
-      ? accountWithOpps.opportunities[0].id
-      : null;
+  const opportunities = accountWithOpps?.opportunities || [];
+  let linkedCount = 0;
 
-  // Update all matching events
-  await prisma.calendarEvent.updateMany({
-    where: {
-      id: { in: matchingEvents.map((e) => e.id) },
-    },
-    data: {
-      accountId,
-      ...(opportunityId && { opportunityId }),
-    },
-  });
+  // Process each event individually to match to specific opportunity
+  for (const event of matchingEvents) {
+    let opportunityId: string | null = event.opportunityId;
 
-  return matchingEvents.length;
+    // Only try to match opportunity if not already set
+    if (!opportunityId && opportunities.length > 0) {
+      if (opportunities.length === 1) {
+        // Single opportunity - always link
+        opportunityId = opportunities[0].id;
+      } else {
+        // Multiple opportunities - try to match by title
+        const meetingTitle = (event.summary || "").toLowerCase();
+        const matchedOpp = opportunities.find(
+          (opp) =>
+            meetingTitle.includes(opp.name.toLowerCase()) ||
+            opp.name.toLowerCase().includes(meetingTitle)
+        );
+        if (matchedOpp) {
+          opportunityId = matchedOpp.id;
+        }
+      }
+    }
+
+    // Update if we have something new to set
+    if (!event.accountId || (!event.opportunityId && opportunityId)) {
+      await prisma.calendarEvent.update({
+        where: { id: event.id },
+        data: {
+          accountId: event.accountId || accountId,
+          ...(opportunityId && !event.opportunityId && { opportunityId }),
+        },
+      });
+      linkedCount++;
+    }
+  }
+
+  return linkedCount;
 }
 
 export async function GET(

@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { AccountForm } from "@/components/forms/account-form";
+import { AccountForm } from "@/components/forms/AccountForm";
 import { AccountCreateInput, AccountUpdateInput } from "@/lib/validations/account";
 import { toast } from "sonner";
 import { Building2, ExternalLink } from "lucide-react";

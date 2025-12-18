@@ -23,7 +23,7 @@ import { Plus, LayoutGrid, Table } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { ViewSelector } from "./ViewSelector";
 import { OpportunitiesListView } from "@/components/opportunities/OpportunitiesListView";
-import { OpportunityForm } from "@/components/forms/opportunity-form";
+import { OpportunityForm } from "@/components/forms/OpportunityForm";
 import { Opportunity, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory } from "@/types/opportunity";
 import { SerializedKanbanView } from "@/types/view";
 import { createOpportunity, updateOpportunity } from "@/lib/api/opportunities";

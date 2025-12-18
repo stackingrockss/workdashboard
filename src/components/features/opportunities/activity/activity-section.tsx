@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { HorizontalTimeline } from "./horizontal-timeline";
-import { AddManualMeetingDialog } from "@/components/calendar/add-manual-meeting-dialog";
+import { AddManualMeetingDialog } from "@/components/calendar/AddManualMeetingDialog";
 import { AddGongFromCalendarDialog } from "./add-gong-from-calendar-dialog";
 import { AddGranolaFromCalendarDialog } from "./add-granola-from-calendar-dialog";
 import {

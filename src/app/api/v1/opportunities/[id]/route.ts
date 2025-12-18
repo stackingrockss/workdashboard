@@ -6,6 +6,74 @@ import { getQuarterFromDate, parseISODateSafe } from "@/lib/utils/quarter";
 import { getDefaultConfidenceLevel, getDefaultForecastCategory, OpportunityStage } from "@/types/opportunity";
 import { mapPrismaOpportunityToOpportunity } from "@/lib/mappers/opportunity";
 
+/**
+ * Backfills calendar events that match an opportunity's domain
+ * Links unassociated calendar events to the opportunity based on attendee email domains
+ */
+async function backfillCalendarEventsForOpportunity(
+  opportunityId: string,
+  domain: string,
+  organizationId: string
+): Promise<number> {
+  // Normalize domain
+  const normalizedDomain = domain.toLowerCase().replace(/^www\./, "");
+
+  // Get all user IDs in the organization
+  const orgUsers = await prisma.user.findMany({
+    where: { organizationId },
+    select: { id: true },
+  });
+  const userIds = orgUsers.map((u) => u.id);
+
+  if (userIds.length === 0) {
+    return 0;
+  }
+
+  // Get all calendar events without opportunityId for org users
+  const unmatchedEvents = await prisma.calendarEvent.findMany({
+    where: {
+      userId: { in: userIds },
+      opportunityId: null,
+      attendees: { isEmpty: false },
+    },
+    select: {
+      id: true,
+      attendees: true,
+    },
+  });
+
+  // Filter events that have attendees matching the opportunity's domain
+  const matchingEvents = unmatchedEvents.filter((event) =>
+    event.attendees.some((email) => {
+      const emailDomain = email.split("@")[1]?.toLowerCase();
+      return emailDomain === normalizedDomain;
+    })
+  );
+
+  if (matchingEvents.length === 0) {
+    return 0;
+  }
+
+  // Get opportunity's accountId for linking
+  const opportunity = await prisma.opportunity.findUnique({
+    where: { id: opportunityId },
+    select: { accountId: true },
+  });
+
+  // Update all matching events
+  await prisma.calendarEvent.updateMany({
+    where: {
+      id: { in: matchingEvents.map((e) => e.id) },
+    },
+    data: {
+      opportunityId,
+      ...(opportunity?.accountId && { accountId: opportunity.accountId }),
+    },
+  });
+
+  return matchingEvents.length;
+}
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -255,9 +323,14 @@ export async function PATCH(
     // Business case content fields
     if (data.businessCaseContent !== undefined) updateData.businessCaseContent = data.businessCaseContent;
     if (data.businessCaseQuestions !== undefined) updateData.businessCaseQuestions = data.businessCaseQuestions;
+    // Domain field for calendar event matching
+    if (data.domain !== undefined) updateData.domain = data.domain;
     if (accountId) {
       updateData.accountId = accountId;
     }
+
+    // Check if domain is being changed for backfill trigger
+    const domainChanged = data.domain !== undefined && data.domain !== existingOpportunity.domain;
 
     const updated = await prisma.opportunity.update({
       where: { id },
@@ -267,8 +340,29 @@ export async function PATCH(
         account: true,
       },
     });
+
+    // Backfill calendar events if domain was added/changed
+    let calendarEventsLinked = 0;
+    if (domainChanged && updated.domain) {
+      try {
+        calendarEventsLinked = await backfillCalendarEventsForOpportunity(
+          updated.id,
+          updated.domain,
+          user.organization.id
+        );
+        if (calendarEventsLinked > 0) {
+          console.log(
+            `[Opportunity Update] Linked ${calendarEventsLinked} calendar events to opportunity ${updated.name}`
+          );
+        }
+      } catch (backfillError) {
+        // Log but don't fail opportunity update
+        console.error("[Opportunity Update] Calendar backfill failed:", backfillError);
+      }
+    }
+
     const opportunity = mapPrismaOpportunityToOpportunity(updated);
-    return NextResponse.json({ opportunity });
+    return NextResponse.json({ opportunity, calendarEventsLinked });
   } catch (error) {
     console.error(`[PATCH /api/v1/opportunities/${id}] Error:`, error);
     return NextResponse.json({ error: "Failed to update opportunity" }, { status: 500 });

@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Building2, FileSpreadsheet, Sparkles, Copy, HelpCircle, Briefcase } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
-import { OpportunityForm } from "@/components/forms/opportunity-form";
+import { OpportunityForm } from "@/components/forms/OpportunityForm";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
@@ -37,11 +37,11 @@ import {
   InlineCurrencyInput,
 } from "@/components/ui/inline-editable";
 import { InlineMarkdownWithAI } from "@/components/ui/inline-markdown";
-import { DecisionMakerSection } from "@/components/opportunity/DecisionMakerSection";
+import { DecisionMakerSection } from "@/components/opportunities/DecisionMakerSection";
 import { Contact } from "@/types/contact";
 import { ActivitySection } from "./activity/activity-section";
 import { ConsolidatedInsightsCard } from "./consolidated-insights-card";
-import { ChatWidget } from "@/components/chat/chat-widget";
+import { ChatWidget } from "@/components/chat/ChatWidget";
 import { SecFilingsSection } from "./sec-filings-section";
 import { EarningsTranscriptsSection } from "./earnings-transcripts-section";
 import { useCommentSidebar } from "@/components/comments/CommentSidebarContext";

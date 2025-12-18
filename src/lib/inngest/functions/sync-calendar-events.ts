@@ -175,11 +175,12 @@ async function matchEventToOpportunityAndAccount(
   event: CalendarEventData,
   emailToOpportunityMap: Map<string, string>,
   emailToAccountMap: Map<string, string>,
-  domainToAccountsMap: Map<string, Array<{ id: string; name: string; opportunities: Array<{ id: string; name: string }> }>>
-): Promise<{ opportunityId: string | null; accountId: string | null; matchedBy: 'contact' | 'domain' | null }> {
+  domainToAccountsMap: Map<string, Array<{ id: string; name: string; opportunities: Array<{ id: string; name: string; domain: string | null }> }>>,
+  domainToOpportunityMap: Map<string, { id: string; name: string; accountId: string | null }>
+): Promise<{ opportunityId: string | null; accountId: string | null; matchedBy: 'contact' | 'domain' | 'opportunity_domain' | null }> {
   let matchedOpportunityId: string | null = null;
   let matchedAccountId: string | null = null;
-  let matchedBy: 'contact' | 'domain' | null = null;
+  let matchedBy: 'contact' | 'domain' | 'opportunity_domain' | null = null;
 
   // Helper function to extract domain from email
   const extractDomain = (email: string): string | null => {
@@ -213,7 +214,36 @@ async function matchEventToOpportunityAndAccount(
     }
   }
 
-  // Strategy 2: Match by attendee email domain → account website domain
+  // Strategy 2: Match by attendee email domain → opportunity domain (direct match)
+  // This is the highest priority domain match - opportunity.domain field
+  if (!matchedOpportunityId) {
+    for (const attendeeEmail of event.attendees) {
+      const domain = extractDomain(attendeeEmail);
+      if (!domain) continue;
+
+      const baseDomain = extractBaseDomain(domain);
+      const domainsToTry = [domain];
+      if (baseDomain !== domain) {
+        domainsToTry.push(baseDomain);
+      }
+
+      for (const domainToMatch of domainsToTry) {
+        if (domainToOpportunityMap.has(domainToMatch)) {
+          const opp = domainToOpportunityMap.get(domainToMatch)!;
+          matchedOpportunityId = opp.id;
+          if (opp.accountId) {
+            matchedAccountId = opp.accountId;
+          }
+          matchedBy = 'opportunity_domain';
+          break;
+        }
+      }
+
+      if (matchedOpportunityId) break;
+    }
+  }
+
+  // Strategy 3: Match by attendee email domain → account website domain
   // Tries exact domain match first, then falls back to base domain matching
   if (!matchedOpportunityId && !matchedAccountId) {
     for (const attendeeEmail of event.attendees) {
@@ -228,7 +258,7 @@ async function matchEventToOpportunityAndAccount(
         domainsToTry.push(baseDomain);
       }
 
-      let matchedAccounts: Array<{ id: string; name: string; opportunities: Array<{ id: string; name: string }> }> | null = null;
+      let matchedAccounts: Array<{ id: string; name: string; opportunities: Array<{ id: string; name: string; domain: string | null }> }> | null = null;
 
       for (const domainToMatch of domainsToTry) {
         if (domainToAccountsMap.has(domainToMatch)) {
@@ -287,8 +317,23 @@ async function buildMatchingMaps(organizationId: string) {
         select: {
           id: true,
           name: true,
+          domain: true,
         },
       },
+    },
+  });
+
+  // Fetch all opportunities with domains (for direct domain-to-opportunity matching)
+  const opportunitiesWithDomains = await prisma.opportunity.findMany({
+    where: {
+      organizationId,
+      domain: { not: null },
+    },
+    select: {
+      id: true,
+      name: true,
+      domain: true,
+      accountId: true,
     },
   });
 
@@ -310,7 +355,8 @@ async function buildMatchingMaps(organizationId: string) {
   // Build lookup maps
   const emailToOpportunityMap = new Map<string, string>();
   const emailToAccountMap = new Map<string, string>();
-  const domainToAccountsMap = new Map<string, Array<{ id: string; name: string; opportunities: Array<{ id: string; name: string }> }>>();
+  const domainToAccountsMap = new Map<string, Array<{ id: string; name: string; opportunities: Array<{ id: string; name: string; domain: string | null }> }>>();
+  const domainToOpportunityMap = new Map<string, { id: string; name: string; accountId: string | null }>();
 
   // Map contact emails to opportunities/accounts
   for (const contact of allContacts) {
@@ -321,6 +367,21 @@ async function buildMatchingMaps(organizationId: string) {
       }
       if (contact.accountId) {
         emailToAccountMap.set(email, contact.accountId);
+      }
+    }
+  }
+
+  // Map opportunity domains directly to opportunities (highest priority for matching)
+  for (const opp of opportunitiesWithDomains) {
+    if (opp.domain) {
+      const normalizedDomain = opp.domain.toLowerCase().replace(/^www\./, '');
+      // Only set if not already mapped (first opportunity wins)
+      if (!domainToOpportunityMap.has(normalizedDomain)) {
+        domainToOpportunityMap.set(normalizedDomain, {
+          id: opp.id,
+          name: opp.name,
+          accountId: opp.accountId,
+        });
       }
     }
   }
@@ -357,7 +418,7 @@ async function buildMatchingMaps(organizationId: string) {
     }
   }
 
-  return { emailToOpportunityMap, emailToAccountMap, domainToAccountsMap };
+  return { emailToOpportunityMap, emailToAccountMap, domainToAccountsMap, domainToOpportunityMap };
 }
 
 /**
@@ -810,7 +871,7 @@ async function syncUserCalendar(userId: string): Promise<{
   }
 
   // Build matching maps
-  const { emailToOpportunityMap, emailToAccountMap, domainToAccountsMap } =
+  const { emailToOpportunityMap, emailToAccountMap, domainToAccountsMap, domainToOpportunityMap } =
     await buildMatchingMaps(user.organizationId);
 
   // Process events
@@ -862,11 +923,12 @@ async function syncUserCalendar(userId: string): Promise<{
         event,
         emailToOpportunityMap,
         emailToAccountMap,
-        domainToAccountsMap
+        domainToAccountsMap,
+        domainToOpportunityMap
       );
 
       if (matchedBy === 'contact') matchedByContact++;
-      if (matchedBy === 'domain') matchedByDomain++;
+      if (matchedBy === 'domain' || matchedBy === 'opportunity_domain') matchedByDomain++;
 
       // Upsert external event
       await prisma.calendarEvent.upsert({

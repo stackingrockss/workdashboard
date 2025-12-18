@@ -68,6 +68,16 @@ const baseOpportunitySchema = z.object({
   platformType: z.enum(["oem", "api", "isv"]).optional().nullable(),
   businessCaseStatus: z.enum(["not_started", "in_progress", "complete", "not_applicable"]).optional().nullable().default("not_started"),
   pinnedToWhiteboard: z.boolean().optional(),
+  // Domain for calendar event matching (e.g., "premera.com")
+  domain: z.string().max(255).optional().nullable().transform(val => {
+    if (!val) return null;
+    // Normalize: lowercase, remove protocol, www, and trailing slashes
+    let domain = val.toLowerCase().trim();
+    domain = domain.replace(/^https?:\/\//, '');
+    domain = domain.replace(/^www\./, '');
+    domain = domain.replace(/\/.*$/, '');
+    return domain || null;
+  }),
   painPointsHistory: z.string().optional(),
   goalsHistory: z.string().optional(),
   nextStepsHistory: z.string().optional(),

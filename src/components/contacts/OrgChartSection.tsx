@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Contact } from "@/types/contact";
 import { ContactCreateInput, ContactUpdateInput } from "@/lib/validations/contact";
-import { ContactForm } from "@/components/forms/contact-form";
+import { ContactForm } from "@/components/forms/ContactForm";
 import { ContactList } from "./ContactList";
 import { OrgChartView } from "./OrgChartView";
 import { Plus, List, Network } from "lucide-react";

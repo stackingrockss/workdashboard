@@ -215,6 +215,7 @@ model Opportunity {
   updatedAt                  DateTime                 @updatedAt
   accountId                  String?
   accountName                String?
+  domain                     String?                  // Domain for calendar event matching (e.g., "premera.com")
   quarter                    String?
   forecastCategory           ForecastCategory?
   notes                      String?
