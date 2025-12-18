@@ -185,7 +185,7 @@ ${transcript.competitiveLandscape}
   const isLinkedToCurrentOpportunity = transcript.opportunityId === currentOpportunityId;
 
   return (
-    <Card className="border-green-200 dark:border-green-900 bg-green-50/50 dark:bg-green-950/20">
+    <Card className="border-l-4 border-l-slate-400 dark:border-l-slate-600">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">

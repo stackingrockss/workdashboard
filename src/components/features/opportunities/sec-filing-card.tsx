@@ -141,7 +141,7 @@ ${filing.strategicInitiatives || ""}
   };
 
   return (
-    <Card className="border-purple-200 dark:border-purple-900 bg-purple-50/50 dark:bg-purple-950/20">
+    <Card className="border-l-4 border-l-slate-400 dark:border-l-slate-600">
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex-1">

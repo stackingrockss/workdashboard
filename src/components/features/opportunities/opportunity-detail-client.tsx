@@ -57,6 +57,7 @@ import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 import type { RiskAssessment } from "@/types/gong-call";
 import { MutualActionPlanTab } from "./map";
 import { BusinessProposalTab } from "./business-proposal-tab";
+import { AccountIntelSummaryCard } from "./account-intel-summary-card";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -753,6 +754,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
         <TabsContent value="account-intel" className="mt-4 space-y-6">
           {opportunity.account ? (
             <div className="space-y-6">
+              {/* Header */}
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">{opportunity.account.name}</h3>
@@ -767,178 +769,189 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                 )}
               </div>
 
-              {/* Account research with AI generation - Enhanced Collapsible */}
-              <Collapsible defaultOpen={true}>
-                <Card className="border-2 shadow-md hover:shadow-lg transition-shadow">
-                  <CollapsibleTrigger className="w-full group">
-                    <CardHeader className="cursor-pointer hover:bg-muted/70 transition-all duration-200 py-5">
-                      <CardTitle className="flex items-center justify-between text-lg">
-                        <div className="flex items-center gap-3">
-                          <span className="font-semibold">Account Research</span>
-                          <span className="text-xs text-muted-foreground font-normal group-data-[state=closed]:block group-data-[state=open]:hidden">
-                            Click to expand
-                          </span>
-                          <span className="text-xs text-muted-foreground font-normal group-data-[state=open]:block group-data-[state=closed]:hidden">
-                            Click to collapse
-                          </span>
-                        </div>
-                        <ChevronDown className="h-6 w-6 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                      </CardTitle>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0">
-                      <InlineMarkdownWithAI
-                        label=""
-                        value={opportunity.accountResearch || ""}
-                        onSave={async (value) => handleFieldUpdate("accountResearch", value)}
-                        placeholder={
-                          researchStatus === "generating"
-                            ? "Generating account research with AI... This may take 10-30 seconds."
-                            : researchStatus === "failed"
-                            ? "AI generation failed. Click 'Generate with Gemini' to retry."
-                            : "AI-powered account research and pre-meeting intelligence..."
-                        }
-                        rows={8}
-                        className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950"
-                        onGenerate={handleGenerateAccountResearch}
-                        isGenerating={isGeneratingResearch || researchStatus === "generating"}
-                        generateButtonLabel="Generate with Gemini"
-                      />
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
+              {/* Summary Card */}
+              <AccountIntelSummaryCard
+                hasAccountResearch={!!opportunity.accountResearch}
+                hasBusinessCase={!!businessCaseContent}
+                hasSecFilings={false}
+                hasEarningsTranscripts={false}
+                onScrollToSection={(sectionId) => {
+                  document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              />
 
-              <Separator />
-
-              {/* Business Case Generator */}
-              <Collapsible defaultOpen={true}>
-                <Card className="border-2 shadow-md hover:shadow-lg transition-shadow">
-                  <CollapsibleTrigger className="w-full group">
-                    <CardHeader className="cursor-pointer hover:bg-muted/70 transition-all duration-200 py-5">
-                      <CardTitle className="flex items-center justify-between text-lg">
-                        <div className="flex items-center gap-3">
-                          <span className="font-semibold">Business Case</span>
-                          <span className="text-xs text-muted-foreground font-normal group-data-[state=closed]:block group-data-[state=open]:hidden">
-                            Click to expand
-                          </span>
-                          <span className="text-xs text-muted-foreground font-normal group-data-[state=open]:block group-data-[state=closed]:hidden">
-                            Click to collapse
-                          </span>
-                        </div>
-                        <ChevronDown className="h-6 w-6 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                      </CardTitle>
-                    </CardHeader>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <CardContent className="pt-0 space-y-6">
-                      {/* Generate & Copy buttons */}
-                      <div className="flex justify-between items-center">
-                        <Button
-                          onClick={handleGenerateBusinessCase}
-                          disabled={isGeneratingBusinessCase || businessCaseStatus === "generating"}
-                          variant="default"
-                          size="sm"
-                        >
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          {isGeneratingBusinessCase || businessCaseStatus === "generating"
-                            ? "Generating..."
-                            : "Generate Business Case"}
-                        </Button>
-                        {businessCaseContent && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleCopyBusinessCase}
-                          >
-                            <Copy className="h-4 w-4 mr-2" />
-                            Copy
-                          </Button>
-                        )}
-                      </div>
-
-                      {/* Business Case Content */}
-                      <InlineMarkdownWithAI
-                        label="Business Case Draft"
-                        value={businessCaseContent || ""}
-                        onSave={async (value) => {
-                          await handleFieldUpdate("businessCaseContent", value);
-                          setBusinessCaseContent(value);
-                        }}
-                        placeholder={
-                          businessCaseStatus === "generating"
-                            ? "Generating business case with AI... This may take 20-60 seconds."
-                            : businessCaseStatus === "failed"
-                            ? "AI generation failed. Click 'Generate Business Case' to retry."
-                            : "Click 'Generate Business Case' to create an AI-powered draft based on prior business cases and opportunity context."
-                        }
-                        rows={12}
-                        className="border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950"
-                      />
-
-                      {/* Business Case Questions - separate section below */}
-                      {businessCaseQuestions && (
-                        <div className="pt-4 border-t">
-                          <div className="flex items-center gap-2 mb-3">
-                            <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                            <h4 className="font-semibold">Business Case Questions</h4>
-                          </div>
-                          <p className="text-sm text-muted-foreground mb-3">
-                            Questions to ask the customer to gather ROI data and quantify pain points.
-                          </p>
+              {/* Two-Column Grid Layout */}
+              <div className="grid gap-6 lg:grid-cols-2">
+                {/* Left Column: AI-Generated Content */}
+                <div className="space-y-4">
+                  {/* Account Research */}
+                  <Collapsible defaultOpen={true}>
+                    <Card id="account-research" className="border-l-4 border-l-blue-500">
+                      <CollapsibleTrigger className="w-full group">
+                        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
+                          <CardTitle className="flex items-center justify-between text-base">
+                            <span className="font-semibold">Account Research</span>
+                            <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                          </CardTitle>
+                        </CardHeader>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0">
                           <InlineMarkdownWithAI
                             label=""
-                            value={businessCaseQuestions}
-                            onSave={async (value) => {
-                              await handleFieldUpdate("businessCaseQuestions", value);
-                              setBusinessCaseQuestions(value);
-                            }}
-                            placeholder="Questions will appear here after generation..."
+                            value={opportunity.accountResearch || ""}
+                            onSave={async (value) => handleFieldUpdate("accountResearch", value)}
+                            placeholder={
+                              researchStatus === "generating"
+                                ? "Generating account research with AI... This may take 10-30 seconds."
+                                : researchStatus === "failed"
+                                ? "AI generation failed. Click 'Generate with Gemini' to retry."
+                                : "AI-powered account research and pre-meeting intelligence..."
+                            }
                             rows={8}
-                            className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950"
+                            onGenerate={handleGenerateAccountResearch}
+                            isGenerating={isGeneratingResearch || researchStatus === "generating"}
+                            generateButtonLabel="Generate with Gemini"
                           />
-                        </div>
-                      )}
-                    </CardContent>
-                  </CollapsibleContent>
-                </Card>
-              </Collapsible>
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
 
-              <Separator />
+                  {/* Business Case */}
+                  <Collapsible defaultOpen={true}>
+                    <Card id="business-case" className="border-l-4 border-l-blue-500">
+                      <CollapsibleTrigger className="w-full group">
+                        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
+                          <CardTitle className="flex items-center justify-between text-base">
+                            <span className="font-semibold">Business Case</span>
+                            <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                          </CardTitle>
+                        </CardHeader>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <CardContent className="pt-0 space-y-4">
+                          {/* Generate & Copy buttons */}
+                          <div className="flex justify-between items-center">
+                            <Button
+                              onClick={handleGenerateBusinessCase}
+                              disabled={isGeneratingBusinessCase || businessCaseStatus === "generating"}
+                              variant="default"
+                              size="sm"
+                            >
+                              <Sparkles className="h-4 w-4 mr-2" />
+                              {isGeneratingBusinessCase || businessCaseStatus === "generating"
+                                ? "Generating..."
+                                : "Generate Business Case"}
+                            </Button>
+                            {businessCaseContent && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCopyBusinessCase}
+                              >
+                                <Copy className="h-4 w-4 mr-2" />
+                                Copy
+                              </Button>
+                            )}
+                          </div>
 
-              {/* SEC Filings & Earnings Transcripts - Only for public companies (with ticker) */}
-              {opportunity.account.ticker ? (
-                <>
-                  <SecFilingsSection
-                    accountId={opportunity.account.id}
-                    accountTicker={opportunity.account.ticker}
-                    opportunityId={opportunity.id}
-                  />
+                          {/* Business Case Content */}
+                          <InlineMarkdownWithAI
+                            label="Business Case Draft"
+                            value={businessCaseContent || ""}
+                            onSave={async (value) => {
+                              await handleFieldUpdate("businessCaseContent", value);
+                              setBusinessCaseContent(value);
+                            }}
+                            placeholder={
+                              businessCaseStatus === "generating"
+                                ? "Generating business case with AI... This may take 20-60 seconds."
+                                : businessCaseStatus === "failed"
+                                ? "AI generation failed. Click 'Generate Business Case' to retry."
+                                : "Click 'Generate Business Case' to create an AI-powered draft based on prior business cases and opportunity context."
+                            }
+                            rows={12}
+                          />
+                        </CardContent>
+                      </CollapsibleContent>
+                    </Card>
+                  </Collapsible>
 
-                  <Separator />
+                  {/* Discovery Questions - Separate Card */}
+                  {businessCaseQuestions && (
+                    <Collapsible defaultOpen={false}>
+                      <Card className="border-l-4 border-l-blue-500">
+                        <CollapsibleTrigger className="w-full group">
+                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
+                            <CardTitle className="flex items-center justify-between text-base">
+                              <div className="flex items-center gap-2">
+                                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                <span className="font-semibold">Discovery Questions</span>
+                              </div>
+                              <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                            </CardTitle>
+                          </CardHeader>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <CardContent className="pt-0">
+                            <p className="text-sm text-muted-foreground mb-3">
+                              Questions to ask the customer to gather ROI data and quantify pain points.
+                            </p>
+                            <InlineMarkdownWithAI
+                              label=""
+                              value={businessCaseQuestions}
+                              onSave={async (value) => {
+                                await handleFieldUpdate("businessCaseQuestions", value);
+                                setBusinessCaseQuestions(value);
+                              }}
+                              placeholder="Questions will appear here after generation..."
+                              rows={8}
+                            />
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
+                  )}
+                </div>
 
-                  <EarningsTranscriptsSection
-                    accountId={opportunity.account.id}
-                    accountName={opportunity.account.name}
-                    accountTicker={opportunity.account.ticker}
-                    nextEarningsDate={opportunity.account.nextEarningsDate}
-                    lastEarningsSync={opportunity.account.lastEarningsSync}
-                    opportunityId={opportunity.id}
-                  />
-                </>
-              ) : (
-                <Card>
-                  <CardContent className="text-center py-8">
-                    <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                    <h3 className="font-medium mb-1">Private Company</h3>
-                    <p className="text-sm text-muted-foreground">
-                      SEC filings and earnings transcripts are only available for public companies.
-                      Select a public company from the search when creating an opportunity to enable these features.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
+                {/* Right Column: External Data Sources */}
+                <div className="space-y-4">
+                  {opportunity.account.ticker ? (
+                    <>
+                      <div id="sec-filings">
+                        <SecFilingsSection
+                          accountId={opportunity.account.id}
+                          accountTicker={opportunity.account.ticker}
+                          opportunityId={opportunity.id}
+                        />
+                      </div>
+
+                      <div id="earnings-transcripts">
+                        <EarningsTranscriptsSection
+                          accountId={opportunity.account.id}
+                          accountName={opportunity.account.name}
+                          accountTicker={opportunity.account.ticker}
+                          nextEarningsDate={opportunity.account.nextEarningsDate}
+                          lastEarningsSync={opportunity.account.lastEarningsSync}
+                          opportunityId={opportunity.id}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <Card className="border-l-4 border-l-slate-400 dark:border-l-slate-600">
+                      <CardContent className="text-center py-8">
+                        <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                        <h3 className="font-medium mb-1">Private Company</h3>
+                        <p className="text-sm text-muted-foreground">
+                          SEC filings and earnings transcripts are only available for public companies.
+                          Select a public company from the search when creating an opportunity to enable these features.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
             <Card>
