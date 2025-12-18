@@ -10,7 +10,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Sparkles, Copy, ChevronDown, Info, FileText } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Sparkles, Copy, ChevronDown, FileText, X, Plus } from "lucide-react";
 import { InlineMarkdownWithAI } from "@/components/ui/inline-markdown";
 import { formatDateShort } from "@/lib/format";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
@@ -21,7 +23,6 @@ interface BusinessProposalTabProps {
   businessProposalContent: string | null | undefined;
   businessProposalGeneratedAt: string | null | undefined;
   businessProposalGenerationStatus: string | null | undefined;
-  hasConsolidatedData: boolean;
   onFieldUpdate: (
     field: keyof OpportunityUpdateInput,
     value: string | number | null
@@ -33,13 +34,14 @@ export function BusinessProposalTab({
   businessProposalContent,
   businessProposalGeneratedAt,
   businessProposalGenerationStatus,
-  hasConsolidatedData,
   onFieldUpdate,
 }: BusinessProposalTabProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStatus, setGenerationStatus] = useState(
     businessProposalGenerationStatus
   );
+  const [showContextInput, setShowContextInput] = useState(false);
+  const [additionalContext, setAdditionalContext] = useState("");
   const router = useRouter();
 
   const handleGenerate = async () => {
@@ -49,7 +51,10 @@ export function BusinessProposalTab({
       const response = await fetch("/api/v1/ai/business-impact-proposal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ opportunityId }),
+        body: JSON.stringify({
+          opportunityId,
+          additionalContext: additionalContext.trim() || undefined,
+        }),
       });
 
       const data = await response.json();
@@ -59,6 +64,8 @@ export function BusinessProposalTab({
       }
 
       setGenerationStatus("completed");
+      setShowContextInput(false);
+      setAdditionalContext("");
       toast.success("Business Impact Proposal generated!");
       router.refresh();
     } catch (error) {
@@ -108,34 +115,6 @@ export function BusinessProposalTab({
 
   return (
     <div className="space-y-6">
-      {/* Info Banner */}
-      <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-        <CardContent className="py-4">
-          <div className="flex items-start gap-3">
-            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-            <div className="text-sm text-blue-800 dark:text-blue-200">
-              <p className="font-medium mb-1">About Business Impact Proposals</p>
-              <p>
-                This AI-generated document follows an 8-section executive template designed
-                for quick decision-making. It uses data from your call insights (pain points,
-                goals, metrics) to populate the proposal. Missing data will be marked with
-                <code className="mx-1 px-1 py-0.5 bg-blue-100 dark:bg-blue-900 rounded text-xs">
-                  [DATA NEEDED]
-                </code>
-                placeholders for you to fill in.
-              </p>
-              {!hasConsolidatedData && (
-                <p className="mt-2 text-amber-700 dark:text-amber-300">
-                  <strong>Tip:</strong> Parse some Gong call transcripts first to get better
-                  results. The AI uses consolidated pain points, goals, and metrics from your calls.
-                </p>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Main Proposal Card */}
       <Collapsible defaultOpen={true}>
         <Card className="border-2 shadow-md hover:shadow-lg transition-shadow">
           <CollapsibleTrigger className="w-full group">
@@ -157,19 +136,41 @@ export function BusinessProposalTab({
             <CardContent className="pt-0 space-y-4">
               {/* Action Buttons */}
               <div className="flex justify-between items-center">
-                <Button
-                  onClick={handleGenerate}
-                  disabled={isLoading}
-                  variant="default"
-                  size="sm"
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {isLoading
-                    ? "Generating..."
-                    : businessProposalContent
-                    ? "Regenerate Proposal"
-                    : "Generate Proposal"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={handleGenerate}
+                    disabled={isLoading}
+                    variant="default"
+                    size="sm"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isLoading
+                      ? "Generating..."
+                      : businessProposalContent
+                      ? "Regenerate Proposal"
+                      : "Generate Proposal"}
+                  </Button>
+                  {!isLoading && (
+                    <Button
+                      onClick={() => setShowContextInput(!showContextInput)}
+                      variant="ghost"
+                      size="sm"
+                      className="text-muted-foreground"
+                    >
+                      {showContextInput ? (
+                        <>
+                          <X className="h-4 w-4 mr-1" />
+                          Hide context
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add context
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
                 {businessProposalContent && (
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" onClick={handleCopyRichText}>
@@ -183,6 +184,27 @@ export function BusinessProposalTab({
                   </div>
                 )}
               </div>
+
+              {/* Additional Context Input */}
+              {showContextInput && (
+                <div className="space-y-2 p-4 rounded-lg border border-dashed border-muted-foreground/30 bg-muted/30">
+                  <Label htmlFor="additional-context" className="text-sm font-medium">
+                    Additional Context
+                  </Label>
+                  <Textarea
+                    id="additional-context"
+                    value={additionalContext}
+                    onChange={(e) => setAdditionalContext(e.target.value)}
+                    placeholder="Add any additional context for this proposal generation. For example: recent conversations, competitive intel, budget info, specific pain points to emphasize, or timing considerations..."
+                    rows={4}
+                    maxLength={5000}
+                    className="resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {additionalContext.length}/5000 characters
+                  </p>
+                </div>
+              )}
 
               {/* Proposal Content */}
               <InlineMarkdownWithAI

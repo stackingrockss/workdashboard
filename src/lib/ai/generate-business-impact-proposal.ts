@@ -40,6 +40,8 @@ export interface BusinessImpactProposalContext {
     title: string;
     body: string;
   } | null;
+  /** Optional additional context provided by the user at generation time */
+  additionalContext?: string | null;
 }
 
 /**
@@ -159,7 +161,7 @@ Leave this section with a placeholder for the sales rep to complete:
  * Build the prompt for Business Impact Proposal generation
  */
 function buildBusinessImpactProposalPrompt(context: BusinessImpactProposalContext): string {
-  const { opportunity, account, contacts, template } = context;
+  const { opportunity, account, contacts, template, additionalContext } = context;
 
   // Format pain points
   const painPointsText =
@@ -284,6 +286,8 @@ ${formatContactList(champions)}
 ${accountResearchText ? `## Account Research\n\n${accountResearchText}` : ""}
 
 ${templateSection}
+
+${additionalContext ? `## Additional Context from Sales Rep\n\nThe following additional context was provided for this proposal generation. Incorporate this information where relevant:\n\n${additionalContext}` : ""}
 
 ---
 

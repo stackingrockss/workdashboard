@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { opportunityId } = parsed.data;
+    const { opportunityId, additionalContext } = parsed.data;
 
     // Fetch opportunity with contacts and account (verify org access)
     const opportunity = await prisma.opportunity.findFirst({
@@ -129,6 +129,7 @@ export async function POST(req: NextRequest) {
             body: template.body!,
           }
         : null,
+      additionalContext: additionalContext || null,
     });
 
     // Save result
