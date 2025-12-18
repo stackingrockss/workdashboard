@@ -30,6 +30,7 @@ export function KanbanBoard({
   fiscalYearStartMonth = 1,
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [movingOpportunityId, setMovingOpportunityId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -110,68 +111,80 @@ export function KanbanBoard({
     const targetColumn = columns.find(col => col.id === newColumnId);
     if (!targetColumn) return; // Invalid drop target
 
-    if (isVirtualMode) {
-      // Determine which virtual mode we're in
-      if (newColumnId.startsWith("virtual-Q")) {
-        // Quarterly mode: Calculate new close date from virtual column
-        const newCloseDate = calculateCloseDateFromVirtualColumn(newColumnId, fiscalYearStartMonth);
+    // Set loading state
+    setMovingOpportunityId(opportunityId);
 
-        // Check if the opportunity is already in this quarter
-        const currentCloseDate = opportunity.closeDate ? new Date(opportunity.closeDate).toISOString() : null;
-        if (currentCloseDate === newCloseDate) return; // No change needed
+    try {
+      if (isVirtualMode) {
+        // Determine which virtual mode we're in
+        if (newColumnId.startsWith("virtual-Q")) {
+          // Quarterly mode: Calculate new close date from virtual column
+          const newCloseDate = calculateCloseDateFromVirtualColumn(newColumnId, fiscalYearStartMonth);
 
-        // Update close date (which will automatically update the quarter)
-        if (onColumnChange) {
-          await onColumnChange(opportunityId, newColumnId, newCloseDate);
+          // Check if the opportunity is already in this quarter
+          const currentCloseDate = opportunity.closeDate ? new Date(opportunity.closeDate).toISOString() : null;
+          if (currentCloseDate === newCloseDate) return; // No change needed
+
+          // Update close date (which will automatically update the quarter)
+          if (onColumnChange) {
+            await onColumnChange(opportunityId, newColumnId, newCloseDate);
+          }
+        } else if (newColumnId.startsWith("virtual-forecast-")) {
+          // Forecast Categories mode: Update forecast category
+          const newForecastCategory = columnIdToForecastCategory(newColumnId);
+          if (!newForecastCategory) return;
+
+          // Check if already in this category
+          if (opportunity.forecastCategory === newForecastCategory) return;
+
+          // Update forecast category via API
+          if (onColumnChange) {
+            await onColumnChange(opportunityId, newColumnId);
+          }
+        } else if (newColumnId.startsWith("virtual-stage-")) {
+          // Sales Stages mode: Update opportunity stage
+          const newStage = columnIdToStage(newColumnId);
+          if (!newStage) return;
+
+          // Check if already in this stage
+          if (opportunity.stage === newStage) return;
+
+          // Update stage via API
+          if (onColumnChange) {
+            await onColumnChange(opportunityId, newColumnId);
+          }
         }
-      } else if (newColumnId.startsWith("virtual-forecast-")) {
-        // Forecast Categories mode: Update forecast category
-        const newForecastCategory = columnIdToForecastCategory(newColumnId);
-        if (!newForecastCategory) return;
+      } else {
+        // Custom mode: Update columnId directly
+        // No change if already in this column
+        if (opportunity.columnId === newColumnId) return;
 
-        // Check if already in this category
-        if (opportunity.forecastCategory === newForecastCategory) return;
-
-        // Update forecast category via API
-        if (onColumnChange) {
-          await onColumnChange(opportunityId, newColumnId);
-        }
-      } else if (newColumnId.startsWith("virtual-stage-")) {
-        // Sales Stages mode: Update opportunity stage
-        const newStage = columnIdToStage(newColumnId);
-        if (!newStage) return;
-
-        // Check if already in this stage
-        if (opportunity.stage === newStage) return;
-
-        // Update stage via API
+        // Update columnId
         if (onColumnChange) {
           await onColumnChange(opportunityId, newColumnId);
         }
       }
-    } else {
-      // Custom mode: Update columnId directly
-      // No change if already in this column
-      if (opportunity.columnId === newColumnId) return;
-
-      // Update columnId
-      if (onColumnChange) {
-        await onColumnChange(opportunityId, newColumnId);
-      }
+    } finally {
+      setMovingOpportunityId(null);
     }
   }, [opportunities, columns, isVirtualMode, fiscalYearStartMonth, onColumnChange]);
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${Math.min(columns.length, 6)}, minmax(320px, 1fr))` }}>
+      <div
+        className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent lg:grid lg:overflow-visible lg:pb-0"
+        style={{ gridTemplateColumns: `repeat(${Math.min(columns.length, 6)}, minmax(320px, 1fr))` }}
+      >
         {columns.map((col) => (
-          <KanbanColumn
-            key={col.id}
-            column={col}
-            opportunities={grouped[col.id] || []}
-            onOpenOpportunity={handleOpen}
-            isVirtualMode={isVirtualMode}
-          />
+          <div key={col.id} className="flex-shrink-0 w-[85vw] snap-center sm:w-[45vw] lg:w-auto lg:flex-shrink">
+            <KanbanColumn
+              column={col}
+              opportunities={grouped[col.id] || []}
+              onOpenOpportunity={handleOpen}
+              isVirtualMode={isVirtualMode}
+              movingOpportunityId={movingOpportunityId}
+            />
+          </div>
         ))}
       </div>
       <DragOverlay>

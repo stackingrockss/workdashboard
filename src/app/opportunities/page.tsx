@@ -8,6 +8,9 @@ import { requireAuthOrRedirect } from "@/lib/auth";
 import { SerializedKanbanView } from "@/types/view";
 import { getAllBuiltInViews } from "@/lib/utils/built-in-views";
 import { getVisibleUserIds, isAdmin } from "@/lib/permissions";
+import { Target } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { formatCurrencyCompact } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -100,13 +103,41 @@ export default async function OpportunitiesPage() {
     updatedAt: opp.updatedAt.toISOString(),
   }));
 
+  // Calculate pipeline stats for header
+  const totalPipeline = opportunities
+    .filter((o) => !["closedWon", "closedLost"].includes(o.stage))
+    .reduce((sum, o) => sum + o.amountArr, 0);
+  const activeDeals = opportunities.filter(
+    (o) => !["closedWon", "closedLost"].includes(o.stage)
+  ).length;
+
   return (
     <div className="p-6">
-      <div className="mb-4">
-        <h1 className="text-2xl font-semibold tracking-tight">Opportunities</h1>
-        <p className="text-sm text-muted-foreground">
-          Track deals, next steps, and forecast across multiple views
-        </p>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Target className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Opportunities</h1>
+            <p className="text-sm text-muted-foreground">
+              Track deals, next steps, and forecast
+            </p>
+          </div>
+        </div>
+        <div className="hidden sm:flex items-center gap-6">
+          <div className="text-right">
+            <p className="text-xl font-semibold">{activeDeals}</p>
+            <p className="text-xs text-muted-foreground">Active Deals</p>
+          </div>
+          <Separator orientation="vertical" className="h-8" />
+          <div className="text-right">
+            <p className="text-xl font-semibold text-emerald-600" suppressHydrationWarning>
+              {formatCurrencyCompact(totalPipeline)}
+            </p>
+            <p className="text-xs text-muted-foreground">Pipeline</p>
+          </div>
+        </div>
       </div>
       <KanbanBoardWrapper
         opportunities={opportunities}

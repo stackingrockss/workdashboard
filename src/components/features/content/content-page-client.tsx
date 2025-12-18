@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -87,17 +86,24 @@ export function ContentPageClient({ initialContents }: ContentPageClientProps) {
     <div className="py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Content</h1>
-          <p className="text-muted-foreground">
-            Share valuable content with contacts between meetings
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <FileText className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Content</h1>
+            <p className="text-sm text-muted-foreground">
+              Share valuable content between meetings
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="text-sm">
-            {filteredContents.length}{" "}
-            {filteredContents.length === 1 ? "item" : "items"}
-          </Badge>
+        <div className="flex items-center gap-4">
+          <div className="hidden sm:block text-right">
+            <p className="text-xl font-semibold">{filteredContents.length}</p>
+            <p className="text-xs text-muted-foreground">
+              {filteredContents.length === 1 ? "Item" : "Items"}
+            </p>
+          </div>
           <Button onClick={() => setIsAddDialogOpen(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Content

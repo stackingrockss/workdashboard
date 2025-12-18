@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, LayoutGrid, Table } from "lucide-react";
+import { Plus, LayoutGrid, Table, Search } from "lucide-react";
 import { KanbanBoard } from "./KanbanBoard";
 import { ViewSelector } from "./ViewSelector";
 import { OpportunitiesListView } from "@/components/opportunities/OpportunitiesListView";
@@ -293,16 +293,15 @@ export function KanbanBoardWrapper({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <label className="sr-only" htmlFor="kanban-search">
-            Search opportunities
-          </label>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             id="kanban-search"
-            className="w-[260px]"
-            placeholder="Search by name or account"
+            className="w-[260px] pl-9"
+            placeholder="Search opportunities..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            aria-label="Search opportunities by name or account"
           />
         </div>
 

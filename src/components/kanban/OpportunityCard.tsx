@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Opportunity } from "@/types/opportunity";
-import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle, Pin, ExternalLink, CalendarClock } from "lucide-react";
+import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle, Pin, ExternalLink, CalendarClock, CheckCircle } from "lucide-react";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -57,9 +57,19 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick?.(opportunity.id);
+    }
+  };
+
   return (
     <Card
-      className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30 active:scale-[0.99]"
+      role="button"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      className="cursor-pointer transition-all duration-200 hover:shadow-md hover:border-primary/30 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       onClick={() => onClick?.(opportunity.id)}
     >
       <CardContent className="p-4 space-y-3">
@@ -130,8 +140,11 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
               {opportunity.forecastCategory && (
                 <Badge
                   variant={opportunity.forecastCategory === "commit" ? "default" : "outline"}
-                  className="text-center text-[10px]"
+                  className="text-center text-[10px] flex items-center gap-0.5"
                 >
+                  {opportunity.forecastCategory === "commit" && (
+                    <CheckCircle className="h-2.5 w-2.5" />
+                  )}
                   {FORECAST_LABELS[opportunity.forecastCategory]}
                 </Badge>
               )}
@@ -139,18 +152,18 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
           </div>
         </div>
 
-        <div className="flex items-center justify-between text-sm">
-          <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
-            <CircleDollarSign size={16} />
-            <span suppressHydrationWarning>{formatCurrencyCompact(opportunity.amountArr)} ARR</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-baseline gap-1">
+            <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400" suppressHydrationWarning>
+              {formatCurrencyCompact(opportunity.amountArr)}
+            </span>
+            <span className="text-xs text-muted-foreground">ARR</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <CalendarDays size={16} />
-              <span suppressHydrationWarning>{closeDate}</span>
-            </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <CalendarDays size={14} />
+            <span className="text-xs" suppressHydrationWarning>{closeDate}</span>
             {opportunity.riskNotes && (
-              <AlertTriangle size={16} className="text-yellow-600 dark:text-yellow-400" />
+              <AlertTriangle size={14} className="text-yellow-600 dark:text-yellow-400" />
             )}
           </div>
         </div>
@@ -166,13 +179,11 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
         )}
 
         {opportunity.nextStep && (
-          <div className="flex items-start gap-2 text-sm">
-            <ArrowRight size={16} className="mt-[2px] text-muted-foreground shrink-0" />
-            <ul className="space-y-0.5 min-w-0">
-              {opportunity.nextStep.split('\n').filter(Boolean).slice(0, 3).map((step, idx) => (
-                <li key={idx} className="truncate">• {step}</li>
-              ))}
-            </ul>
+          <div className="flex items-start gap-2 text-muted-foreground">
+            <ArrowRight size={14} className="mt-0.5 shrink-0" />
+            <p className="text-xs line-clamp-2 leading-relaxed">
+              {opportunity.nextStep.split('\n').filter(Boolean).slice(0, 2).join(' • ')}
+            </p>
           </div>
         )}
 

@@ -3,7 +3,8 @@ import { calculateDashboardStats } from "@/lib/stats";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatCurrencyCompact } from "@/lib/format";
-import { Target, DollarSign, Trophy } from "lucide-react";
+import { Target, DollarSign, Trophy, LayoutDashboard } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 import { UpcomingMeetingsWidget } from "@/components/calendar/UpcomingMeetingsWidget";
 import { UpcomingTasksWidget } from "@/components/tasks/UpcomingTasksWidget";
 import { requireAuthOrRedirect } from "@/lib/auth";
@@ -93,9 +94,29 @@ export default async function DashboardPage() {
 
   return (
     <div className="py-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your opportunities and key metrics</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <LayoutDashboard className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+            <p className="text-sm text-muted-foreground">Sales pipeline overview</p>
+          </div>
+        </div>
+        <div className="hidden sm:flex items-center gap-6">
+          <div className="text-right">
+            <p className="text-xl font-semibold">{stats.totalOpportunities}</p>
+            <p className="text-xs text-muted-foreground">Active Deals</p>
+          </div>
+          <Separator orientation="vertical" className="h-8" />
+          <div className="text-right">
+            <p className="text-xl font-semibold text-emerald-600" suppressHydrationWarning>
+              {formatCurrencyCompact(stats.totalValue)}
+            </p>
+            <p className="text-xs text-muted-foreground">Pipeline</p>
+          </div>
+        </div>
       </div>
 
       {/* Key Metrics */}

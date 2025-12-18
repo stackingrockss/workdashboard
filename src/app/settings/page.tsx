@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { UserSettingsTabs } from "@/components/features/settings/user-settings-tabs";
-import { Loader2 } from "lucide-react";
+import { Loader2, Settings } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -39,11 +39,16 @@ export default async function UserSettingsPage() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage your personal profile and integrations
-        </p>
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-primary/10">
+          <Settings className="h-6 w-6 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+          <p className="text-sm text-muted-foreground">
+            Manage your profile and integrations
+          </p>
+        </div>
       </div>
 
       <Suspense

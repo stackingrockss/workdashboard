@@ -483,34 +483,34 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
+        <TabsList className="flex w-full overflow-x-auto gap-1 scrollbar-none md:grid md:grid-cols-7">
+          <TabsTrigger value="overview" className="flex items-center gap-2 shrink-0">
             <LayoutDashboard className="h-4 w-4" />
-            Overview
+            <span className="hidden sm:inline">Overview</span>
           </TabsTrigger>
-          <TabsTrigger value="research" className="flex items-center gap-2">
+          <TabsTrigger value="research" className="flex items-center gap-2 shrink-0">
             <FileText className="h-4 w-4" />
-            Notes
+            <span className="hidden sm:inline">Notes</span>
           </TabsTrigger>
-          <TabsTrigger value="activity" className="flex items-center gap-2">
+          <TabsTrigger value="activity" className="flex items-center gap-2 shrink-0">
             <Clock className="h-4 w-4" />
-            Activity
+            <span className="hidden sm:inline">Activity</span>
           </TabsTrigger>
-          <TabsTrigger value="account-intel" className="flex items-center gap-2">
+          <TabsTrigger value="account-intel" className="flex items-center gap-2 shrink-0">
             <Target className="h-4 w-4" />
-            Account Intel
+            <span className="hidden sm:inline">Account Intel</span>
           </TabsTrigger>
-          <TabsTrigger value="contacts" className="flex items-center gap-2">
+          <TabsTrigger value="contacts" className="flex items-center gap-2 shrink-0">
             <Users className="h-4 w-4" />
-            Contacts
+            <span className="hidden sm:inline">Contacts</span>
           </TabsTrigger>
-          <TabsTrigger value="map" className="flex items-center gap-2">
+          <TabsTrigger value="map" className="flex items-center gap-2 shrink-0">
             <FileSpreadsheet className="h-4 w-4" />
-            MAP
+            <span className="hidden sm:inline">MAP</span>
           </TabsTrigger>
-          <TabsTrigger value="proposal" className="flex items-center gap-2">
+          <TabsTrigger value="proposal" className="flex items-center gap-2 shrink-0">
             <Briefcase className="h-4 w-4" />
-            Proposal
+            <span className="hidden sm:inline">Proposal</span>
           </TabsTrigger>
         </TabsList>
 
