@@ -19,6 +19,7 @@ import { generateAccountResearchJob } from "@/lib/inngest/functions/generate-acc
 import { recalculateNextCallDatesJob } from "@/lib/inngest/functions/recalculate-next-call-dates";
 import { generateMapJob } from "@/lib/inngest/functions/generate-map";
 import { syncGongCallsCron, syncGongCallsForOrg } from "@/lib/inngest/functions/sync-gong-calls";
+import { syncDatabaseBackupJob, fullDatabaseSyncJob } from "@/lib/inngest/functions/sync-database-backup";
 
 // Increase timeout for long-running AI jobs
 // Vercel Pro: 300s (5 min), Hobby: 60s max
@@ -48,6 +49,8 @@ export const { GET, POST, PUT } = serve({
     generateMapJob, // Mutual Action Plan generation
     syncGongCallsCron, // Gong calls sync (hourly cron)
     syncGongCallsForOrg, // Gong calls sync for single org (manual or scheduled)
+    syncDatabaseBackupJob, // CDC sync to backup database (every 12 hours)
+    fullDatabaseSyncJob, // Full database sync (manual trigger via event)
   ],
   signingKey: process.env.INNGEST_SIGNING_KEY,
 });

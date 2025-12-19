@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,13 +17,69 @@ import {
   ChevronRight,
   Sparkles,
   StickyNote,
+  Calendar,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { InlineTextarea } from "@/components/ui/inline-editable";
+import { Textarea } from "@/components/ui/textarea";
 import { ConsolidatedInsightsCard } from "./consolidated-insights-card";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { cn } from "@/lib/utils";
 import type { RiskAssessment } from "@/types/gong-call";
+
+// Parse date-prefixed insights into structured data
+interface ParsedInsightEntry {
+  date: string;
+  formattedDate: string;
+  items: string[];
+}
+
+function parseInsightsHistory(text: string): ParsedInsightEntry[] {
+  if (!text) return [];
+
+  const lines = text.split("\n");
+  const entries: ParsedInsightEntry[] = [];
+  let currentEntry: ParsedInsightEntry | null = null;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Skip the header line
+    if (trimmed.startsWith("--- Auto-generated")) continue;
+
+    // Check if line is a date (MM/DD/YYYY format)
+    const dateMatch = trimmed.match(/^(\d{2}\/\d{2}\/\d{4})$/);
+    if (dateMatch) {
+      if (currentEntry && currentEntry.items.length > 0) {
+        entries.push(currentEntry);
+      }
+      const [month, day, year] = dateMatch[1].split("/");
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      currentEntry = {
+        date: dateMatch[1],
+        formattedDate: date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+        items: [],
+      };
+    } else if (currentEntry && trimmed.startsWith("-")) {
+      // It's a bullet point
+      currentEntry.items.push(trimmed.substring(1).trim());
+    }
+  }
+
+  // Don't forget the last entry
+  if (currentEntry && currentEntry.items.length > 0) {
+    entries.push(currentEntry);
+  }
+
+  return entries;
+}
 
 interface NotesTabProps {
   opportunity: {
@@ -198,8 +254,9 @@ export function NotesTab({
                 icon={AlertCircle}
                 iconColor="text-orange-500"
                 bgColor="bg-orange-500/10"
-                borderColor="border-orange-200 dark:border-orange-800"
-                bgSurface="bg-orange-50/50 dark:bg-orange-950/30"
+                borderColor="border-orange-200 dark:border-orange-900/50"
+                bgSurface="bg-orange-50/50 dark:bg-orange-950/20"
+                accentColor="bg-orange-500"
                 title="Pain Points & Challenges"
                 description="Customer problems and friction points"
                 value={opportunity.painPointsHistory || ""}
@@ -212,8 +269,9 @@ export function NotesTab({
                 icon={Target}
                 iconColor="text-emerald-500"
                 bgColor="bg-emerald-500/10"
-                borderColor="border-emerald-200 dark:border-emerald-800"
-                bgSurface="bg-emerald-50/50 dark:bg-emerald-950/30"
+                borderColor="border-emerald-200 dark:border-emerald-900/50"
+                bgSurface="bg-emerald-50/50 dark:bg-emerald-950/20"
+                accentColor="bg-emerald-500"
                 title="Goals & Future State"
                 description="Customer objectives and desired outcomes"
                 value={opportunity.goalsHistory || ""}
@@ -226,8 +284,9 @@ export function NotesTab({
                 icon={ListChecks}
                 iconColor="text-blue-500"
                 bgColor="bg-blue-500/10"
-                borderColor="border-blue-200 dark:border-blue-800"
-                bgSurface="bg-blue-50/50 dark:bg-blue-950/30"
+                borderColor="border-blue-200 dark:border-blue-900/50"
+                bgSurface="bg-blue-50/50 dark:bg-blue-950/20"
+                accentColor="bg-blue-500"
                 title="Next Steps"
                 description="Action items and follow-ups"
                 value={opportunity.nextStepsHistory || ""}
@@ -248,6 +307,7 @@ interface InsightSectionProps {
   bgColor: string;
   borderColor: string;
   bgSurface: string;
+  accentColor: string;
   title: string;
   description: string;
   value: string;
@@ -261,31 +321,191 @@ function InsightSection({
   bgColor,
   borderColor,
   bgSurface,
+  accentColor,
   title,
   description,
   value,
   onSave,
   placeholder,
 }: InsightSectionProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(value);
+  const [isSaving, setIsSaving] = useState(false);
+  const [expandedDates, setExpandedDates] = useState<Set<string>>(new Set());
+
+  // Parse the text into structured entries
+  const parsedEntries = useMemo(() => parseInsightsHistory(value), [value]);
+  const hasContent = parsedEntries.length > 0;
+
+  // Auto-expand the first entry
+  useEffect(() => {
+    if (parsedEntries.length > 0 && expandedDates.size === 0) {
+      setExpandedDates(new Set([parsedEntries[0].date]));
+    }
+  }, [parsedEntries]);
+
+  const toggleDate = (date: string) => {
+    setExpandedDates((prev) => {
+      const next = new Set(prev);
+      if (next.has(date)) {
+        next.delete(date);
+      } else {
+        next.add(date);
+      }
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onSave(editValue || null);
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setEditValue(value);
+    setIsEditing(false);
+  };
+
   return (
-    <div className={cn("rounded-lg border p-4", borderColor, bgSurface)}>
-      <div className="flex items-start gap-3 mb-3">
-        <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg shrink-0", bgColor)}>
-          <Icon className={cn("h-4 w-4", iconColor)} />
+    <div className={cn("rounded-xl border overflow-hidden", borderColor)}>
+      {/* Header */}
+      <div className={cn("px-4 py-3 flex items-center justify-between", bgSurface)}>
+        <div className="flex items-center gap-3">
+          <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg shrink-0", bgColor)}>
+            <Icon className={cn("h-4 w-4", iconColor)} />
+          </div>
+          <div>
+            <h4 className="font-semibold text-sm">{title}</h4>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <h4 className="font-medium text-sm">{title}</h4>
-          <p className="text-xs text-muted-foreground">{description}</p>
+        <div className="flex items-center gap-2">
+          {hasContent && (
+            <Badge variant="secondary" className="text-xs">
+              {parsedEntries.length} {parsedEntries.length === 1 ? "call" : "calls"}
+            </Badge>
+          )}
+          {!isEditing ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setIsEditing(true)}
+            >
+              <Pencil className="h-3 w-3 mr-1" />
+              Edit
+            </Button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                onClick={handleCancel}
+                disabled={isSaving}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 w-7 p-0 text-green-600 hover:text-green-700"
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       </div>
-      <InlineTextarea
-        label=""
-        value={value}
-        onSave={onSave}
-        placeholder={placeholder}
-        rows={6}
-        className="bg-background/50 font-mono text-sm whitespace-pre-wrap"
-      />
+
+      {/* Content */}
+      <div className="bg-background">
+        {isEditing ? (
+          <div className="p-4">
+            <Textarea
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              placeholder={placeholder}
+              rows={12}
+              className="font-mono text-sm resize-none"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              Format: Date on its own line (MM/DD/YYYY), followed by bullet points starting with &quot;-&quot;
+            </p>
+          </div>
+        ) : hasContent ? (
+          <div className="divide-y divide-border">
+            {parsedEntries.map((entry) => {
+              const isExpanded = expandedDates.has(entry.date);
+              return (
+                <div key={entry.date} className="group">
+                  {/* Date Header - Clickable */}
+                  <button
+                    className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors text-left"
+                    onClick={() => toggleDate(entry.date)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-full shrink-0",
+                        "bg-muted/80 group-hover:bg-muted"
+                      )}>
+                        <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <span className="font-medium text-sm">{entry.formattedDate}</span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          {entry.items.length} {entry.items.length === 1 ? "insight" : "insights"}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 text-muted-foreground transition-transform",
+                        isExpanded && "rotate-180"
+                      )}
+                    />
+                  </button>
+
+                  {/* Items - Collapsible */}
+                  {isExpanded && (
+                    <div className="px-4 pb-4">
+                      <div className="ml-11 space-y-2">
+                        {entry.items.map((item, idx) => (
+                          <div
+                            key={idx}
+                            className={cn(
+                              "flex items-start gap-2 p-2.5 rounded-lg text-sm",
+                              "bg-muted/30 hover:bg-muted/50 transition-colors"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-1.5 h-1.5 rounded-full mt-1.5 shrink-0",
+                              accentColor
+                            )} />
+                            <span className="text-foreground/90 leading-relaxed">{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="px-4 py-8 text-center">
+            <Icon className={cn("h-8 w-8 mx-auto mb-2", iconColor, "opacity-30")} />
+            <p className="text-sm text-muted-foreground">{placeholder}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
