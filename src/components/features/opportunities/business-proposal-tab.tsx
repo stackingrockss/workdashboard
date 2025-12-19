@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Sparkles, Copy, ChevronDown, FileText, X, Plus } from "lucide-react";
+import { Sparkles, Copy, ChevronDown, FileText, X, Plus, HelpCircle } from "lucide-react";
 import { InlineMarkdownWithAI } from "@/components/ui/inline-markdown";
 import { formatDateShort } from "@/lib/format";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
@@ -23,6 +23,7 @@ interface BusinessProposalTabProps {
   businessProposalContent: string | null | undefined;
   businessProposalGeneratedAt: string | null | undefined;
   businessProposalGenerationStatus: string | null | undefined;
+  businessCaseQuestions?: string | null;
   onFieldUpdate: (
     field: keyof OpportunityUpdateInput,
     value: string | number | null
@@ -34,6 +35,7 @@ export function BusinessProposalTab({
   businessProposalContent,
   businessProposalGeneratedAt,
   businessProposalGenerationStatus,
+  businessCaseQuestions,
   onFieldUpdate,
 }: BusinessProposalTabProps) {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -222,11 +224,46 @@ export function BusinessProposalTab({
                 }
                 rows={20}
                 className="border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950"
+                useRichTextEditor={true}
               />
             </CardContent>
           </CollapsibleContent>
         </Card>
       </Collapsible>
+
+      {/* Discovery Questions */}
+      {businessCaseQuestions && (
+        <Collapsible defaultOpen={false}>
+          <Card className="border-l-4 border-l-blue-500">
+            <CollapsibleTrigger className="w-full group">
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
+                <CardTitle className="flex items-center justify-between text-base">
+                  <div className="flex items-center gap-2">
+                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-semibold">Discovery Questions</span>
+                  </div>
+                  <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                </CardTitle>
+              </CardHeader>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <CardContent className="pt-0">
+                <p className="text-sm text-muted-foreground mb-3">
+                  Questions to ask the customer to gather ROI data and quantify pain points.
+                </p>
+                <InlineMarkdownWithAI
+                  label=""
+                  value={businessCaseQuestions}
+                  onSave={async (value) => onFieldUpdate("businessCaseQuestions", value)}
+                  placeholder="Questions will appear here after generation..."
+                  rows={8}
+                  useRichTextEditor={true}
+                />
+              </CardContent>
+            </CollapsibleContent>
+          </Card>
+        </Collapsible>
+      )}
     </div>
   );
 }

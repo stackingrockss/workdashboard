@@ -13,6 +13,8 @@ This file imports specialized documentation for different aspects of the codebas
 
 **Reference Documentation** (not auto-imported, access when needed):
 - `.claude/reference/PROMPTS.md` - Ready-to-use prompts for common development tasks
+- `.claude/reference/AI_ARCHITECTURE.md` - AI/LLM integration architecture
+- `docs/` - User-facing setup guides (see `docs/README.md` for structure)
 
 ---
 
@@ -437,6 +439,11 @@ This project uses specialized subagents for different domains, located in `.clau
    - **Tools:** Read, Grep, Glob (read-only)
    - **Use cases:** "Review my changes", "Check this component before committing", "Review this PR", "Audit code quality"
 
+6. **ux-expert** - UX/UI design and accessibility specialist
+   - **Purpose:** Review accessibility (WCAG), visual consistency, responsive design, and sales CRM UX patterns
+   - **Tools:** Read, Grep, Glob (read-only)
+   - **Use cases:** "Review the Kanban accessibility", "Check responsive design", "Audit form UX", "Review dark mode consistency"
+
 ### Using Subagents
 
 **Automatic Delegation:** Claude Code automatically activates the appropriate subagent based on your request:
@@ -446,6 +453,7 @@ This project uses specialized subagents for different domains, located in `.clau
 "Set up Jest for this project" → testing-architect
 "Add a new field to Opportunity model" → database-expert
 "Review my changes before I commit" → code-reviewer
+"Check accessibility on the Kanban board" → ux-expert
 ```
 
 **Explicit Invocation:** Request a specific subagent directly:
@@ -455,6 +463,7 @@ This project uses specialized subagents for different domains, located in `.clau
 "Ask the testing-architect to generate OpportunityForm tests"
 "Use the database-expert to add a Note model"
 "Use the code-reviewer to check my OpportunityForm component"
+"Use the ux-expert to audit the form accessibility"
 ```
 
 **List Available Subagents:** Use `/agents` command to see all configured subagents

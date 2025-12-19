@@ -129,6 +129,7 @@ export default async function OpportunityDetailPage({ params }: OpportunityPageP
     gongCalls: (opportunityFromDB.gongCalls || []).map(call => ({
       id: call.id,
       opportunityId: call.opportunityId,
+      organizationId: call.organizationId,
       title: call.title,
       url: call.url,
       meetingDate: call.meetingDate.toISOString(),

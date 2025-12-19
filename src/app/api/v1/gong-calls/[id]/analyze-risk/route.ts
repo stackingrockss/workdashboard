@@ -50,6 +50,13 @@ export async function POST(
       );
     }
 
+    if (!call.opportunityId) {
+      return NextResponse.json(
+        { error: "Call has no linked opportunity" },
+        { status: 400 }
+      );
+    }
+
     // Run risk analysis
     console.log(`Running risk analysis for call ${id}: ${call.title}`);
     const result = await analyzeCallRisk(call.transcriptText);

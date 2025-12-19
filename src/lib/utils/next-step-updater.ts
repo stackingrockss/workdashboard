@@ -67,10 +67,10 @@ export async function updateOpportunityNextStep(
       latestNextSteps = extractNextSteps(latestGranola.nextSteps);
     }
 
-    // Join all next steps with newlines, or null if empty/no calls
+    // Format next steps as bullet points, or null if empty/no calls
     const nextStep =
       latestNextSteps && latestNextSteps.length > 0
-        ? latestNextSteps.join("\n")
+        ? latestNextSteps.map((step) => `• ${step}`).join("\n")
         : null;
 
     // Update opportunity

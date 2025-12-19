@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
+import { GongIntegrationCard } from "./gong-integration-card";
 
 const organizationSchema = z.object({
   name: z.string().min(1, "Organization name is required"),
@@ -418,6 +419,17 @@ export function OrganizationSettingsClient() {
           </form>
         </CardContent>
       </Card>
+
+      {/* Integrations Section */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-lg font-medium">Integrations</h3>
+          <p className="text-sm text-muted-foreground">
+            Connect external services to sync data automatically
+          </p>
+        </div>
+        <GongIntegrationCard />
+      </div>
     </div>
   );
 }

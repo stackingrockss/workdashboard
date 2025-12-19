@@ -57,7 +57,7 @@ const baseOpportunitySchema = z.object({
   columnId: z.string().optional().nullable(), // Support flexible column assignment
   forecastCategory: z.enum(["pipeline", "bestCase", "commit", "closedWon", "closedLost"]).optional().nullable().transform(val => val || "pipeline").default("pipeline"),
   riskNotes: z.string().max(2000).optional().nullable().transform(val => val === "" ? null : val),
-  notes: z.string().max(5000).optional().nullable().transform(val => val === "" ? null : val),
+  notes: z.string().max(100000).optional().nullable().transform(val => val === "" ? null : val), // Rich text notes
   accountResearch: z.string().max(50000).optional().nullable().transform(val => val === "" ? null : val),
   ownerId: z.string().optional().transform(val => val === "" ? undefined : val),
   // New fields from CSV

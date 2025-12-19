@@ -160,7 +160,8 @@ export interface Opportunity {
   }>;
   gongCalls?: Array<{
     id: string;
-    opportunityId: string;
+    opportunityId: string | null;
+    organizationId: string;
     title: string;
     url: string;
     meetingDate: string;

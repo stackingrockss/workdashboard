@@ -72,7 +72,8 @@ model Contact {
 
 model GongCall {
   id                         String                      @id @default(cuid())
-  opportunityId              String
+  opportunityId              String?                     // Optional for unlinked calls from Gong sync
+  organizationId             String                      // Required for multi-tenancy (unlinked calls)
   title                      String
   url                        String
   createdAt                  DateTime                    @default(now())
@@ -91,16 +92,31 @@ model GongCall {
   whyAndWhyNow               Json?                       // Array of business driver/urgency reasons: string[]
   quantifiableMetrics        Json?                       // Array of ROI/measurable outcomes: string[]
   calendarEventId            String?
+
+  // Gong API sync fields
+  gongCallId                 String?                     @unique // External Gong call ID for deduplication
+  gongUrl                    String?                     // Direct link to call in Gong app
+  duration                   Int?                        // Call duration in seconds
+  direction                  String?                     // 'Inbound' | 'Outbound' | 'Conference'
+  participants               Json?                       // Array of participant details from Gong
+  primaryParticipantEmail    String?                     // Main external participant email for matching
+  syncedAt                   DateTime?                   // When this call was synced from Gong
+  syncSource                 String?                     // 'manual' | 'auto'
+
   calendarEvent                CalendarEvent?              @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
   contactsReadyNotifications   ContactsReadyNotification[]
   parsingCompleteNotifications ParsingCompleteNotification[] @relation("GongCallParsingCompleteNotifications")
-  opportunity                  Opportunity                 @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  opportunity                  Opportunity?                @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  organization                 Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
+  @@index([organizationId])
   @@index([parsingStatus])
   @@index([calendarEventId])
   @@index([opportunityId, meetingDate])
   @@index([opportunityId, parsingStatus])
+  @@index([organizationId, syncedAt])
+  @@index([gongCallId])
   @@schema("opportunity_tracker")
 }
 
@@ -218,7 +234,7 @@ model Opportunity {
   domain                     String?                  // Domain for calendar event matching (e.g., "premera.com")
   quarter                    String?
   forecastCategory           ForecastCategory?
-  notes                      String?
+  notes                      String?                  @db.Text
   riskNotes                  String?
   columnId                   String?
   accountResearch            String?
@@ -306,6 +322,8 @@ model Organization {
   accountResearchNotifications   AccountResearchNotification[]
   contents                       Content[]
   earningsTranscripts        EarningsCallTranscript[]
+  gongCalls                  GongCall[]
+  gongIntegration            GongIntegration?
   invitations                Invitation[]
   kanbanViews                KanbanView[]
   mutualActionPlans          MutualActionPlan[]
@@ -328,6 +346,34 @@ model OrganizationSettings {
   updatedAt               DateTime     @updatedAt
   organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@schema("opportunity_tracker")
+}
+
+model GongIntegration {
+  id                   String       @id @default(cuid())
+  organizationId       String       @unique
+
+  // Encrypted API credentials (Basic Auth)
+  accessKey            String       // Encrypted Gong Access Key
+  accessKeySecret      String       // Encrypted Gong Access Key Secret
+
+  // Sync state tracking
+  lastSyncAt           DateTime?
+  lastSyncStatus       String?      // 'success' | 'failed' | 'in_progress'
+  lastSyncError        String?
+  syncCursor           String?      // ISO datetime for incremental sync (fromDateTime)
+
+  // Configuration
+  isEnabled            Boolean      @default(true)
+  syncIntervalMinutes  Int          @default(60)
+
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([isEnabled])
   @@schema("opportunity_tracker")
 }
 

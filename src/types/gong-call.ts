@@ -22,7 +22,8 @@ export type ParsingStatus = "pending" | "parsing" | "completed" | "failed";
 
 export interface GongCall {
   id: string;
-  opportunityId: string;
+  opportunityId: string | null; // Optional for unlinked calls from Gong sync
+  organizationId: string; // Required for multi-tenancy
   title: string;
   url: string;
   meetingDate: string; // ISO date string
@@ -44,4 +45,13 @@ export interface GongCall {
   parsingError?: string | null;
   // Calendar event association
   calendarEventId?: string | null;
+  // Gong API sync fields
+  gongCallId?: string | null; // External Gong call ID
+  gongUrl?: string | null; // Direct link to Gong
+  duration?: number | null; // Duration in seconds
+  direction?: string | null; // 'Inbound' | 'Outbound' | 'Conference'
+  participants?: unknown | null; // Participant details from Gong
+  primaryParticipantEmail?: string | null; // Main external email for matching
+  syncedAt?: string | null; // When synced from Gong
+  syncSource?: string | null; // 'manual' | 'auto'
 }

@@ -76,7 +76,7 @@ export const parseGongTranscriptJob = inngest.createFunction(
 
     // Step 5: Save parsed results to database
     const updatedCall = await step.run("save-parsed-results", async () => {
-      return await prisma.gongCall.update({
+      const call = await prisma.gongCall.update({
         where: { id: gongCallId },
         data: {
           painPoints: JSON.parse(JSON.stringify(parseResult.data!.painPoints)),
@@ -93,6 +93,13 @@ export const parseGongTranscriptJob = inngest.createFunction(
           opportunity: true,
         },
       });
+
+      // Ensure opportunity exists for downstream steps
+      if (!call.opportunity || !call.opportunityId) {
+        throw new Error("Cannot process call without linked opportunity");
+      }
+
+      return call as typeof call & { opportunity: NonNullable<typeof call.opportunity>; opportunityId: string };
     });
 
     // Step 6: Create notification for opportunity owner if contacts were found

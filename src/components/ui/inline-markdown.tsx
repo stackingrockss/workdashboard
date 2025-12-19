@@ -8,6 +8,7 @@ import { Pencil, X, Check, Loader2, Sparkles, Eye, Code } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 interface InlineMarkdownWithAIProps {
   label: string;
@@ -19,6 +20,8 @@ interface InlineMarkdownWithAIProps {
   onGenerate?: () => Promise<void>;
   isGenerating?: boolean;
   generateButtonLabel?: string;
+  /** Use rich text WYSIWYG editor instead of markdown textarea */
+  useRichTextEditor?: boolean;
 }
 
 export function InlineMarkdownWithAI({
@@ -31,6 +34,7 @@ export function InlineMarkdownWithAI({
   onGenerate,
   isGenerating = false,
   generateButtonLabel = "Generate with Gemini",
+  useRichTextEditor = false,
 }: InlineMarkdownWithAIProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value?.toString() || "");
@@ -214,6 +218,48 @@ export function InlineMarkdownWithAI({
     );
   }
 
+  // Rich text editor mode - no tabs needed, edit directly in WYSIWYG
+  if (useRichTextEditor) {
+    return (
+      <div className={cn("rounded-lg border p-4 border-primary", className)}>
+        {label && (
+          <div className="text-sm font-medium text-muted-foreground mb-3">{label}</div>
+        )}
+
+        <RichTextEditor
+          content={editValue}
+          onChange={setEditValue}
+          placeholder={placeholder}
+          disabled={isSaving}
+          className="min-h-[300px]"
+          editorClassName="min-h-[300px]"
+        />
+
+        <div className="flex items-center justify-end gap-2 mt-3">
+          <span className="text-xs text-muted-foreground mr-auto">
+            Edit directly above - formatting is applied automatically
+          </span>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={handleCancel}
+            disabled={isSaving}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Markdown textarea mode with Edit/Preview tabs
   return (
     <div className={cn("rounded-lg border p-4 border-primary", className)}>
       <div className="text-sm font-medium text-muted-foreground mb-3">{label}</div>

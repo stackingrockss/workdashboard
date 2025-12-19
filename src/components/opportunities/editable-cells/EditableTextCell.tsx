@@ -2,6 +2,11 @@
 
 import { EditableCell } from "../EditableCell";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface EditableTextCellProps {
   value: string | null | undefined;
@@ -9,6 +14,10 @@ interface EditableTextCellProps {
   className?: string;
   placeholder?: string;
   multiline?: boolean;
+  /** Maximum width for truncation (default: 200px) */
+  maxWidth?: number;
+  /** Character threshold to show tooltip (default: 30) */
+  tooltipThreshold?: number;
 }
 
 export function EditableTextCell({
@@ -17,19 +26,49 @@ export function EditableTextCell({
   className,
   placeholder = "Enter text...",
   multiline = false,
+  maxWidth = 200,
+  tooltipThreshold = 30,
 }: EditableTextCellProps) {
+  const displayValue = value || "";
+  const shouldShowTooltip = displayValue.length > tooltipThreshold;
+
+  const renderDisplayContent = (val: string) => {
+    const content = (
+      <span
+        className={multiline ? "line-clamp-2" : "truncate block"}
+        style={{ maxWidth: `${maxWidth}px` }}
+      >
+        {val || <span className="text-muted-foreground">-</span>}
+      </span>
+    );
+
+    if (shouldShowTooltip && val) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {content}
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            className="max-w-[300px] whitespace-pre-wrap text-sm"
+          >
+            {val}
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return content;
+  };
+
   return (
     <EditableCell
-      value={value || ""}
+      value={displayValue}
       onSave={async (newValue: string) => {
         await onSave(newValue.trim() || null);
       }}
       className={className}
-      renderDisplay={(val) => (
-        <span className={multiline ? "line-clamp-2" : "truncate block"}>
-          {val || <span className="text-muted-foreground">-</span>}
-        </span>
-      )}
+      renderDisplay={renderDisplayContent}
       renderEdit={({ value: editValue, onChange, onKeyDown }) =>
         multiline ? (
           <Textarea

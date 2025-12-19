@@ -142,6 +142,7 @@ export async function POST(
     // Create the call with optional transcript and calendar event association
     const call = await prisma.gongCall.create({
       data: {
+        organizationId: user.organization.id, // Required for multi-tenancy
         opportunityId: id,
         title: parsed.data.title,
         url: parsed.data.url,

@@ -45,7 +45,11 @@ export const analyzeCallRiskJob = inngest.createFunction(
         throw new Error(`GongCall ${gongCallId} has no transcript text`);
       }
 
-      return gongCall;
+      if (!gongCall.opportunityId) {
+        throw new Error(`GongCall ${gongCallId} has no linked opportunity`);
+      }
+
+      return gongCall as typeof gongCall & { opportunityId: string };
     });
 
     // Step 2: Analyze risk using AI

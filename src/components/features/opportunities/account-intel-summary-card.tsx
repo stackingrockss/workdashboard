@@ -1,13 +1,12 @@
 "use client";
 
-import { CheckCircle2, Circle, FileText, Briefcase, Building2, TrendingUp } from "lucide-react";
+import { CheckCircle2, Circle, FileText, Building2, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface AccountIntelSummaryCardProps {
   hasAccountResearch: boolean;
-  hasBusinessCase: boolean;
   hasSecFilings: boolean;
   hasEarningsTranscripts: boolean;
   onScrollToSection: (sectionId: string) => void;
@@ -45,7 +44,6 @@ function StatusItem({ label, isComplete, icon, sectionId, onScrollTo }: StatusIt
 
 export function AccountIntelSummaryCard({
   hasAccountResearch,
-  hasBusinessCase,
   hasSecFilings,
   hasEarningsTranscripts,
   onScrollToSection,
@@ -56,12 +54,6 @@ export function AccountIntelSummaryCard({
       isComplete: hasAccountResearch,
       icon: <FileText className="h-4 w-4" />,
       sectionId: "account-research",
-    },
-    {
-      label: "Business Case",
-      isComplete: hasBusinessCase,
-      icon: <Briefcase className="h-4 w-4" />,
-      sectionId: "business-case",
     },
     {
       label: "SEC Filings",

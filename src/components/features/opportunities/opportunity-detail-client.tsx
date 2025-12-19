@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Building2, FileSpreadsheet, Sparkles, Copy, HelpCircle, Briefcase } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Building2, FileSpreadsheet, Briefcase } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/OpportunityForm";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -58,6 +58,7 @@ import type { RiskAssessment } from "@/types/gong-call";
 import { MutualActionPlanTab } from "./map";
 import { BusinessProposalTab } from "./business-proposal-tab";
 import { AccountIntelSummaryCard } from "./account-intel-summary-card";
+import { NotesTab } from "./notes-tab";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -114,10 +115,6 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
   const [isDeleting, setIsDeleting] = useState(false);
   const [isGeneratingResearch, setIsGeneratingResearch] = useState(false);
   const [researchStatus, setResearchStatus] = useState(opportunity.accountResearchStatus);
-  const [isGeneratingBusinessCase, setIsGeneratingBusinessCase] = useState(false);
-  const [businessCaseStatus, setBusinessCaseStatus] = useState(opportunity.businessCaseGenerationStatus);
-  const [businessCaseContent, setBusinessCaseContent] = useState(opportunity.businessCaseContent);
-  const [businessCaseQuestions, setBusinessCaseQuestions] = useState(opportunity.businessCaseQuestions);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
   const [allGongCalls, setAllGongCalls] = useState<GongCall[]>(Array.isArray(opportunity.gongCalls) ? opportunity.gongCalls : []);
@@ -361,47 +358,6 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
     }
   };
 
-  const handleGenerateBusinessCase = async () => {
-    setIsGeneratingBusinessCase(true);
-    setBusinessCaseStatus("generating");
-    try {
-      const response = await fetch("/api/v1/ai/business-case", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          opportunityId: opportunity.id,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to generate business case");
-      }
-
-      // Update local state with the generated content
-      setBusinessCaseContent(data.businessCase);
-      setBusinessCaseQuestions(data.questions || null);
-      setBusinessCaseStatus("completed");
-      toast.success("Business case generated successfully!");
-    } catch (error) {
-      console.error("Error generating business case:", error);
-      setBusinessCaseStatus("failed");
-      toast.error(error instanceof Error ? error.message : "Failed to generate business case");
-    } finally {
-      setIsGeneratingBusinessCase(false);
-    }
-  };
-
-  const handleCopyBusinessCase = () => {
-    if (businessCaseContent) {
-      navigator.clipboard.writeText(businessCaseContent);
-      toast.success("Business case copied to clipboard!");
-    }
-  };
-
   // Callbacks for adding Gong/Granola calls from calendar events
   const handleAddGongCall = (event: CalendarEvent) => {
     setAddGongDialogEvent({
@@ -556,11 +512,12 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                   val ? forecastCategoryOptions.find(o => o.value === val)?.label || "" : "—"
                 }
               />
-              <InlineTextInput
-                label="Next step"
+              <InlineTextarea
+                label="Next steps"
                 value={opportunity.nextStep || ""}
                 onSave={async (value) => handleFieldUpdate("nextStep", value)}
                 placeholder="e.g. Schedule demo call"
+                rows={4}
                 className="md:col-span-2 lg:col-span-3"
               />
               <InlineDatePicker
@@ -662,84 +619,25 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
         </TabsContent>
 
         {/* Notes Tab */}
-        <TabsContent value="research" className="space-y-4 mt-4">
-          <div className="grid gap-4">
-            {/* Consolidated Insights (shown when 2+ calls parsed) */}
-            {opportunity.consolidatedPainPoints &&
-             opportunity.consolidatedGoals &&
-             opportunity.consolidatedRiskAssessment &&
-             opportunity.lastConsolidatedAt &&
-             opportunity.consolidationCallCount && (
-              <div className="mb-6">
-                <ConsolidatedInsightsCard
-                  opportunityId={opportunity.id}
-                  consolidatedPainPoints={opportunity.consolidatedPainPoints}
-                  consolidatedGoals={opportunity.consolidatedGoals}
-                  consolidatedRiskAssessment={opportunity.consolidatedRiskAssessment}
-                  consolidatedWhyAndWhyNow={opportunity.consolidatedWhyAndWhyNow ?? undefined}
-                  consolidatedMetrics={opportunity.consolidatedMetrics ?? undefined}
-                  lastConsolidatedAt={opportunity.lastConsolidatedAt}
-                  consolidationCallCount={opportunity.consolidationCallCount}
-                  onReconsolidate={() => router.refresh()}
-                />
-              </div>
-            )}
-
-            {/* Call Insights - Auto-generated from Gong transcripts */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-semibold">Call Insights</h3>
-                <span className="text-xs text-muted-foreground">
-                  Auto-generated from call transcripts (sorted by meeting date, newest first)
-                </span>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <AlertCircle className="h-4 w-4 text-orange-500" />
-                  <span>Pain Points & Challenges</span>
-                </div>
-                <InlineTextarea
-                  label=""
-                  value={opportunity.painPointsHistory || ""}
-                  onSave={async (value) => handleFieldUpdate("painPointsHistory", value)}
-                  placeholder="No pain points recorded yet. Add notes manually or parse Gong call transcripts."
-                  rows={8}
-                  className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950 font-mono text-sm whitespace-pre-wrap"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <Target className="h-4 w-4 text-green-500" />
-                  <span>Goals & Future State</span>
-                </div>
-                <InlineTextarea
-                  label=""
-                  value={opportunity.goalsHistory || ""}
-                  onSave={async (value) => handleFieldUpdate("goalsHistory", value)}
-                  placeholder="No goals recorded yet. Add notes manually or parse Gong call transcripts."
-                  rows={8}
-                  className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950 font-mono text-sm whitespace-pre-wrap"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <ListChecks className="h-4 w-4 text-blue-500" />
-                  <span>Next Steps</span>
-                </div>
-                <InlineTextarea
-                  label=""
-                  value={opportunity.nextStepsHistory || ""}
-                  onSave={async (value) => handleFieldUpdate("nextStepsHistory", value)}
-                  placeholder="No next steps recorded yet. Add notes manually or parse Gong call transcripts."
-                  rows={8}
-                  className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950 font-mono text-sm whitespace-pre-wrap"
-                />
-              </div>
-            </div>
-          </div>
+        <TabsContent value="research" className="mt-4">
+          <NotesTab
+            opportunity={{
+              id: opportunity.id,
+              notes: opportunity.notes,
+              painPointsHistory: opportunity.painPointsHistory,
+              goalsHistory: opportunity.goalsHistory,
+              nextStepsHistory: opportunity.nextStepsHistory,
+              consolidatedPainPoints: opportunity.consolidatedPainPoints,
+              consolidatedGoals: opportunity.consolidatedGoals,
+              consolidatedRiskAssessment: opportunity.consolidatedRiskAssessment,
+              consolidatedWhyAndWhyNow: opportunity.consolidatedWhyAndWhyNow,
+              consolidatedMetrics: opportunity.consolidatedMetrics,
+              lastConsolidatedAt: opportunity.lastConsolidatedAt,
+              consolidationCallCount: opportunity.consolidationCallCount,
+            }}
+            onFieldUpdate={handleFieldUpdate}
+            onReconsolidate={() => router.refresh()}
+          />
         </TabsContent>
 
         {/* Activity Tab - Horizontal Timeline */}
@@ -772,7 +670,6 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
               {/* Summary Card */}
               <AccountIntelSummaryCard
                 hasAccountResearch={!!opportunity.accountResearch}
-                hasBusinessCase={!!businessCaseContent}
                 hasSecFilings={false}
                 hasEarningsTranscripts={false}
                 onScrollToSection={(sectionId) => {
@@ -812,107 +709,13 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                             onGenerate={handleGenerateAccountResearch}
                             isGenerating={isGeneratingResearch || researchStatus === "generating"}
                             generateButtonLabel="Generate with Gemini"
+                            useRichTextEditor={true}
                           />
                         </CardContent>
                       </CollapsibleContent>
                     </Card>
                   </Collapsible>
 
-                  {/* Business Case */}
-                  <Collapsible defaultOpen={true}>
-                    <Card id="business-case" className="border-l-4 border-l-blue-500">
-                      <CollapsibleTrigger className="w-full group">
-                        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
-                          <CardTitle className="flex items-center justify-between text-base">
-                            <span className="font-semibold">Business Case</span>
-                            <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                          </CardTitle>
-                        </CardHeader>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <CardContent className="pt-0 space-y-4">
-                          {/* Generate & Copy buttons */}
-                          <div className="flex justify-between items-center">
-                            <Button
-                              onClick={handleGenerateBusinessCase}
-                              disabled={isGeneratingBusinessCase || businessCaseStatus === "generating"}
-                              variant="default"
-                              size="sm"
-                            >
-                              <Sparkles className="h-4 w-4 mr-2" />
-                              {isGeneratingBusinessCase || businessCaseStatus === "generating"
-                                ? "Generating..."
-                                : "Generate Business Case"}
-                            </Button>
-                            {businessCaseContent && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleCopyBusinessCase}
-                              >
-                                <Copy className="h-4 w-4 mr-2" />
-                                Copy
-                              </Button>
-                            )}
-                          </div>
-
-                          {/* Business Case Content */}
-                          <InlineMarkdownWithAI
-                            label="Business Case Draft"
-                            value={businessCaseContent || ""}
-                            onSave={async (value) => {
-                              await handleFieldUpdate("businessCaseContent", value);
-                              setBusinessCaseContent(value);
-                            }}
-                            placeholder={
-                              businessCaseStatus === "generating"
-                                ? "Generating business case with AI... This may take 20-60 seconds."
-                                : businessCaseStatus === "failed"
-                                ? "AI generation failed. Click 'Generate Business Case' to retry."
-                                : "Click 'Generate Business Case' to create an AI-powered draft based on prior business cases and opportunity context."
-                            }
-                            rows={12}
-                          />
-                        </CardContent>
-                      </CollapsibleContent>
-                    </Card>
-                  </Collapsible>
-
-                  {/* Discovery Questions - Separate Card */}
-                  {businessCaseQuestions && (
-                    <Collapsible defaultOpen={false}>
-                      <Card className="border-l-4 border-l-blue-500">
-                        <CollapsibleTrigger className="w-full group">
-                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
-                            <CardTitle className="flex items-center justify-between text-base">
-                              <div className="flex items-center gap-2">
-                                <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-semibold">Discovery Questions</span>
-                              </div>
-                              <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                            </CardTitle>
-                          </CardHeader>
-                        </CollapsibleTrigger>
-                        <CollapsibleContent>
-                          <CardContent className="pt-0">
-                            <p className="text-sm text-muted-foreground mb-3">
-                              Questions to ask the customer to gather ROI data and quantify pain points.
-                            </p>
-                            <InlineMarkdownWithAI
-                              label=""
-                              value={businessCaseQuestions}
-                              onSave={async (value) => {
-                                await handleFieldUpdate("businessCaseQuestions", value);
-                                setBusinessCaseQuestions(value);
-                              }}
-                              placeholder="Questions will appear here after generation..."
-                              rows={8}
-                            />
-                          </CardContent>
-                        </CollapsibleContent>
-                      </Card>
-                    </Collapsible>
-                  )}
                 </div>
 
                 {/* Right Column: External Data Sources */}
@@ -986,6 +789,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
             businessProposalContent={opportunity.businessProposalContent}
             businessProposalGeneratedAt={opportunity.businessProposalGeneratedAt}
             businessProposalGenerationStatus={opportunity.businessProposalGenerationStatus}
+            businessCaseQuestions={opportunity.businessCaseQuestions}
             onFieldUpdate={handleFieldUpdate}
           />
         </TabsContent>
