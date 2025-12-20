@@ -286,6 +286,7 @@ model Opportunity {
   parsingCompleteNotifications   ParsingCompleteNotification[]   @relation("OpportunityParsingCompleteNotifications")
   accountResearchNotification    AccountResearchNotification?    @relation("OpportunityAccountResearchNotification")
   earningsTranscripts            EarningsCallTranscript[]
+  documents                      Document[]
   generatedContents              GeneratedContent[]
   gongCalls                  GongCall[]
   googleNotes                GoogleNote[]
@@ -323,6 +324,7 @@ model Organization {
   accountResearchNotifications   AccountResearchNotification[]
   contents                       Content[]
   contentFrameworks              ContentFramework[]
+  documents                      Document[]
   generatedContents              GeneratedContent[]
   earningsTranscripts        EarningsCallTranscript[]
   gongCalls                  GongCall[]
@@ -399,6 +401,8 @@ model User {
   chatMessages               ChatMessage[]
   authoredComments           Comment[]                   @relation("AuthoredComments")
   createdContents            Content[]                   @relation("ContentCreatedBy")
+  createdDocuments           Document[]                  @relation("DocumentCreatedBy")
+  editedDocuments            Document[]                  @relation("DocumentLastEditedBy")
   createdFrameworks          ContentFramework[]          @relation("FrameworkCreatedBy")
   generatedContents          GeneratedContent[]          @relation("GeneratedContentCreatedBy")
   resolvedComments           Comment[]                   @relation("ResolvedComments")
@@ -1087,6 +1091,23 @@ enum ContentGenerationStatus {
   @@schema("opportunity_tracker")
 }
 
+enum DocumentType {
+  mutual_action_plan  // Structured MAP with action items (JSON)
+  rich_text           // Free-form rich text (markdown)
+  framework_generated // AI-generated from ContentFramework
+
+  @@schema("opportunity_tracker")
+}
+
+enum DocumentGenerationStatus {
+  pending
+  generating
+  completed
+  failed
+
+  @@schema("opportunity_tracker")
+}
+
 model ContentFramework {
   id                String            @id @default(cuid())
   name              String
@@ -1106,6 +1127,7 @@ model ContentFramework {
 
   createdBy         User              @relation("FrameworkCreatedBy", fields: [createdById], references: [id])
   organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documents         Document[]
   generatedContents GeneratedContent[]
 
   @@unique([organizationId, name, scope])
@@ -1146,5 +1168,56 @@ model GeneratedContent {
   @@index([createdById])
   @@index([opportunityId, frameworkId])
   @@index([generationStatus])
+  @@schema("opportunity_tracker")
+}
+
+model Document {
+  id                String                    @id @default(cuid())
+  opportunityId     String
+  organizationId    String
+
+  // Core fields
+  title             String
+  documentType      DocumentType
+
+  // Content - one of these will be populated based on type
+  content           String?                   @db.Text   // Markdown for rich_text/framework_generated
+  structuredData    Json?                     // For MAPs: { actionItems: [...] }
+
+  // Framework reference (only for framework_generated)
+  frameworkId       String?
+
+  // Generation metadata
+  generationStatus  DocumentGenerationStatus?
+  generatedAt       DateTime?
+  generationError   String?
+  contextSnapshot   Json?                     // What context was used for generation
+
+  // Versioning
+  version           Int                       @default(1)
+  parentVersionId   String?                   // Link to previous version for history
+
+  // Audit
+  createdById       String
+  lastEditedById    String?
+  lastEditedAt      DateTime?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  // Relations
+  opportunity       Opportunity               @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  framework         ContentFramework?         @relation(fields: [frameworkId], references: [id])
+  createdBy         User                      @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  lastEditedBy      User?                     @relation("DocumentLastEditedBy", fields: [lastEditedById], references: [id])
+  parentVersion     Document?                 @relation("DocumentVersions", fields: [parentVersionId], references: [id])
+  childVersions     Document[]                @relation("DocumentVersions")
+
+  @@index([opportunityId])
+  @@index([organizationId])
+  @@index([documentType])
+  @@index([frameworkId])
+  @@index([opportunityId, documentType])
+  @@index([createdById])
   @@schema("opportunity_tracker")
 }

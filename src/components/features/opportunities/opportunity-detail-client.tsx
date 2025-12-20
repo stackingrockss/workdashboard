@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, FileSpreadsheet, Briefcase, Sparkles } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, FileSpreadsheet, Briefcase, Sparkles, FileStack } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/OpportunityForm";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -59,6 +59,7 @@ import { BusinessProposalTab } from "./business-proposal-tab";
 import { AccountIntelSummaryCard } from "./account-intel-summary-card";
 import { NotesTab } from "./notes-tab";
 import { FrameworksTab } from "./frameworks";
+import { DocumentsTab } from "../documents";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -439,7 +440,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="flex w-full overflow-x-auto gap-1 scrollbar-none md:grid md:grid-cols-8">
+        <TabsList className="flex w-full overflow-x-auto gap-1 scrollbar-none md:grid md:grid-cols-9">
           <TabsTrigger value="overview" className="flex items-center gap-2 shrink-0">
             <LayoutDashboard className="h-4 w-4" />
             <span className="hidden sm:inline">Overview</span>
@@ -459,6 +460,10 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
           <TabsTrigger value="contacts" className="flex items-center gap-2 shrink-0">
             <Users className="h-4 w-4" />
             <span className="hidden sm:inline">Contacts</span>
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="flex items-center gap-2 shrink-0">
+            <FileStack className="h-4 w-4" />
+            <span className="hidden sm:inline">Documents</span>
           </TabsTrigger>
           <TabsTrigger value="map" className="flex items-center gap-2 shrink-0">
             <FileSpreadsheet className="h-4 w-4" />
@@ -795,6 +800,16 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
         {/* Contacts Tab */}
         <TabsContent value="contacts" className="mt-4">
           <OrgChartSection opportunityId={opportunity.id} />
+        </TabsContent>
+
+        {/* Documents Tab */}
+        <TabsContent value="documents" className="mt-4">
+          <DocumentsTab
+            opportunityId={opportunity.id}
+            opportunityName={opportunity.name}
+            hasAccountResearch={!!opportunity.accountResearch}
+            hasConsolidatedInsights={!!(opportunity.consolidatedPainPoints || opportunity.consolidatedGoals)}
+          />
         </TabsContent>
 
         {/* Mutual Action Plan Tab */}
