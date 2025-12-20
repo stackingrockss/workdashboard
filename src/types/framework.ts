@@ -7,6 +7,9 @@ export type FrameworkCategory =
   | "email"
   | "account_plan"
   | "executive_summary"
+  | "internal_prep_doc"
+  | "notes"
+  | "general"
   | "other";
 
 export type FrameworkScope = "company" | "personal";
@@ -101,6 +104,9 @@ export const FRAMEWORK_CATEGORY_LABELS: Record<FrameworkCategory, string> = {
   email: "Email",
   account_plan: "Account Plan",
   executive_summary: "Executive Summary",
+  internal_prep_doc: "Internal Prep Doc",
+  notes: "Notes",
+  general: "General",
   other: "Other",
 };
 

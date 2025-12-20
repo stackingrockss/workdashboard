@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { GeneratedContent, FRAMEWORK_CATEGORY_LABELS } from "@/types/framework";
+import { GeneratedContent, ContentFramework, FRAMEWORK_CATEGORY_LABELS } from "@/types/framework";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FrameworkSelectionDialog } from "./FrameworkSelectionDialog";
 import { GeneratedContentViewer } from "./GeneratedContentViewer";
 import { VersionHistoryPanel } from "./VersionHistoryPanel";
+import { CreateFrameworkDialog } from "./CreateFrameworkDialog";
 import {
   Sparkles,
   FileText,
@@ -17,6 +18,7 @@ import {
   History,
   Trash2,
   Loader2,
+  Plus,
 } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
 import { toast } from "sonner";
@@ -39,6 +41,7 @@ export const FrameworksTab = ({
   const [generatedContents, setGeneratedContents] = useState<GeneratedContent[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedContent, setSelectedContent] = useState<GeneratedContent | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [pollingIds, setPollingIds] = useState<Set<string>>(new Set());
@@ -209,6 +212,12 @@ export const FrameworksTab = ({
     setShowHistory(false);
   };
 
+  const handleFrameworkCreated = (framework: ContentFramework) => {
+    // Framework was created, show toast already handled in dialog
+    // Optionally open the framework selection dialog
+    setShowCreateDialog(false);
+  };
+
   // Show selected content viewer
   if (selectedContent) {
     return (
@@ -278,10 +287,16 @@ export const FrameworksTab = ({
             Create AI-powered sales documents for this opportunity
           </p>
         </div>
-        <Button onClick={() => setShowDialog(true)}>
-          <Sparkles className="h-4 w-4 mr-2" />
-          Generate New Content
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setShowCreateDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Framework
+          </Button>
+          <Button onClick={() => setShowDialog(true)}>
+            <Sparkles className="h-4 w-4 mr-2" />
+            Generate Content
+          </Button>
+        </div>
       </div>
 
       {/* Content list */}
@@ -380,6 +395,13 @@ export const FrameworksTab = ({
         hasAccountResearch={hasAccountResearch}
         hasConsolidatedInsights={hasConsolidatedInsights}
         onGenerate={handleGenerate}
+      />
+
+      {/* Create framework dialog */}
+      <CreateFrameworkDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        onCreated={handleFrameworkCreated}
       />
     </div>
   );

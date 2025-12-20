@@ -1063,6 +1063,9 @@ enum FrameworkCategory {
   email
   account_plan
   executive_summary
+  internal_prep_doc
+  notes
+  general
   other
 
   @@schema("opportunity_tracker")

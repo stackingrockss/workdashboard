@@ -4,7 +4,7 @@ import { z } from "zod";
 export const frameworkSectionSchema = z.object({
   title: z.string().min(1, "Section title is required").max(100),
   description: z.string().max(500).optional(),
-  required: z.boolean().optional().default(false),
+  required: z.boolean().default(false),
 });
 
 // Context config schema
@@ -23,6 +23,9 @@ export const frameworkCategorySchema = z.enum([
   "email",
   "account_plan",
   "executive_summary",
+  "internal_prep_doc",
+  "notes",
+  "general",
   "other",
 ]);
 
