@@ -15,6 +15,7 @@ import { ContactCreateInput, ContactUpdateInput } from "@/lib/validations/contac
 import { ContactForm } from "@/components/forms/ContactForm";
 import { ContactList } from "./ContactList";
 import { OrgChartView } from "./OrgChartView";
+import { PendingContactsSection } from "./PendingContactsSection";
 import { Plus, List, Network } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
@@ -208,6 +209,14 @@ export function OrgChartSection({
 
   return (
     <div className="space-y-4">
+      {/* Pending Contact Imports */}
+      {opportunityId && (
+        <PendingContactsSection
+          opportunityId={opportunityId}
+          onImportComplete={loadContacts}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

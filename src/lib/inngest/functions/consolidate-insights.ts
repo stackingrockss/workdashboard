@@ -10,6 +10,10 @@ import {
   deduplicateMeetings,
   logDeduplicationStats,
 } from "@/lib/utils/deduplicate-meetings";
+import {
+  insightsToMarkdown,
+  mergeInsightsIntoNotes,
+} from "@/lib/utils/insights-to-markdown";
 
 /**
  * Background job that consolidates insights from all parsed Gong calls AND Granola notes
@@ -246,6 +250,46 @@ export const consolidateInsightsJob = inngest.createFunction(
       }
     );
 
+    // Step 7: Auto-merge insights into notes (preserves existing content)
+    const autoMergeResult = await step.run(
+      "auto-merge-to-notes",
+      async () => {
+        // Fetch current notes
+        const currentOpp = await prisma.opportunity.findUnique({
+          where: { id: opportunityId },
+          select: { notes: true },
+        });
+
+        // Generate insights markdown
+        const insightsMarkdown = insightsToMarkdown({
+          painPoints: consolidationResult.data!.painPoints,
+          goals: consolidationResult.data!.goals,
+          riskAssessment: consolidationResult.data!.riskAssessment,
+          whyAndWhyNow: consolidationResult.data!.whyAndWhyNow,
+          quantifiableMetrics: consolidationResult.data!.quantifiableMetrics,
+          lastConsolidatedAt: new Date().toISOString(),
+          consolidationCallCount: uniqueMeetings.length,
+        });
+
+        // Merge insights into notes (prepends to preserve user content)
+        const mergedNotes = mergeInsightsIntoNotes(
+          insightsMarkdown,
+          currentOpp?.notes
+        );
+
+        // Update notes with merged content
+        await prisma.opportunity.update({
+          where: { id: opportunityId },
+          data: { notes: mergedNotes },
+        });
+
+        return {
+          autoMerged: true,
+          hadExistingNotes: Boolean(currentOpp?.notes),
+        };
+      }
+    );
+
     return {
       success: true,
       opportunityId,
@@ -260,6 +304,8 @@ export const consolidateInsightsJob = inngest.createFunction(
       quantifiableMetricsCount: consolidationResult.data.quantifiableMetrics.length,
       riskLevel: consolidationResult.data.riskAssessment.riskLevel,
       lastConsolidatedAt: updatedOpportunity.lastConsolidatedAt,
+      autoMerged: autoMergeResult.autoMerged,
+      hadExistingNotes: autoMergeResult.hadExistingNotes,
     };
   }
 );

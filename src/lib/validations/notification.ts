@@ -37,6 +37,7 @@ export type ContactNotificationMarkReadInput = z.infer<typeof contactNotificatio
 export const contactNotificationQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).optional().default(10),
   includeRead: z.coerce.boolean().optional().default(false),
+  opportunityId: z.string().optional(),
 });
 
 export type ContactNotificationQueryInput = z.infer<typeof contactNotificationQuerySchema>;

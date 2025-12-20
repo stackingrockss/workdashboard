@@ -40,7 +40,6 @@ import { InlineMarkdownWithAI } from "@/components/ui/inline-markdown";
 import { DecisionMakerSection } from "@/components/opportunities/DecisionMakerSection";
 import { Contact } from "@/types/contact";
 import { ActivitySection } from "./activity/activity-section";
-import { ConsolidatedInsightsCard } from "./consolidated-insights-card";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 import { SecFilingsSection } from "./sec-filings-section";
 import { EarningsTranscriptsSection } from "./earnings-transcripts-section";
@@ -624,9 +623,6 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
             opportunity={{
               id: opportunity.id,
               notes: opportunity.notes,
-              painPointsHistory: opportunity.painPointsHistory,
-              goalsHistory: opportunity.goalsHistory,
-              nextStepsHistory: opportunity.nextStepsHistory,
               consolidatedPainPoints: opportunity.consolidatedPainPoints,
               consolidatedGoals: opportunity.consolidatedGoals,
               consolidatedRiskAssessment: opportunity.consolidatedRiskAssessment,

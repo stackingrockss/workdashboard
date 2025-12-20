@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
     const queryValidation = contactNotificationQuerySchema.safeParse({
       limit: searchParams.get("limit"),
       includeRead: searchParams.get("includeRead"),
+      opportunityId: searchParams.get("opportunityId"),
     });
 
     if (!queryValidation.success) {
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const { includeRead } = queryValidation.data;
+    const { includeRead, opportunityId } = queryValidation.data;
 
     // Check if ContactsReadyNotification table exists
     try {
@@ -64,6 +65,7 @@ export async function GET(request: NextRequest) {
       userId: user.id,
       organizationId: user.organization.id,
       ...(includeRead ? {} : { isRead: false }),
+      ...(opportunityId ? { opportunityId } : {}),
     };
 
     // Define include for relations
