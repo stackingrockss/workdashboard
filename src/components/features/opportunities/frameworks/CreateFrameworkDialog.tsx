@@ -13,9 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   frameworkCreateSchema,
   FrameworkCreateInput,
@@ -134,17 +132,22 @@ export const CreateFrameworkDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[85vh] p-0 gap-0 flex flex-col">
+        {/* Fixed Header */}
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle>
             {isEditing ? "Edit Framework" : "Create Framework"}
           </DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Define AI instructions and templates for generating sales content
+          </p>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4">
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 pb-4">
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <form id="create-framework-form" onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* Framework Title */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="name">
                 Framework Title <span className="text-destructive">*</span>
               </Label>
@@ -172,7 +175,7 @@ export const CreateFrameworkDialog = ({
             </div>
 
             {/* Summary (Optional) */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="description">Summary (Optional)</Label>
               <Input
                 id="description"
@@ -184,111 +187,102 @@ export const CreateFrameworkDialog = ({
               )}
             </div>
 
-            {/* Framework Scope */}
-            <div className="space-y-2">
-              <Label>
-                Framework Scope <span className="text-destructive">*</span>
-              </Label>
-              <RadioGroup
-                value={selectedScope}
-                onValueChange={(value) => setValue("scope", value as "personal" | "company")}
-                className="flex gap-4"
-              >
-                <div
-                  className={cn(
-                    "flex items-center gap-3 border rounded-lg p-4 cursor-pointer transition-colors flex-1",
-                    selectedScope === "personal"
-                      ? "border-primary bg-primary/5"
-                      : "hover:border-primary/50"
-                  )}
-                  onClick={() => setValue("scope", "personal")}
-                >
-                  <RadioGroupItem value="personal" id="scope-personal" />
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <Label
-                        htmlFor="scope-personal"
-                        className="font-medium cursor-pointer"
-                      >
-                        Personal
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Only visible to you
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div
-                  className={cn(
-                    "flex items-center gap-3 border rounded-lg p-4 cursor-pointer transition-colors flex-1",
-                    selectedScope === "company"
-                      ? "border-primary bg-primary/5"
-                      : "hover:border-primary/50"
-                  )}
-                  onClick={() => setValue("scope", "company")}
-                >
-                  <RadioGroupItem value="company" id="scope-company" />
-                  <div className="flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <Label
-                        htmlFor="scope-company"
-                        className="font-medium cursor-pointer"
-                      >
-                        Company
-                      </Label>
-                      <p className="text-xs text-muted-foreground">
-                        Visible to your organization
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </RadioGroup>
-              {errors.scope && (
-                <p className="text-sm text-destructive">{errors.scope.message}</p>
-              )}
-            </div>
-
-            {/* Tags (Category) */}
-            <div className="space-y-2">
-              <Label>
-                Tags <span className="text-destructive">*</span>
-              </Label>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORY_OPTIONS.map((option) => (
-                  <Badge
-                    key={option.value}
-                    variant={
-                      selectedCategory === option.value ? "default" : "outline"
-                    }
+            {/* Framework Scope & Tags in a row on larger screens */}
+            <div className="grid gap-5 sm:grid-cols-2">
+              {/* Framework Scope */}
+              <div className="space-y-1.5">
+                <Label>
+                  Scope <span className="text-destructive">*</span>
+                </Label>
+                <div className="flex gap-2">
+                  <label
+                    htmlFor="scope-personal"
                     className={cn(
-                      "cursor-pointer transition-colors px-3 py-1.5",
-                      selectedCategory === option.value ? "" : "hover:bg-muted"
+                      "flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer transition-colors flex-1",
+                      selectedScope === "personal"
+                        ? "border-primary bg-primary/5"
+                        : "hover:border-primary/50"
                     )}
-                    onClick={() => setValue("category", option.value)}
                   >
-                    {option.label}
-                  </Badge>
-                ))}
+                    <input
+                      type="radio"
+                      id="scope-personal"
+                      name="scope"
+                      value="personal"
+                      checked={selectedScope === "personal"}
+                      onChange={() => setValue("scope", "personal")}
+                      className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                    />
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Personal</span>
+                  </label>
+                  <label
+                    htmlFor="scope-company"
+                    className={cn(
+                      "flex items-center gap-2 border rounded-lg px-3 py-2 cursor-pointer transition-colors flex-1",
+                      selectedScope === "company"
+                        ? "border-primary bg-primary/5"
+                        : "hover:border-primary/50"
+                    )}
+                  >
+                    <input
+                      type="radio"
+                      id="scope-company"
+                      name="scope"
+                      value="company"
+                      checked={selectedScope === "company"}
+                      onChange={() => setValue("scope", "company")}
+                      className="h-4 w-4 text-primary border-gray-300 focus:ring-primary"
+                    />
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Company</span>
+                  </label>
+                </div>
+                {errors.scope && (
+                  <p className="text-sm text-destructive">{errors.scope.message}</p>
+                )}
               </div>
-              {errors.category && (
-                <p className="text-sm text-destructive">{errors.category.message}</p>
-              )}
+
+              {/* Tags (Category) */}
+              <div className="space-y-1.5">
+                <Label>
+                  Category <span className="text-destructive">*</span>
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {CATEGORY_OPTIONS.map((option) => (
+                    <Badge
+                      key={option.value}
+                      variant={
+                        selectedCategory === option.value ? "default" : "outline"
+                      }
+                      className={cn(
+                        "cursor-pointer transition-colors text-xs px-2 py-1",
+                        selectedCategory === option.value ? "" : "hover:bg-muted"
+                      )}
+                      onClick={() => setValue("category", option.value)}
+                    >
+                      {option.label}
+                    </Badge>
+                  ))}
+                </div>
+                {errors.category && (
+                  <p className="text-sm text-destructive">{errors.category.message}</p>
+                )}
+              </div>
             </div>
 
             {/* Context (System Instruction) */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label htmlFor="systemInstruction">
-                Context <span className="text-destructive">*</span>
+                AI Instructions <span className="text-destructive">*</span>
               </Label>
-              <p className="text-sm text-muted-foreground">
-                Instructions and context for AI generation
+              <p className="text-xs text-muted-foreground">
+                Instructions for the AI on how to generate content using opportunity context
               </p>
               <Textarea
                 id="systemInstruction"
-                placeholder="You are an enterprise sales expert helping to create a compelling executive summary and business case for a customer. Using the workspace context provided (which includes customer conversations, documents, call transcripts, and notes), generate personalized content for this business case framework..."
-                className="min-h-[200px] font-mono text-sm"
+                placeholder="You are an enterprise sales expert helping to create a compelling executive summary and business case for a customer. Using the workspace context provided (which includes customer conversations, documents, call transcripts, and notes), generate personalized content..."
+                className="min-h-[140px] font-mono text-sm resize-y"
                 {...register("systemInstruction")}
               />
               {errors.systemInstruction && (
@@ -297,10 +291,10 @@ export const CreateFrameworkDialog = ({
             </div>
 
             {/* Content Template (Output Format) */}
-            <div className="space-y-2">
-              <Label htmlFor="outputFormat">Content Template</Label>
-              <p className="text-sm text-muted-foreground">
-                Optional: Define the structure and format for AI-generated content (markdown supported)
+            <div className="space-y-1.5">
+              <Label htmlFor="outputFormat">Output Template (Optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Define the structure for generated content (markdown supported)
               </p>
               <Textarea
                 id="outputFormat"
@@ -311,43 +305,40 @@ export const CreateFrameworkDialog = ({
 [Customer's current challenges]
 
 ## Recommended Approach
-[Solution overview]
-
-## Expected Outcomes
-[Business impact and metrics]`}
-                className="min-h-[150px] font-mono text-sm"
+[Solution overview]`}
+                className="min-h-[100px] font-mono text-sm resize-y"
                 {...register("outputFormat")}
               />
               {errors.outputFormat && (
                 <p className="text-sm text-destructive">{errors.outputFormat.message}</p>
               )}
             </div>
-
-            {/* Action buttons */}
-            <div className="flex justify-end gap-3 pt-4 border-t">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-                disabled={submitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={submitting}>
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {isEditing ? "Saving..." : "Creating..."}
-                  </>
-                ) : isEditing ? (
-                  "Save Changes"
-                ) : (
-                  "Create Framework"
-                )}
-              </Button>
-            </div>
           </form>
-        </ScrollArea>
+        </div>
+
+        {/* Fixed Footer */}
+        <div className="px-6 py-4 border-t bg-muted/30 flex justify-end gap-3 shrink-0">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" form="create-framework-form" disabled={submitting}>
+            {submitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {isEditing ? "Saving..." : "Creating..."}
+              </>
+            ) : isEditing ? (
+              "Save Changes"
+            ) : (
+              "Create Framework"
+            )}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
