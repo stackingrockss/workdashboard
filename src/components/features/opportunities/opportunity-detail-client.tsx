@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Building2, FileSpreadsheet, Briefcase, Sparkles } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, FileSpreadsheet, Briefcase, Sparkles } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/OpportunityForm";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -678,84 +678,103 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                 }}
               />
 
-              {/* Two-Column Grid Layout */}
-              <div className="grid gap-6 lg:grid-cols-2">
-                {/* Left Column: AI-Generated Content */}
-                <div className="space-y-4">
-                  {/* Account Research */}
-                  <Collapsible defaultOpen={true}>
-                    <Card id="account-research" className="border-l-4 border-l-blue-500">
-                      <CollapsibleTrigger className="w-full group">
-                        <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
-                          <CardTitle className="flex items-center justify-between text-base">
-                            <span className="font-semibold">Account Research</span>
-                            <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                          </CardTitle>
-                        </CardHeader>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <CardContent className="pt-0">
-                          <InlineMarkdownWithAI
-                            label=""
-                            value={opportunity.accountResearch || ""}
-                            onSave={async (value) => handleFieldUpdate("accountResearch", value)}
-                            placeholder={
-                              researchStatus === "generating"
-                                ? "Generating account research with AI... This may take 10-30 seconds."
-                                : researchStatus === "failed"
-                                ? "AI generation failed. Click 'Generate with Gemini' to retry."
-                                : "AI-powered account research and pre-meeting intelligence..."
-                            }
-                            rows={8}
-                            onGenerate={handleGenerateAccountResearch}
-                            isGenerating={isGeneratingResearch || researchStatus === "generating"}
-                            generateButtonLabel="Generate with Gemini"
-                            useRichTextEditor={true}
-                          />
-                        </CardContent>
-                      </CollapsibleContent>
-                    </Card>
-                  </Collapsible>
+              {/* Account Research Section */}
+              {opportunity.account.ticker ? (
+                /* Public Company: Two-column layout with SEC filings */
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="space-y-4">
+                    <Collapsible defaultOpen={true}>
+                      <Card id="account-research" className="border-l-4 border-l-blue-500">
+                        <CollapsibleTrigger className="w-full group">
+                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
+                            <CardTitle className="flex items-center justify-between text-base">
+                              <span className="font-semibold">Account Research</span>
+                              <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                            </CardTitle>
+                          </CardHeader>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <CardContent className="pt-0">
+                            <InlineMarkdownWithAI
+                              label=""
+                              value={opportunity.accountResearch || ""}
+                              onSave={async (value) => handleFieldUpdate("accountResearch", value)}
+                              placeholder={
+                                researchStatus === "generating"
+                                  ? "Generating account research with AI... This may take 10-30 seconds."
+                                  : researchStatus === "failed"
+                                  ? "AI generation failed. Click 'Generate with Gemini' to retry."
+                                  : "AI-powered account research and pre-meeting intelligence..."
+                              }
+                              rows={8}
+                              onGenerate={handleGenerateAccountResearch}
+                              isGenerating={isGeneratingResearch || researchStatus === "generating"}
+                              generateButtonLabel="Generate with Gemini"
+                              useRichTextEditor={true}
+                            />
+                          </CardContent>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
+                  </div>
 
+                  <div className="space-y-4">
+                    <div id="sec-filings">
+                      <SecFilingsSection
+                        accountId={opportunity.account.id}
+                        accountTicker={opportunity.account.ticker}
+                        opportunityId={opportunity.id}
+                      />
+                    </div>
+
+                    <div id="earnings-transcripts">
+                      <EarningsTranscriptsSection
+                        accountId={opportunity.account.id}
+                        accountName={opportunity.account.name}
+                        accountTicker={opportunity.account.ticker}
+                        nextEarningsDate={opportunity.account.nextEarningsDate}
+                        lastEarningsSync={opportunity.account.lastEarningsSync}
+                        opportunityId={opportunity.id}
+                      />
+                    </div>
+                  </div>
                 </div>
-
-                {/* Right Column: External Data Sources */}
-                <div className="space-y-4">
-                  {opportunity.account.ticker ? (
-                    <>
-                      <div id="sec-filings">
-                        <SecFilingsSection
-                          accountId={opportunity.account.id}
-                          accountTicker={opportunity.account.ticker}
-                          opportunityId={opportunity.id}
+              ) : (
+                /* Private Company: Single-column full-width layout */
+                <Collapsible defaultOpen={true}>
+                  <Card id="account-research" className="border-l-4 border-l-blue-500">
+                    <CollapsibleTrigger className="w-full group">
+                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
+                        <CardTitle className="flex items-center justify-between text-base">
+                          <span className="font-semibold">Account Research</span>
+                          <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                        </CardTitle>
+                      </CardHeader>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0">
+                        <InlineMarkdownWithAI
+                          label=""
+                          value={opportunity.accountResearch || ""}
+                          onSave={async (value) => handleFieldUpdate("accountResearch", value)}
+                          placeholder={
+                            researchStatus === "generating"
+                              ? "Generating account research with AI... This may take 10-30 seconds."
+                              : researchStatus === "failed"
+                              ? "AI generation failed. Click 'Generate with Gemini' to retry."
+                              : "AI-powered account research and pre-meeting intelligence..."
+                          }
+                          rows={8}
+                          onGenerate={handleGenerateAccountResearch}
+                          isGenerating={isGeneratingResearch || researchStatus === "generating"}
+                          generateButtonLabel="Generate with Gemini"
+                          useRichTextEditor={true}
                         />
-                      </div>
-
-                      <div id="earnings-transcripts">
-                        <EarningsTranscriptsSection
-                          accountId={opportunity.account.id}
-                          accountName={opportunity.account.name}
-                          accountTicker={opportunity.account.ticker}
-                          nextEarningsDate={opportunity.account.nextEarningsDate}
-                          lastEarningsSync={opportunity.account.lastEarningsSync}
-                          opportunityId={opportunity.id}
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <Card className="border-l-4 border-l-slate-400 dark:border-l-slate-600">
-                      <CardContent className="text-center py-8">
-                        <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                        <h3 className="font-medium mb-1">Private Company</h3>
-                        <p className="text-sm text-muted-foreground">
-                          SEC filings and earnings transcripts are only available for public companies.
-                          Select a public company from the search when creating an opportunity to enable these features.
-                        </p>
                       </CardContent>
-                    </Card>
-                  )}
-                </div>
-              </div>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              )}
             </div>
           ) : (
             <Card>
