@@ -32,10 +32,15 @@ export async function GET(request: NextRequest) {
 
     // Parse and validate query parameters
     const { searchParams } = new URL(request.url);
+    const limitParam = searchParams.get("limit");
+    const includeReadParam = searchParams.get("includeRead");
+    const opportunityIdParam = searchParams.get("opportunityId");
+
     const queryValidation = contactNotificationQuerySchema.safeParse({
-      limit: searchParams.get("limit"),
-      includeRead: searchParams.get("includeRead"),
-      opportunityId: searchParams.get("opportunityId"),
+      // Only pass values if they exist, otherwise let Zod use defaults
+      ...(limitParam !== null && { limit: limitParam }),
+      ...(includeReadParam !== null && { includeRead: includeReadParam }),
+      ...(opportunityIdParam !== null && { opportunityId: opportunityIdParam }),
     });
 
     if (!queryValidation.success) {

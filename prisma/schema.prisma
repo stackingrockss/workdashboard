@@ -286,6 +286,7 @@ model Opportunity {
   parsingCompleteNotifications   ParsingCompleteNotification[]   @relation("OpportunityParsingCompleteNotifications")
   accountResearchNotification    AccountResearchNotification?    @relation("OpportunityAccountResearchNotification")
   earningsTranscripts            EarningsCallTranscript[]
+  generatedContents              GeneratedContent[]
   gongCalls                  GongCall[]
   googleNotes                GoogleNote[]
   granolaNotes               GranolaNote[]
@@ -321,6 +322,8 @@ model Organization {
   parsingCompleteNotifications   ParsingCompleteNotification[]
   accountResearchNotifications   AccountResearchNotification[]
   contents                       Content[]
+  contentFrameworks              ContentFramework[]
+  generatedContents              GeneratedContent[]
   earningsTranscripts        EarningsCallTranscript[]
   gongCalls                  GongCall[]
   gongIntegration            GongIntegration?
@@ -396,6 +399,8 @@ model User {
   chatMessages               ChatMessage[]
   authoredComments           Comment[]                   @relation("AuthoredComments")
   createdContents            Content[]                   @relation("ContentCreatedBy")
+  createdFrameworks          ContentFramework[]          @relation("FrameworkCreatedBy")
+  generatedContents          GeneratedContent[]          @relation("GeneratedContentCreatedBy")
   resolvedComments           Comment[]                   @relation("ResolvedComments")
   mentions                   CommentMention[]            @relation("UserMentions")
   reactions                  CommentReaction[]           @relation("UserReactions")
@@ -1048,5 +1053,95 @@ enum MapGenerationStatus {
   completed
   failed
 
+  @@schema("opportunity_tracker")
+}
+
+enum FrameworkCategory {
+  mutual_action_plan
+  business_case
+  proposal
+  email
+  account_plan
+  executive_summary
+  other
+
+  @@schema("opportunity_tracker")
+}
+
+enum FrameworkScope {
+  company
+  personal
+
+  @@schema("opportunity_tracker")
+}
+
+enum ContentGenerationStatus {
+  pending
+  generating
+  completed
+  failed
+
+  @@schema("opportunity_tracker")
+}
+
+model ContentFramework {
+  id                String            @id @default(cuid())
+  name              String
+  description       String?
+  category          FrameworkCategory
+  scope             FrameworkScope
+  systemInstruction String            @db.Text
+  outputFormat      String?           @db.Text
+  sections          Json              // Array<{ title: string, description?: string, required?: boolean }>
+  contextConfig     Json?             // { meetings?: boolean, files?: boolean, notes?: boolean, accountResearch?: boolean }
+  createdById       String
+  organizationId    String
+  isDefault         Boolean           @default(false)
+  usageCount        Int               @default(0)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  createdBy         User              @relation("FrameworkCreatedBy", fields: [createdById], references: [id])
+  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  generatedContents GeneratedContent[]
+
+  @@unique([organizationId, name, scope])
+  @@index([organizationId])
+  @@index([category])
+  @@index([scope])
+  @@index([createdById])
+  @@schema("opportunity_tracker")
+}
+
+model GeneratedContent {
+  id               String                  @id @default(cuid())
+  frameworkId      String
+  opportunityId    String
+  title            String
+  content          String                  @db.Text
+  contextSnapshot  Json?                   // What context was used for generation
+  version          Int                     @default(1)
+  parentVersionId  String?                 // Link to previous version for history
+  generationStatus ContentGenerationStatus @default(pending)
+  generatedAt      DateTime?
+  generationError  String?
+  createdById      String
+  organizationId   String
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  framework        ContentFramework        @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  opportunity      Opportunity             @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  parentVersion    GeneratedContent?       @relation("ContentVersions", fields: [parentVersionId], references: [id])
+  childVersions    GeneratedContent[]      @relation("ContentVersions")
+  createdBy        User                    @relation("GeneratedContentCreatedBy", fields: [createdById], references: [id])
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId])
+  @@index([frameworkId])
+  @@index([organizationId])
+  @@index([createdById])
+  @@index([opportunityId, frameworkId])
+  @@index([generationStatus])
   @@schema("opportunity_tracker")
 }

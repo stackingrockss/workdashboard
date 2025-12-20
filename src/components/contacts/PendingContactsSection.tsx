@@ -40,15 +40,17 @@ export function PendingContactsSection({
 
   // Fetch pending notifications for this opportunity
   const fetchNotifications = useCallback(async () => {
+    console.log("[PendingContactsSection] Fetching notifications for opportunityId:", opportunityId);
     try {
       const response = await fetch(
         `/api/v1/notifications/contacts?opportunityId=${opportunityId}&includeRead=false`
       );
       if (!response.ok) throw new Error("Failed to fetch notifications");
       const data = await response.json();
+      console.log("[PendingContactsSection] Received notifications:", data);
       setNotifications(data.notifications || []);
     } catch (error) {
-      console.error("Failed to load pending contacts:", error);
+      console.error("[PendingContactsSection] Failed to load pending contacts:", error);
     } finally {
       setIsLoading(false);
     }

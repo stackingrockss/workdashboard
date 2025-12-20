@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Building2, FileSpreadsheet, Briefcase } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Building2, FileSpreadsheet, Briefcase, Sparkles } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/OpportunityForm";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -58,6 +58,7 @@ import { MutualActionPlanTab } from "./map";
 import { BusinessProposalTab } from "./business-proposal-tab";
 import { AccountIntelSummaryCard } from "./account-intel-summary-card";
 import { NotesTab } from "./notes-tab";
+import { FrameworksTab } from "./frameworks";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -438,7 +439,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="flex w-full overflow-x-auto gap-1 scrollbar-none md:grid md:grid-cols-7">
+        <TabsList className="flex w-full overflow-x-auto gap-1 scrollbar-none md:grid md:grid-cols-8">
           <TabsTrigger value="overview" className="flex items-center gap-2 shrink-0">
             <LayoutDashboard className="h-4 w-4" />
             <span className="hidden sm:inline">Overview</span>
@@ -466,6 +467,10 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
           <TabsTrigger value="proposal" className="flex items-center gap-2 shrink-0">
             <Briefcase className="h-4 w-4" />
             <span className="hidden sm:inline">Proposal</span>
+          </TabsTrigger>
+          <TabsTrigger value="generate" className="flex items-center gap-2 shrink-0">
+            <Sparkles className="h-4 w-4" />
+            <span className="hidden sm:inline">Generate</span>
           </TabsTrigger>
         </TabsList>
 
@@ -787,6 +792,16 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
             businessProposalGenerationStatus={opportunity.businessProposalGenerationStatus}
             businessCaseQuestions={opportunity.businessCaseQuestions}
             onFieldUpdate={handleFieldUpdate}
+          />
+        </TabsContent>
+
+        {/* AI Content Generation Tab */}
+        <TabsContent value="generate" className="mt-4">
+          <FrameworksTab
+            opportunityId={opportunity.id}
+            opportunityName={opportunity.name}
+            hasAccountResearch={!!opportunity.accountResearch}
+            hasConsolidatedInsights={!!(opportunity.consolidatedPainPoints || opportunity.consolidatedGoals)}
           />
         </TabsContent>
       </Tabs>
