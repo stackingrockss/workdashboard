@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { generateContentSchema } from "@/lib/validations/framework";
@@ -60,18 +61,19 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Create a pending GeneratedContent record
-    const generatedContent = await prisma.generatedContent.create({
+    // Create a pending Document record (unified document system)
+    const document = await prisma.document.create({
       data: {
-        frameworkId: framework.id,
         opportunityId: opportunity.id,
-        title: `${framework.name} - ${opportunity.name}`,
-        content: "", // Will be filled by the background job
-        contextSnapshot: contextSelection,
-        version: 1,
-        generationStatus: "pending",
-        createdById: user.id,
         organizationId: user.organization.id,
+        title: `${framework.name} - ${opportunity.name}`,
+        documentType: "framework_generated",
+        content: "", // Will be filled by the background job
+        frameworkId: framework.id,
+        generationStatus: "pending",
+        contextSnapshot: contextSelection as Prisma.InputJsonValue,
+        version: 1,
+        createdById: user.id,
       },
       include: {
         framework: {
@@ -93,19 +95,20 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     // Trigger background job for generation
     await inngest.send({
-      name: "framework/generate",
+      name: "document/generate-content",
       data: {
-        generatedContentId: generatedContent.id,
+        documentId: document.id,
         opportunityId: opportunity.id,
         frameworkId: framework.id,
-        contextSelection,
+        contextSelection: contextSelection || {},
         userId: user.id,
         organizationId: user.organization.id,
       },
     });
 
+    // Return document with legacy field name for backwards compatibility
     return NextResponse.json(
-      { generatedContent },
+      { document, generatedContent: document },
       { status: 201 }
     );
   } catch (error) {
