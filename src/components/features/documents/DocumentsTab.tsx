@@ -15,6 +15,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
+import { MutualActionPlanTab } from "@/components/features/opportunities/map";
 
 interface DocumentsTabProps {
   opportunityId: string;
@@ -163,7 +164,7 @@ export const DocumentsTab = ({
 
   return (
     <div className="space-y-4">
-      {/* Header with actions */}
+      {/* Header with actions - hide actions when showing MAP view */}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-semibold">Documents</h3>
@@ -171,16 +172,18 @@ export const DocumentsTab = ({
             Create and manage sales documents for this opportunity
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => setShowCreateDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Document
-          </Button>
-          <Button onClick={handleNavigateToGenerate}>
-            <Sparkles className="h-4 w-4 mr-2" />
-            Generate
-          </Button>
-        </div>
+        {filter !== "mutual_action_plan" && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => setShowCreateDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Document
+            </Button>
+            <Button onClick={handleNavigateToGenerate}>
+              <Sparkles className="h-4 w-4 mr-2" />
+              Generate
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filter tabs */}
@@ -201,8 +204,10 @@ export const DocumentsTab = ({
         </TabsList>
       </Tabs>
 
-      {/* Document list */}
-      {loading ? (
+      {/* Document list - Show inline MAP for mutual_action_plan filter */}
+      {filter === "mutual_action_plan" ? (
+        <MutualActionPlanTab opportunityId={opportunityId} />
+      ) : loading ? (
         <div className="grid gap-3 md:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-32 rounded-lg" />

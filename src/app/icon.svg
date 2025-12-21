@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- Modern flat briefcase - clean B2B SaaS style -->
+  <!-- Main body with generous rounded corners -->
+  <rect x="3" y="12" width="26" height="16" rx="3" fill="#3d4654"/>
+  <!-- Handle - modern proportions -->
+  <rect x="11" y="5" width="10" height="9" rx="2" stroke="#3d4654" stroke-width="2.5" fill="none"/>
+  <!-- Horizontal accent line across middle -->
+  <rect x="3" y="18" width="26" height="2" fill="#2d3440"/>
+  <!-- Small clasp detail -->
+  <rect x="14" y="17" width="4" height="4" rx="1" fill="#ffffff"/>
+</svg>

@@ -9,8 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ContentFramework } from "@/types/framework";
 import { FrameworkCard } from "../frameworks/FrameworkCard";
-import { CreateFrameworkDialog } from "../frameworks/CreateFrameworkDialog";
 import { Search, ChevronRight, FileText, Sparkles, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -29,11 +29,11 @@ export const FrameworkSelectionStep = ({
   onContinue,
   onCancel,
 }: FrameworkSelectionStepProps) => {
+  const router = useRouter();
   const [scope, setScope] = useState<"all" | "company" | "personal">("all");
   const [search, setSearch] = useState("");
   const [frameworks, setFrameworks] = useState<ContentFramework[]>([]);
   const [loading, setLoading] = useState(true);
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Fetch frameworks
   useEffect(() => {
@@ -90,12 +90,6 @@ export const FrameworkSelectionStep = ({
       : []
     : [];
 
-  // Handle new framework created
-  const handleFrameworkCreated = (framework: ContentFramework) => {
-    setFrameworks((prev) => [framework, ...prev]);
-    onSelectFramework(framework);
-    setCreateDialogOpen(false);
-  };
 
   return (
     <div className="space-y-6">
@@ -121,7 +115,7 @@ export const FrameworkSelectionStep = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setCreateDialogOpen(true)}
+            onClick={() => router.push("/frameworks/new")}
           >
             <Plus className="h-4 w-4 mr-1" />
             Create New
@@ -252,12 +246,6 @@ export const FrameworkSelectionStep = ({
         </Button>
       </div>
 
-      {/* Create Framework Dialog */}
-      <CreateFrameworkDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
-        onCreated={handleFrameworkCreated}
-      />
     </div>
   );
 };
