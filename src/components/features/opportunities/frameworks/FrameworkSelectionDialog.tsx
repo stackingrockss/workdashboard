@@ -68,7 +68,7 @@ export const FrameworkSelectionDialog = ({
   });
   const [generating, setGenerating] = useState(false);
 
-  // Fetch frameworks
+  // Fetch frameworks (auto-seed defaults if none exist)
   useEffect(() => {
     if (!open) return;
 
@@ -82,7 +82,29 @@ export const FrameworkSelectionDialog = ({
         const response = await fetch(`/api/v1/frameworks?${params.toString()}`);
         if (response.ok) {
           const data = await response.json();
-          setFrameworks(data.frameworks || []);
+          let fetchedFrameworks = data.frameworks || [];
+
+          // If no frameworks exist and this is the initial load (no search/filter),
+          // try to seed default frameworks
+          if (fetchedFrameworks.length === 0 && scope === "all" && !search) {
+            try {
+              const seedResponse = await fetch("/api/v1/frameworks/seed", {
+                method: "POST",
+              });
+              if (seedResponse.ok) {
+                // Re-fetch after seeding
+                const retryResponse = await fetch(`/api/v1/frameworks?${params.toString()}`);
+                if (retryResponse.ok) {
+                  const retryData = await retryResponse.json();
+                  fetchedFrameworks = retryData.frameworks || [];
+                }
+              }
+            } catch (seedError) {
+              console.error("Failed to seed default frameworks:", seedError);
+            }
+          }
+
+          setFrameworks(fetchedFrameworks);
         }
       } catch (error) {
         console.error("Failed to fetch frameworks:", error);

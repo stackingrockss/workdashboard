@@ -13,13 +13,13 @@ export async function GET(req: NextRequest) {
     const user = await requireAuth();
     const searchParams = req.nextUrl.searchParams;
 
-    // Parse query parameters
+    // Parse query parameters (convert empty strings to undefined for optional fields)
     const queryParsed = frameworkListQuerySchema.safeParse({
-      scope: searchParams.get("scope"),
-      category: searchParams.get("category"),
-      search: searchParams.get("search"),
-      page: searchParams.get("page"),
-      limit: searchParams.get("limit"),
+      scope: searchParams.get("scope") || undefined,
+      category: searchParams.get("category") || undefined,
+      search: searchParams.get("search") || undefined,
+      page: searchParams.get("page") || undefined,
+      limit: searchParams.get("limit") || undefined,
     });
 
     if (!queryParsed.success) {
