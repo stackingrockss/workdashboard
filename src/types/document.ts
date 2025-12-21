@@ -2,21 +2,30 @@
 // Unified document model for MAPs, rich text, and AI-generated content
 
 import { MAPActionItem } from "./mutual-action-plan";
-import { ContextSelection } from "./framework";
-import { FrameworkCategory } from "@prisma/client";
+import { ContextSelection } from "./brief";
+import { BriefCategory } from "@prisma/client";
 
-export type DocumentType = "mutual_action_plan" | "rich_text" | "framework_generated";
+// Re-export BriefCategory for convenience
+export { BriefCategory } from "@prisma/client";
 
 export type DocumentGenerationStatus = "pending" | "generating" | "completed" | "failed";
 
-export const DOCUMENT_TYPE_LABELS: Record<DocumentType, string> = {
+// Labels for each category
+export const BRIEF_CATEGORY_LABELS: Record<BriefCategory, string> = {
   mutual_action_plan: "Mutual Action Plan",
-  rich_text: "Document",
-  framework_generated: "AI Generated",
+  pricing_proposal: "Pricing Proposal",
+  email: "Email",
+  account_plan: "Account Plan",
+  executive_summary: "Executive Summary",
+  internal_prep_doc: "Internal Prep Doc",
+  notes: "Notes",
+  general: "General",
+  other: "Other",
+  business_impact_proposal: "Business Impact Proposal",
 };
 
-export const DOCUMENT_TYPE_OPTIONS = Object.entries(DOCUMENT_TYPE_LABELS).map(
-  ([value, label]) => ({ value: value as DocumentType, label })
+export const BRIEF_CATEGORY_OPTIONS = Object.entries(BRIEF_CATEGORY_LABELS).map(
+  ([value, label]) => ({ value: value as BriefCategory, label })
 );
 
 // Structured data for MAP documents
@@ -41,14 +50,14 @@ export interface Document {
 
   // Core fields
   title: string;
-  documentType: DocumentType;
+  category: BriefCategory;
 
   // Content - one of these will be populated based on type
-  content?: string | null; // Markdown for rich_text/framework_generated
+  content?: string | null; // Markdown for most categories
   structuredData?: MAPStructuredData | MAPStructuredDataLoose | null; // For MAPs
 
-  // Framework reference (only for framework_generated)
-  frameworkId?: string | null;
+  // Brief reference (only for AI-generated documents)
+  briefId?: string | null;
 
   // Generation metadata
   generationStatus?: DocumentGenerationStatus | null;
@@ -68,12 +77,12 @@ export interface Document {
   updatedAt: Date | string;
 
   // Relations (populated when included)
-  // Partial framework - only includes fields selected by API queries
-  framework?: {
+  // Partial brief - only includes fields selected by API queries
+  brief?: {
     id: string;
     name: string;
     description?: string | null;
-    category: FrameworkCategory;
+    category: BriefCategory;
   } | null;
   createdBy?: {
     id: string;
@@ -108,11 +117,11 @@ export interface DocumentWithVersions extends Document {
 // API request types
 export interface CreateDocumentRequest {
   title: string;
-  documentType: DocumentType;
+  category: BriefCategory;
   content?: string;
   structuredData?: MAPStructuredData;
   // For AI generation
-  frameworkId?: string;
+  briefId?: string;
   contextSelection?: ContextSelection;
   // For MAP generation
   generateFromMeetings?: boolean;
@@ -135,8 +144,8 @@ export interface RestoreVersionRequest {
 
 // List query parameters
 export interface DocumentListQuery {
-  documentType?: DocumentType;
-  frameworkId?: string;
+  category?: BriefCategory;
+  briefId?: string;
   search?: string;
   page?: number;
   limit?: number;

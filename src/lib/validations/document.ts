@@ -1,12 +1,5 @@
 import { z } from "zod";
-import { contextSelectionSchema } from "./framework";
-
-// Document type enum
-export const documentTypeSchema = z.enum([
-  "mutual_action_plan",
-  "rich_text",
-  "framework_generated",
-]);
+import { contextSelectionSchema, briefCategorySchema } from "./brief";
 
 // Document generation status enum
 export const documentGenerationStatusSchema = z.enum([
@@ -45,38 +38,18 @@ export const mapStructuredDataSchema = z.object({
 });
 
 // Create document schema
-export const documentCreateSchema = z
-  .object({
-    title: z.string().min(1, "Title is required").max(200),
-    documentType: documentTypeSchema,
-    content: z.string().optional(),
-    structuredData: mapStructuredDataSchema.optional(),
-    // For AI generation
-    frameworkId: z.string().cuid().optional(),
-    contextSelection: contextSelectionSchema.optional(),
-    // For MAP generation
-    generateFromMeetings: z.boolean().optional(),
-    templateContentId: z.string().optional(),
-  })
-  .refine(
-    (data) => {
-      // Validate content requirements based on document type
-      if (data.documentType === "mutual_action_plan") {
-        // MAPs should have structuredData (or be generating)
-        return true; // Allow empty for initial creation before AI generation
-      }
-      if (data.documentType === "framework_generated") {
-        // Framework-generated docs need a frameworkId
-        return !!data.frameworkId;
-      }
-      // rich_text can have content or be empty
-      return true;
-    },
-    {
-      message: "Framework ID is required for framework-generated documents",
-      path: ["frameworkId"],
-    }
-  );
+export const documentCreateSchema = z.object({
+  title: z.string().min(1, "Title is required").max(200),
+  category: briefCategorySchema,
+  content: z.string().optional(),
+  structuredData: mapStructuredDataSchema.optional(),
+  // For AI generation
+  briefId: z.string().cuid().optional(),
+  contextSelection: contextSelectionSchema.optional(),
+  // For MAP generation
+  generateFromMeetings: z.boolean().optional(),
+  templateContentId: z.string().optional(),
+});
 
 // Update document schema
 export const documentUpdateSchema = z.object({
@@ -97,8 +70,8 @@ export const documentRestoreVersionSchema = z.object({
 
 // Query parameters for listing documents
 export const documentListQuerySchema = z.object({
-  documentType: documentTypeSchema.optional(),
-  frameworkId: z.string().cuid().optional(),
+  category: briefCategorySchema.optional(),
+  briefId: z.string().cuid().optional(),
   search: z.string().max(100).optional(),
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(50).optional().default(20),

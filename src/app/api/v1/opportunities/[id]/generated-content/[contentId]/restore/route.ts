@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import { restoreVersionSchema } from "@/lib/validations/framework";
+import { restoreVersionSchema } from "@/lib/validations/brief";
 
 interface RouteParams {
   params: Promise<{ id: string; contentId: string }>;
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       where: {
         id: versionId,
         opportunityId,
-        frameworkId: currentContent.frameworkId,
+        briefId: currentContent.briefId,
         organizationId: user.organization.id,
         generationStatus: "completed", // Can only restore completed versions
       },
@@ -63,7 +63,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const maxVersion = await prisma.generatedContent.findFirst({
       where: {
         opportunityId,
-        frameworkId: currentContent.frameworkId,
+        briefId: currentContent.briefId,
         organizationId: user.organization.id,
       },
       orderBy: { version: "desc" },
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     // Create a new version with the restored content
     const restoredContent = await prisma.generatedContent.create({
       data: {
-        frameworkId: versionToRestore.frameworkId,
+        briefId: versionToRestore.briefId,
         opportunityId: versionToRestore.opportunityId,
         title: versionToRestore.title,
         content: versionToRestore.content,
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         organizationId: user.organization.id,
       },
       include: {
-        framework: {
+        brief: {
           select: {
             id: true,
             name: true,

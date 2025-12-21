@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Document, DocumentType, DOCUMENT_TYPE_LABELS } from "@/types/document";
+import { Document, BRIEF_CATEGORY_LABELS } from "@/types/document";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -145,7 +145,7 @@ export const DocumentEditorClient = ({
 
   const handleCopyToClipboard = async () => {
     try {
-      if (document.documentType === "mutual_action_plan") {
+      if (document.category === "mutual_action_plan") {
         // For MAPs, copy as formatted text
         const items = (structuredData?.actionItems || []) as Array<{
           description: string;
@@ -261,9 +261,10 @@ export const DocumentEditorClient = ({
     return null;
   };
 
+  // Can regenerate if document has a brief or is a MAP
   const canRegenerate =
-    (document.documentType === "framework_generated" && document.frameworkId) ||
-    document.documentType === "mutual_action_plan";
+    document.briefId ||
+    document.category === "mutual_action_plan";
 
   return (
     <div className="min-h-screen bg-background">
@@ -279,7 +280,7 @@ export const DocumentEditorClient = ({
             </Button>
             <div className="flex items-center gap-2">
               <Badge variant="outline">
-                {DOCUMENT_TYPE_LABELS[document.documentType]}
+                {BRIEF_CATEGORY_LABELS[document.category]}
               </Badge>
               {document.version > 1 && (
                 <Badge variant="secondary">v{document.version}</Badge>
@@ -332,8 +333,8 @@ export const DocumentEditorClient = ({
             placeholder="Document title..."
           />
           <div className="flex items-center gap-3 mt-2 text-sm text-muted-foreground">
-            {document.framework && (
-              <span>Framework: {document.framework.name}</span>
+            {document.brief && (
+              <span>Brief: {document.brief.name}</span>
             )}
             {document.lastEditedBy && document.lastEditedAt && (
               <span className="flex items-center gap-1">
@@ -345,7 +346,7 @@ export const DocumentEditorClient = ({
           </div>
         </div>
 
-        {/* Editor based on document type */}
+        {/* Editor based on category - MAP uses table editor, all others use RTF */}
         {isPolling ? (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-muted-foreground">
@@ -354,7 +355,7 @@ export const DocumentEditorClient = ({
             </div>
             <Skeleton className="h-64 w-full" />
           </div>
-        ) : document.documentType === "mutual_action_plan" ? (
+        ) : document.category === "mutual_action_plan" ? (
           <MAPDocumentEditor
             structuredData={structuredData}
             onChange={handleStructuredDataChange}

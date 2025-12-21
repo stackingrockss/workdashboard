@@ -23,7 +23,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         organizationId: user.organization.id,
       },
       include: {
-        framework: true,
+        brief: true,
       },
     });
 
@@ -34,11 +34,12 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Only framework-generated and MAP documents can be regenerated
-    if (
-      existingDocument.documentType !== "framework_generated" &&
-      existingDocument.documentType !== "mutual_action_plan"
-    ) {
+    // Only documents with a brief or MAPs can be regenerated
+    const canRegenerate =
+      existingDocument.briefId ||
+      existingDocument.category === "mutual_action_plan";
+
+    if (!canRegenerate) {
       return NextResponse.json(
         { error: "Only AI-generated documents can be regenerated" },
         { status: 400 }
@@ -63,10 +64,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         opportunityId: existingDocument.opportunityId,
         organizationId: existingDocument.organizationId,
         title: existingDocument.title,
-        documentType: existingDocument.documentType,
+        category: existingDocument.category,
         content: "", // Will be filled by the background job
-        structuredData: existingDocument.documentType === "mutual_action_plan" ? { actionItems: [] } : Prisma.JsonNull,
-        frameworkId: existingDocument.frameworkId,
+        structuredData: existingDocument.category === "mutual_action_plan" ? { actionItems: [] } : Prisma.JsonNull,
+        briefId: existingDocument.briefId,
         generationStatus: "pending",
         contextSnapshot: contextSelection,
         version: existingDocument.version + 1,
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         createdById: user.id,
       },
       include: {
-        framework: {
+        brief: {
           select: {
             id: true,
             name: true,
@@ -92,19 +93,19 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     });
 
     // Trigger background job for regeneration
-    if (existingDocument.documentType === "framework_generated" && existingDocument.frameworkId) {
+    if (existingDocument.briefId) {
       await inngest.send({
         name: "document/generate-content",
         data: {
           documentId: newDocument.id,
           opportunityId: existingDocument.opportunityId,
-          frameworkId: existingDocument.frameworkId,
+          briefId: existingDocument.briefId,
           contextSelection,
           userId: user.id,
           organizationId: user.organization.id,
         },
       });
-    } else if (existingDocument.documentType === "mutual_action_plan") {
+    } else if (existingDocument.category === "mutual_action_plan") {
       await inngest.send({
         name: "document/generate-map",
         data: {

@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-// Framework section schema
-export const frameworkSectionSchema = z.object({
+// Brief section schema
+export const briefSectionSchema = z.object({
   title: z.string().min(1, "Section title is required").max(100),
   description: z.string().max(500).optional(),
   required: z.boolean().default(false),
@@ -15,8 +15,8 @@ export const contextConfigSchema = z.object({
   accountResearch: z.boolean().optional().default(false),
 });
 
-// Framework category enum
-export const frameworkCategorySchema = z.enum([
+// Brief category enum
+export const briefCategorySchema = z.enum([
   "mutual_action_plan",
   "pricing_proposal",
   "email",
@@ -29,29 +29,29 @@ export const frameworkCategorySchema = z.enum([
   "business_impact_proposal",
 ]);
 
-// Framework scope enum
-export const frameworkScopeSchema = z.enum(["company", "personal"]);
+// Brief scope enum
+export const briefScopeSchema = z.enum(["company", "personal"]);
 
-// Create framework schema
-export const frameworkCreateSchema = z.object({
+// Create brief schema
+export const briefCreateSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(500).optional(),
-  category: frameworkCategorySchema,
-  scope: frameworkScopeSchema,
+  category: briefCategorySchema,
+  scope: briefScopeSchema,
   systemInstruction: z
     .string()
     .min(10, "System instruction must be at least 10 characters")
     .max(10000),
   outputFormat: z.string().max(10000).optional(),
   sections: z
-    .array(frameworkSectionSchema)
+    .array(briefSectionSchema)
     .min(1, "At least one section is required")
     .max(20),
   contextConfig: contextConfigSchema.optional(),
 });
 
-// Update framework schema (all fields optional)
-export const frameworkUpdateSchema = frameworkCreateSchema.partial();
+// Update brief schema (all fields optional)
+export const briefUpdateSchema = briefCreateSchema.partial();
 
 // Context selection schema for content generation
 export const contextSelectionSchema = z.object({
@@ -65,7 +65,7 @@ export const contextSelectionSchema = z.object({
 
 // Generate content request schema
 export const generateContentSchema = z.object({
-  frameworkId: z.string().cuid(),
+  briefId: z.string().cuid(),
   contextSelection: contextSelectionSchema,
 });
 
@@ -80,10 +80,10 @@ export const restoreVersionSchema = z.object({
   versionId: z.string().cuid(),
 });
 
-// Query parameters for listing frameworks
-export const frameworkListQuerySchema = z.object({
+// Query parameters for listing briefs
+export const briefListQuerySchema = z.object({
   scope: z.enum(["company", "personal", "all"]).optional().default("all"),
-  category: frameworkCategorySchema.optional(),
+  category: briefCategorySchema.optional(),
   search: z.string().max(100).optional(),
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(50).optional().default(20),
@@ -91,17 +91,37 @@ export const frameworkListQuerySchema = z.object({
 
 // Query parameters for listing generated content
 export const generatedContentListQuerySchema = z.object({
-  frameworkId: z.string().cuid().optional(),
+  briefId: z.string().cuid().optional(),
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(50).optional().default(20),
 });
 
 // Type exports
-export type FrameworkCreateInput = z.infer<typeof frameworkCreateSchema>;
-export type FrameworkUpdateInput = z.infer<typeof frameworkUpdateSchema>;
+export type BriefCreateInput = z.infer<typeof briefCreateSchema>;
+export type BriefUpdateInput = z.infer<typeof briefUpdateSchema>;
 export type ContextSelectionInput = z.infer<typeof contextSelectionSchema>;
 export type GenerateContentInput = z.infer<typeof generateContentSchema>;
 export type GeneratedContentUpdateInput = z.infer<typeof generatedContentUpdateSchema>;
 export type RestoreVersionInput = z.infer<typeof restoreVersionSchema>;
-export type FrameworkListQuery = z.infer<typeof frameworkListQuerySchema>;
+export type BriefListQuery = z.infer<typeof briefListQuerySchema>;
 export type GeneratedContentListQuery = z.infer<typeof generatedContentListQuerySchema>;
+
+// Backwards compatibility aliases (deprecated - remove after full migration)
+/** @deprecated Use briefSectionSchema instead */
+export const frameworkSectionSchema = briefSectionSchema;
+/** @deprecated Use briefCategorySchema instead */
+export const frameworkCategorySchema = briefCategorySchema;
+/** @deprecated Use briefScopeSchema instead */
+export const frameworkScopeSchema = briefScopeSchema;
+/** @deprecated Use briefCreateSchema instead */
+export const frameworkCreateSchema = briefCreateSchema;
+/** @deprecated Use briefUpdateSchema instead */
+export const frameworkUpdateSchema = briefUpdateSchema;
+/** @deprecated Use briefListQuerySchema instead */
+export const frameworkListQuerySchema = briefListQuerySchema;
+/** @deprecated Use BriefCreateInput instead */
+export type FrameworkCreateInput = BriefCreateInput;
+/** @deprecated Use BriefUpdateInput instead */
+export type FrameworkUpdateInput = BriefUpdateInput;
+/** @deprecated Use BriefListQuery instead */
+export type FrameworkListQuery = BriefListQuery;

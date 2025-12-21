@@ -3,18 +3,18 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { isAdmin } from "@/lib/permissions";
 import {
-  frameworkCreateSchema,
-  frameworkListQuerySchema,
-} from "@/lib/validations/framework";
+  briefCreateSchema,
+  briefListQuerySchema,
+} from "@/lib/validations/brief";
 
-// GET /api/v1/frameworks - List frameworks (company + personal based on user)
+// GET /api/v1/briefs - List briefs (company + personal based on user)
 export async function GET(req: NextRequest) {
   try {
     const user = await requireAuth();
     const searchParams = req.nextUrl.searchParams;
 
     // Parse query parameters (convert empty strings to undefined for optional fields)
-    const queryParsed = frameworkListQuerySchema.safeParse({
+    const queryParsed = briefListQuerySchema.safeParse({
       scope: searchParams.get("scope") || undefined,
       category: searchParams.get("category") || undefined,
       search: searchParams.get("search") || undefined,
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
     const whereConditions: any[] = [];
 
     if (scope === "company" || scope === "all") {
-      // Company frameworks: visible to everyone in the org
+      // Company briefs: visible to everyone in the org
       whereConditions.push({
         organizationId: user.organization.id,
         scope: "company",
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (scope === "personal" || scope === "all") {
-      // Personal frameworks: only the creator can see them
+      // Personal briefs: only the creator can see them
       whereConditions.push({
         organizationId: user.organization.id,
         scope: "personal",
@@ -75,13 +75,13 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // Fetch frameworks with pagination
-    const [total, frameworks] = await Promise.all([
-      prisma.contentFramework.count({ where: whereClause }),
-      prisma.contentFramework.findMany({
+    // Fetch briefs with pagination
+    const [total, briefs] = await Promise.all([
+      prisma.contentBrief.count({ where: whereClause }),
+      prisma.contentBrief.findMany({
         where: whereClause,
         orderBy: [
-          { isDefault: "desc" }, // Default frameworks first
+          { isDefault: "desc" }, // Default briefs first
           { usageCount: "desc" }, // Then by usage
           { name: "asc" }, // Then alphabetically
         ],
@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
     ]);
 
     return NextResponse.json({
-      frameworks,
+      briefs,
       pagination: {
         page,
         limit,
@@ -112,21 +112,21 @@ export async function GET(req: NextRequest) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Error fetching frameworks:", error);
+    console.error("Error fetching briefs:", error);
     return NextResponse.json(
-      { error: "Failed to fetch frameworks" },
+      { error: "Failed to fetch briefs" },
       { status: 500 }
     );
   }
 }
 
-// POST /api/v1/frameworks - Create a new framework
+// POST /api/v1/briefs - Create a new brief
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuth();
 
     const json = await req.json();
-    const parsed = frameworkCreateSchema.safeParse(json);
+    const parsed = briefCreateSchema.safeParse(json);
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -137,16 +137,16 @@ export async function POST(req: NextRequest) {
 
     const data = parsed.data;
 
-    // Check if user can create company frameworks (admin only)
+    // Check if user can create company briefs (admin only)
     if (data.scope === "company" && !isAdmin(user)) {
       return NextResponse.json(
-        { error: "Only admins can create company-wide frameworks" },
+        { error: "Only admins can create company-wide briefs" },
         { status: 403 }
       );
     }
 
     // Check for duplicate name within scope
-    const existing = await prisma.contentFramework.findFirst({
+    const existing = await prisma.contentBrief.findFirst({
       where: {
         organizationId: user.organization.id,
         name: data.name,
@@ -157,12 +157,12 @@ export async function POST(req: NextRequest) {
 
     if (existing) {
       return NextResponse.json(
-        { error: `A ${data.scope} framework with this name already exists` },
+        { error: `A ${data.scope} brief with this name already exists` },
         { status: 409 }
       );
     }
 
-    const framework = await prisma.contentFramework.create({
+    const brief = await prisma.contentBrief.create({
       data: {
         name: data.name,
         description: data.description,
@@ -187,14 +187,14 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ framework }, { status: 201 });
+    return NextResponse.json({ brief }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Error creating framework:", error);
+    console.error("Error creating brief:", error);
     return NextResponse.json(
-      { error: "Failed to create framework" },
+      { error: "Failed to create brief" },
       { status: 500 }
     );
   }

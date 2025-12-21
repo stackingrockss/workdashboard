@@ -33,15 +33,15 @@ interface CreateFrameworkDialogProps {
   editFramework?: ContentFramework | null;
 }
 
-// Category options for tag selection - order matches the screenshot
+// Category options for tag selection
 const CATEGORY_OPTIONS: { value: FrameworkCategory; label: string }[] = [
-  { value: "business_case", label: "Business Case" },
+  { value: "business_impact_proposal", label: "Business Impact Proposal" },
   { value: "mutual_action_plan", label: "Mutual Action Plan" },
   { value: "internal_prep_doc", label: "Internal Prep Doc" },
   { value: "email", label: "Email" },
   { value: "notes", label: "Notes" },
   { value: "general", label: "General" },
-  { value: "proposal", label: "Proposal" },
+  { value: "pricing_proposal", label: "Pricing Proposal" },
   { value: "account_plan", label: "Account Plan" },
   { value: "executive_summary", label: "Executive Summary" },
 ];

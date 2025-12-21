@@ -1,6 +1,6 @@
-// Types for the AI Content Generation Framework
+// Types for the AI Content Generation Briefs
 
-export type FrameworkCategory =
+export type BriefCategory =
   | "mutual_action_plan"
   | "pricing_proposal"
   | "email"
@@ -12,11 +12,11 @@ export type FrameworkCategory =
   | "other"
   | "business_impact_proposal";
 
-export type FrameworkScope = "company" | "personal";
+export type BriefScope = "company" | "personal";
 
 export type ContentGenerationStatus = "pending" | "generating" | "completed" | "failed";
 
-export interface FrameworkSection {
+export interface BriefSection {
   title: string;
   description?: string;
   required?: boolean;
@@ -29,15 +29,15 @@ export interface ContextConfig {
   accountResearch?: boolean;
 }
 
-export interface ContentFramework {
+export interface ContentBrief {
   id: string;
   name: string;
   description?: string | null;
-  category: FrameworkCategory;
-  scope: FrameworkScope;
+  category: BriefCategory;
+  scope: BriefScope;
   systemInstruction: string;
   outputFormat?: string | null;
-  sections: FrameworkSection[];
+  sections: BriefSection[];
   contextConfig?: ContextConfig | null;
   createdById: string;
   organizationId: string;
@@ -63,7 +63,7 @@ export interface ContextSelection {
 
 export interface GeneratedContent {
   id: string;
-  frameworkId: string;
+  briefId: string;
   opportunityId: string;
   title: string;
   content: string;
@@ -77,7 +77,7 @@ export interface GeneratedContent {
   organizationId: string;
   createdAt: Date | string;
   updatedAt: Date | string;
-  framework?: ContentFramework;
+  brief?: ContentBrief;
   createdBy?: {
     id: string;
     name: string | null;
@@ -97,7 +97,7 @@ export interface GeneratedContentWithVersions extends GeneratedContent {
   }>;
 }
 
-export const FRAMEWORK_CATEGORY_LABELS: Record<FrameworkCategory, string> = {
+export const BRIEF_CATEGORY_LABELS: Record<BriefCategory, string> = {
   mutual_action_plan: "Mutual Action Plan",
   pricing_proposal: "Pricing Proposal",
   email: "Email",
@@ -110,11 +110,27 @@ export const FRAMEWORK_CATEGORY_LABELS: Record<FrameworkCategory, string> = {
   business_impact_proposal: "Business Impact Proposal",
 };
 
-export const FRAMEWORK_CATEGORY_OPTIONS = Object.entries(FRAMEWORK_CATEGORY_LABELS).map(
-  ([value, label]) => ({ value: value as FrameworkCategory, label })
+export const BRIEF_CATEGORY_OPTIONS = Object.entries(BRIEF_CATEGORY_LABELS).map(
+  ([value, label]) => ({ value: value as BriefCategory, label })
 );
 
-export const FRAMEWORK_SCOPE_LABELS: Record<FrameworkScope, string> = {
+export const BRIEF_SCOPE_LABELS: Record<BriefScope, string> = {
   company: "Company",
   personal: "Personal",
 };
+
+// Backwards compatibility aliases (deprecated - remove after full migration)
+/** @deprecated Use BriefCategory instead */
+export type FrameworkCategory = BriefCategory;
+/** @deprecated Use BriefScope instead */
+export type FrameworkScope = BriefScope;
+/** @deprecated Use BriefSection instead */
+export type FrameworkSection = BriefSection;
+/** @deprecated Use ContentBrief instead */
+export type ContentFramework = ContentBrief;
+/** @deprecated Use BRIEF_CATEGORY_LABELS instead */
+export const FRAMEWORK_CATEGORY_LABELS = BRIEF_CATEGORY_LABELS;
+/** @deprecated Use BRIEF_CATEGORY_OPTIONS instead */
+export const FRAMEWORK_CATEGORY_OPTIONS = BRIEF_CATEGORY_OPTIONS;
+/** @deprecated Use BRIEF_SCOPE_LABELS instead */
+export const FRAMEWORK_SCOPE_LABELS = BRIEF_SCOPE_LABELS;

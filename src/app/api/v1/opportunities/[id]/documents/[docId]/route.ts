@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         organizationId: user.organization.id,
       },
       include: {
-        framework: {
+        brief: {
           select: {
             id: true,
             name: true,
@@ -220,7 +220,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         lastEditedAt: new Date(),
       },
       include: {
-        framework: {
+        brief: {
           select: {
             id: true,
             name: true,

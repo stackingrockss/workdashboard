@@ -1,6 +1,6 @@
 "use client";
 
-import { Document, DOCUMENT_TYPE_LABELS } from "@/types/document";
+import { Document, BRIEF_CATEGORY_LABELS } from "@/types/document";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,10 @@ import {
   Clock,
   Loader2,
   Trash2,
-  User,
+  Mail,
+  Briefcase,
+  Building2,
+  StickyNote,
 } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
 
@@ -32,18 +35,31 @@ export const DocumentCard = ({
     if (isGenerating) {
       return <Loader2 className="h-5 w-5 animate-spin text-primary" />;
     }
-    switch (document.documentType) {
+
+    // Icon based on category
+    switch (document.category) {
       case "mutual_action_plan":
         return <FileSpreadsheet className="h-5 w-5 text-blue-500" />;
-      case "framework_generated":
-        return <Sparkles className="h-5 w-5 text-purple-500" />;
+      case "pricing_proposal":
+        return <Briefcase className="h-5 w-5 text-green-500" />;
+      case "business_impact_proposal":
+        return <Sparkles className="h-5 w-5 text-indigo-500" />;
+      case "email":
+        return <Mail className="h-5 w-5 text-orange-500" />;
+      case "executive_summary":
+      case "internal_prep_doc":
+        return <FileText className="h-5 w-5 text-purple-500" />;
+      case "account_plan":
+        return <Building2 className="h-5 w-5 text-cyan-500" />;
+      case "notes":
+        return <StickyNote className="h-5 w-5 text-yellow-500" />;
       default:
         return <FileText className="h-5 w-5 text-muted-foreground" />;
     }
   };
 
   const getPreview = () => {
-    if (document.documentType === "mutual_action_plan" && document.structuredData) {
+    if (document.category === "mutual_action_plan" && document.structuredData) {
       const actionItems = document.structuredData.actionItems || [];
       return `${actionItems.length} action item${actionItems.length !== 1 ? "s" : ""}`;
     }
@@ -91,11 +107,11 @@ export const DocumentCard = ({
 
             <div className="flex items-center gap-2 mb-2">
               <Badge variant="outline" className="text-xs">
-                {DOCUMENT_TYPE_LABELS[document.documentType]}
+                {BRIEF_CATEGORY_LABELS[document.category]}
               </Badge>
-              {document.framework && (
+              {document.brief && (
                 <Badge variant="secondary" className="text-xs">
-                  {document.framework.name}
+                  {document.brief.name}
                 </Badge>
               )}
             </div>

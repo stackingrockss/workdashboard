@@ -44,9 +44,9 @@ export const generateFrameworkContentJob = inngest.createFunction(
       });
     });
 
-    // Step 1: Fetch the framework
+    // Step 1: Fetch the framework (brief)
     const framework = await step.run("fetch-framework", async () => {
-      const fw = await prisma.contentFramework.findUnique({
+      const fw = await prisma.contentBrief.findUnique({
         where: { id: frameworkId },
         select: {
           id: true,
@@ -123,7 +123,7 @@ export const generateFrameworkContentJob = inngest.createFunction(
 
     // Step 6: Increment framework usage count
     await step.run("increment-usage-count", async () => {
-      return await prisma.contentFramework.update({
+      return await prisma.contentBrief.update({
         where: { id: frameworkId },
         data: { usageCount: { increment: 1 } },
       });

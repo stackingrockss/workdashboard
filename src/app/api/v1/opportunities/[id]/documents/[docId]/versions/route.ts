@@ -181,10 +181,10 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         opportunityId: currentDocument.opportunityId,
         organizationId: currentDocument.organizationId,
         title: versionToRestore.title,
-        documentType: currentDocument.documentType,
+        category: currentDocument.category,
         content: versionToRestore.content,
         structuredData: jsonOrNull(versionToRestore.structuredData),
-        frameworkId: currentDocument.frameworkId,
+        briefId: currentDocument.briefId,
         generationStatus: "completed",
         contextSnapshot: jsonOrNull(versionToRestore.contextSnapshot),
         version: currentDocument.version + 1,
@@ -193,7 +193,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         generatedAt: new Date(),
       },
       include: {
-        framework: {
+        brief: {
           select: {
             id: true,
             name: true,

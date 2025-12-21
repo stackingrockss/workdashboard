@@ -26,7 +26,7 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
       organizationId: user.organization.id,
     },
     include: {
-      framework: {
+      brief: {
         select: {
           id: true,
           name: true,
@@ -86,10 +86,10 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
     opportunityId: document.opportunityId,
     organizationId: document.organizationId,
     title: document.title,
-    documentType: document.documentType,
+    category: document.category,
     content: document.content || undefined,
     structuredData: document.structuredData as { actionItems: unknown[] } | null,
-    frameworkId: document.frameworkId || undefined,
+    briefId: document.briefId || undefined,
     generationStatus: document.generationStatus || undefined,
     generatedAt: document.generatedAt?.toISOString() || undefined,
     generationError: document.generationError || undefined,
@@ -101,7 +101,7 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
     lastEditedAt: document.lastEditedAt?.toISOString() || undefined,
     createdAt: document.createdAt.toISOString(),
     updatedAt: document.updatedAt.toISOString(),
-    framework: document.framework || undefined,
+    brief: document.brief || undefined,
     createdBy: document.createdBy || undefined,
     lastEditedBy: document.lastEditedBy || undefined,
     opportunity: document.opportunity,

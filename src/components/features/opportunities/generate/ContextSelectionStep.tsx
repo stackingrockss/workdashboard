@@ -9,7 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { ContentFramework, ContextSelection } from "@/types/framework";
+import { ContentBrief, ContextSelection } from "@/types/brief";
 import {
   Search,
   ArrowLeft,
@@ -34,7 +34,7 @@ import {
 
 interface ContextSelectionStepProps {
   opportunityId: string;
-  selectedFramework: ContentFramework;
+  selectedBrief: ContentBrief;
   contextSelection: ContextSelection;
   onContextChange: (selection: ContextSelection) => void;
   hasAccountResearch?: boolean;
@@ -66,7 +66,7 @@ type MeetingGroup = {
 
 export const ContextSelectionStep = ({
   opportunityId,
-  selectedFramework,
+  selectedBrief,
   contextSelection,
   onContextChange,
   hasAccountResearch = false,
@@ -290,8 +290,8 @@ export const ContextSelectionStep = ({
   };
 
   // Parse sections for preview
-  const selectedSections = Array.isArray(selectedFramework.sections)
-    ? selectedFramework.sections
+  const selectedSections = Array.isArray(selectedBrief.sections)
+    ? selectedBrief.sections
     : [];
 
   const toggleGroup = (groupKey: string) => {
@@ -509,17 +509,17 @@ export const ContextSelectionStep = ({
           </Card>
         </div>
 
-        {/* Right: Template preview */}
+        {/* Right: Brief preview */}
         <div className="lg:col-span-1">
           <Card className="sticky top-24">
             <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <Sparkles className="h-4 w-4" />
-                {selectedFramework.name}
+                {selectedBrief.name}
               </CardTitle>
-              {selectedFramework.description && (
+              {selectedBrief.description && (
                 <p className="text-sm text-muted-foreground">
-                  {selectedFramework.description}
+                  {selectedBrief.description}
                 </p>
               )}
             </CardHeader>
@@ -580,7 +580,7 @@ export const ContextSelectionStep = ({
               )}
 
               {/* Output template preview */}
-              {selectedFramework.outputFormat && (
+              {selectedBrief.outputFormat && (
                 <div>
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
                     Output Template
@@ -588,7 +588,7 @@ export const ContextSelectionStep = ({
                   <ScrollArea className="h-[280px] rounded-md border bg-muted/30 p-3">
                     <div className="prose prose-sm dark:prose-invert prose-headings:text-sm prose-headings:font-medium prose-p:text-xs prose-p:text-muted-foreground">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {selectedFramework.outputFormat}
+                        {selectedBrief.outputFormat}
                       </ReactMarkdown>
                     </div>
                   </ScrollArea>

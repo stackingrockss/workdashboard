@@ -36,8 +36,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     // Parse query parameters (convert null to undefined for optional fields)
     const queryParsed = documentListQuerySchema.safeParse({
-      documentType: searchParams.get("documentType") || undefined,
-      frameworkId: searchParams.get("frameworkId") || undefined,
+      category: searchParams.get("category") || undefined,
+      briefId: searchParams.get("briefId") || undefined,
       search: searchParams.get("search") || undefined,
       page: searchParams.get("page") || undefined,
       limit: searchParams.get("limit") || undefined,
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { documentType, frameworkId, search, page, limit } = queryParsed.data;
+    const { category, briefId, search, page, limit } = queryParsed.data;
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -62,12 +62,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       parentVersionId: null,
     };
 
-    if (documentType) {
-      whereClause.documentType = documentType;
+    if (category) {
+      whereClause.category = category;
     }
 
-    if (frameworkId) {
-      whereClause.frameworkId = frameworkId;
+    if (briefId) {
+      whereClause.briefId = briefId;
     }
 
     if (search) {
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         where: whereClause,
         orderBy: { updatedAt: "desc" },
         include: {
-          framework: {
+          brief: {
             select: {
               id: true,
               name: true,
@@ -176,21 +176,21 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     const {
       title,
-      documentType,
+      category,
       content,
       structuredData,
-      frameworkId,
+      briefId,
       contextSelection,
       generateFromMeetings,
       templateContentId,
     } = parsed.data;
 
-    // If framework-generated, verify framework exists and user has access
-    let framework = null;
-    if (frameworkId) {
-      framework = await prisma.contentFramework.findFirst({
+    // If using a brief, verify it exists and user has access
+    let brief = null;
+    if (briefId) {
+      brief = await prisma.contentBrief.findFirst({
         where: {
-          id: frameworkId,
+          id: briefId,
           organizationId: user.organization.id,
           OR: [
             { scope: "company" },
@@ -199,9 +199,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         },
       });
 
-      if (!framework) {
+      if (!brief) {
         return NextResponse.json(
-          { error: "Framework not found" },
+          { error: "Brief not found" },
           { status: 404 }
         );
       }
@@ -209,13 +209,13 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     // Determine if we need AI generation
     const needsGeneration =
-      (documentType === "framework_generated" && frameworkId) ||
-      (documentType === "mutual_action_plan" && generateFromMeetings);
+      (briefId && contextSelection) ||
+      (category === "mutual_action_plan" && generateFromMeetings);
 
     // Prepare structured data
     const structuredDataValue = structuredData
       ? structuredData
-      : documentType === "mutual_action_plan" && !generateFromMeetings
+      : category === "mutual_action_plan" && !generateFromMeetings
         ? { actionItems: [] }
         : Prisma.JsonNull;
 
@@ -227,18 +227,18 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       data: {
         opportunityId: opportunity.id,
         organizationId: user.organization.id,
-        title: title || (framework ? `${framework.name} - ${opportunity.name}` : "Untitled Document"),
-        documentType,
+        title: title || (brief ? `${brief.name} - ${opportunity.name}` : "Untitled Document"),
+        category,
         content: content || (needsGeneration ? "" : null),
         structuredData: structuredDataValue,
-        frameworkId: frameworkId || null,
+        briefId: briefId || null,
         generationStatus: needsGeneration ? "pending" : null,
         contextSnapshot: contextSnapshotValue,
         version: 1,
         createdById: user.id,
       },
       include: {
-        framework: {
+        brief: {
           select: {
             id: true,
             name: true,
@@ -257,20 +257,20 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     // Trigger background job for AI generation if needed
     if (needsGeneration) {
-      if (documentType === "framework_generated" && frameworkId) {
-        // Use existing framework generation
+      if (briefId && contextSelection) {
+        // Use brief generation
         await inngest.send({
           name: "document/generate-content",
           data: {
             documentId: document.id,
             opportunityId: opportunity.id,
-            frameworkId: frameworkId,
+            briefId: briefId,
             contextSelection: contextSelection || {},
             userId: user.id,
             organizationId: user.organization.id,
           },
         });
-      } else if (documentType === "mutual_action_plan" && generateFromMeetings) {
+      } else if (category === "mutual_action_plan" && generateFromMeetings) {
         // Use MAP generation
         await inngest.send({
           name: "document/generate-map",

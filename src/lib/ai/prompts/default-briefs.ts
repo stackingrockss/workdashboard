@@ -1,23 +1,23 @@
 /**
- * Default Framework Templates for AI Content Generation
+ * Default Brief Templates for AI Content Generation
  *
  * These templates are seeded for new organizations and serve as starting points
- * for users to create their own custom frameworks.
+ * for users to create their own custom briefs.
  */
 
-import { FrameworkCategory, FrameworkSection, ContextConfig } from "@/types/framework";
+import { BriefCategory, BriefSection, ContextConfig } from "@/types/brief";
 
-export interface DefaultFramework {
+export interface DefaultBrief {
   name: string;
   description: string;
-  category: FrameworkCategory;
+  category: BriefCategory;
   systemInstruction: string;
   outputFormat?: string;
-  sections: FrameworkSection[];
+  sections: BriefSection[];
   contextConfig: ContextConfig;
 }
 
-export const DEFAULT_FRAMEWORKS: DefaultFramework[] = [
+export const DEFAULT_BRIEFS: DefaultBrief[] = [
   {
     name: "Mutual Action Plan",
     description: "A collaborative project plan with action items, owners, and timelines working backward from close date",
@@ -225,15 +225,25 @@ Write in a clear, authoritative tone. Be specific with data points. Make recomme
 ];
 
 /**
- * Get a default framework by name
+ * Get a default brief by name
  */
-export function getDefaultFrameworkByName(name: string): DefaultFramework | undefined {
-  return DEFAULT_FRAMEWORKS.find((f) => f.name.toLowerCase() === name.toLowerCase());
+export function getDefaultBriefByName(name: string): DefaultBrief | undefined {
+  return DEFAULT_BRIEFS.find((b) => b.name.toLowerCase() === name.toLowerCase());
 }
 
 /**
- * Get all default frameworks for a specific category
+ * Get all default briefs for a specific category
  */
-export function getDefaultFrameworksByCategory(category: FrameworkCategory): DefaultFramework[] {
-  return DEFAULT_FRAMEWORKS.filter((f) => f.category === category);
+export function getDefaultBriefsByCategory(category: BriefCategory): DefaultBrief[] {
+  return DEFAULT_BRIEFS.filter((b) => b.category === category);
 }
+
+// Backwards compatibility aliases
+/** @deprecated Use DEFAULT_BRIEFS instead */
+export const DEFAULT_FRAMEWORKS = DEFAULT_BRIEFS;
+/** @deprecated Use DefaultBrief instead */
+export type DefaultFramework = DefaultBrief;
+/** @deprecated Use getDefaultBriefByName instead */
+export const getDefaultFrameworkByName = getDefaultBriefByName;
+/** @deprecated Use getDefaultBriefsByCategory instead */
+export const getDefaultFrameworksByCategory = getDefaultBriefsByCategory;

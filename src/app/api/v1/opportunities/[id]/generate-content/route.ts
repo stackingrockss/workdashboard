@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import { generateContentSchema } from "@/lib/validations/framework";
+import { generateContentSchema } from "@/lib/validations/brief";
 import { inngest } from "@/lib/inngest/client";
 
 interface RouteParams {
@@ -40,12 +40,12 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { frameworkId, contextSelection } = parsed.data;
+    const { briefId, contextSelection } = parsed.data;
 
-    // Verify framework exists and user has access
-    const framework = await prisma.contentFramework.findFirst({
+    // Verify brief exists and user has access
+    const brief = await prisma.contentBrief.findFirst({
       where: {
-        id: frameworkId,
+        id: briefId,
         organizationId: user.organization.id,
         OR: [
           { scope: "company" },
@@ -54,29 +54,30 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       },
     });
 
-    if (!framework) {
+    if (!brief) {
       return NextResponse.json(
-        { error: "Framework not found" },
+        { error: "Brief not found" },
         { status: 404 }
       );
     }
 
     // Create a pending Document record (unified document system)
+    // Category is set from the brief's category
     const document = await prisma.document.create({
       data: {
         opportunityId: opportunity.id,
         organizationId: user.organization.id,
-        title: `${framework.name} - ${opportunity.name}`,
-        documentType: "framework_generated",
+        title: `${brief.name} - ${opportunity.name}`,
+        category: brief.category,
         content: "", // Will be filled by the background job
-        frameworkId: framework.id,
+        briefId: brief.id,
         generationStatus: "pending",
         contextSnapshot: contextSelection as Prisma.InputJsonValue,
         version: 1,
         createdById: user.id,
       },
       include: {
-        framework: {
+        brief: {
           select: {
             id: true,
             name: true,
@@ -99,7 +100,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       data: {
         documentId: document.id,
         opportunityId: opportunity.id,
-        frameworkId: framework.id,
+        briefId: brief.id,
         contextSelection: contextSelection || {},
         userId: user.id,
         organizationId: user.organization.id,

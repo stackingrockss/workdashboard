@@ -300,7 +300,7 @@ export const FrameworkSelectionDialog = ({
                     frameworks.map((framework) => (
                       <FrameworkCard
                         key={framework.id}
-                        framework={framework}
+                        brief={framework}
                         isSelected={selectedFramework?.id === framework.id}
                         onClick={() => handleSelectFramework(framework)}
                       />

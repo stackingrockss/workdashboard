@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import { contextSelectionSchema } from "@/lib/validations/framework";
+import { contextSelectionSchema } from "@/lib/validations/brief";
 import { inngest } from "@/lib/inngest/client";
 
 interface RouteParams {
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         organizationId: user.organization.id,
       },
       include: {
-        framework: true,
+        brief: true,
       },
     });
 
@@ -48,11 +48,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     const contextSelection = parsed.data;
 
-    // Get the highest version number for this framework+opportunity
+    // Get the highest version number for this brief+opportunity
     const maxVersion = await prisma.generatedContent.findFirst({
       where: {
         opportunityId,
-        frameworkId: existingContent.frameworkId,
+        briefId: existingContent.briefId,
         organizationId: user.organization.id,
       },
       orderBy: { version: "desc" },
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     // Create a new version linked to the previous one
     const newContent = await prisma.generatedContent.create({
       data: {
-        frameworkId: existingContent.frameworkId,
+        briefId: existingContent.briefId,
         opportunityId: existingContent.opportunityId,
         title: existingContent.title,
         content: "", // Will be filled by background job
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         organizationId: user.organization.id,
       },
       include: {
-        framework: {
+        brief: {
           select: {
             id: true,
             name: true,
@@ -95,11 +95,11 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     // Trigger background job for generation
     await inngest.send({
-      name: "framework/generate",
+      name: "document/generate-content",
       data: {
-        generatedContentId: newContent.id,
+        documentId: newContent.id,
         opportunityId,
-        frameworkId: existingContent.frameworkId,
+        briefId: existingContent.briefId,
         contextSelection,
         userId: user.id,
         organizationId: user.organization.id,

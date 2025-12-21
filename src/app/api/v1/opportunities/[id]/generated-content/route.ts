@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import { generatedContentListQuerySchema } from "@/lib/validations/framework";
+import { generatedContentListQuerySchema } from "@/lib/validations/brief";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     // Parse query parameters
     const queryParsed = generatedContentListQuerySchema.safeParse({
-      frameworkId: searchParams.get("frameworkId"),
+      briefId: searchParams.get("briefId"),
       page: searchParams.get("page"),
       limit: searchParams.get("limit"),
     });
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const { frameworkId, page, limit } = queryParsed.data;
+    const { briefId, page, limit } = queryParsed.data;
     const skip = (page - 1) * limit;
 
     // Build where clause
@@ -51,12 +51,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const whereClause: any = {
       opportunityId,
       organizationId: user.organization.id,
-      // Only show latest version of each framework for this opportunity
+      // Only show latest version of each brief for this opportunity
       parentVersionId: null,
     };
 
-    if (frameworkId) {
-      whereClause.frameworkId = frameworkId;
+    if (briefId) {
+      whereClause.briefId = briefId;
     }
 
     // Fetch generated content with pagination
@@ -66,7 +66,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         where: whereClause,
         orderBy: { createdAt: "desc" },
         include: {
-          framework: {
+          brief: {
             select: {
               id: true,
               name: true,

@@ -12,27 +12,27 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
-  frameworkCreateSchema,
-  FrameworkCreateInput,
-} from "@/lib/validations/framework";
+  briefCreateSchema,
+  BriefCreateInput,
+} from "@/lib/validations/brief";
 import {
-  FrameworkCategory,
-  ContentFramework,
-} from "@/types/framework";
-import { ArrowLeft, Loader2, Building2, User, Sparkles, FileText } from "lucide-react";
+  BriefCategory,
+  ContentBrief,
+} from "@/types/brief";
+import { ArrowLeft, Loader2, Building2, User, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-interface CreateFrameworkPageProps {
-  editFramework?: ContentFramework | null;
+interface CreateBriefPageProps {
+  editBrief?: ContentBrief | null;
 }
 
 // Category options for tag selection
-const CATEGORY_OPTIONS: { value: FrameworkCategory; label: string; description: string }[] = [
-  { value: "business_case", label: "Business Case", description: "ROI and value propositions" },
+const CATEGORY_OPTIONS: { value: BriefCategory; label: string; description: string }[] = [
+  { value: "business_impact_proposal", label: "Business Impact Proposal", description: "ROI and value propositions" },
   { value: "mutual_action_plan", label: "Mutual Action Plan", description: "Collaborative next steps" },
   { value: "executive_summary", label: "Executive Summary", description: "High-level overviews" },
-  { value: "proposal", label: "Proposal", description: "Formal proposals and quotes" },
+  { value: "pricing_proposal", label: "Pricing Proposal", description: "Formal proposals and quotes" },
   { value: "email", label: "Email", description: "Follow-up and outreach" },
   { value: "account_plan", label: "Account Plan", description: "Strategic account planning" },
   { value: "internal_prep_doc", label: "Internal Prep Doc", description: "Meeting preparation" },
@@ -40,10 +40,10 @@ const CATEGORY_OPTIONS: { value: FrameworkCategory; label: string; description: 
   { value: "general", label: "General", description: "Other content types" },
 ];
 
-export const CreateFrameworkPage = ({ editFramework }: CreateFrameworkPageProps) => {
+export const CreateBriefPage = ({ editBrief }: CreateBriefPageProps) => {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
-  const isEditing = !!editFramework;
+  const isEditing = !!editBrief;
 
   const {
     register,
@@ -51,18 +51,18 @@ export const CreateFrameworkPage = ({ editFramework }: CreateFrameworkPageProps)
     formState: { errors },
     setValue,
     watch,
-  } = useForm<FrameworkCreateInput>({
+  } = useForm<BriefCreateInput>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(frameworkCreateSchema) as any,
-    defaultValues: editFramework
+    resolver: zodResolver(briefCreateSchema) as any,
+    defaultValues: editBrief
       ? {
-          name: editFramework.name,
-          description: editFramework.description || "",
-          category: editFramework.category,
-          scope: editFramework.scope,
-          systemInstruction: editFramework.systemInstruction,
-          outputFormat: editFramework.outputFormat || "",
-          sections: editFramework.sections || [{ title: "Content", required: true }],
+          name: editBrief.name,
+          description: editBrief.description || "",
+          category: editBrief.category,
+          scope: editBrief.scope,
+          systemInstruction: editBrief.systemInstruction,
+          outputFormat: editBrief.outputFormat || "",
+          sections: editBrief.sections || [{ title: "Content", required: true }],
         }
       : {
           name: "",
@@ -78,12 +78,12 @@ export const CreateFrameworkPage = ({ editFramework }: CreateFrameworkPageProps)
   const selectedCategory = watch("category");
   const selectedScope = watch("scope");
 
-  const onSubmit = async (data: FrameworkCreateInput) => {
+  const onSubmit = async (data: BriefCreateInput) => {
     setSubmitting(true);
     try {
       const url = isEditing
-        ? `/api/v1/frameworks/${editFramework.id}`
-        : "/api/v1/frameworks";
+        ? `/api/v1/briefs/${editBrief.id}`
+        : "/api/v1/briefs";
       const method = isEditing ? "PATCH" : "POST";
 
       const response = await fetch(url, {
@@ -94,15 +94,15 @@ export const CreateFrameworkPage = ({ editFramework }: CreateFrameworkPageProps)
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || `Failed to ${isEditing ? "update" : "create"} framework`);
+        throw new Error(error.error || `Failed to ${isEditing ? "update" : "create"} brief`);
       }
 
-      toast.success(`Framework ${isEditing ? "updated" : "created"} successfully!`);
-      router.push("/frameworks");
+      toast.success(`Brief ${isEditing ? "updated" : "created"} successfully!`);
+      router.push("/briefs");
     } catch (error) {
-      console.error(`Failed to ${isEditing ? "update" : "create"} framework:`, error);
+      console.error(`Failed to ${isEditing ? "update" : "create"} brief:`, error);
       toast.error(
-        error instanceof Error ? error.message : `Failed to ${isEditing ? "update" : "create"} framework`
+        error instanceof Error ? error.message : `Failed to ${isEditing ? "update" : "create"} brief`
       );
     } finally {
       setSubmitting(false);
@@ -114,17 +114,17 @@ export const CreateFrameworkPage = ({ editFramework }: CreateFrameworkPageProps)
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/frameworks">
+          <Link href="/briefs">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-primary/10">
-            <Sparkles className="h-5 w-5 text-primary" />
+            <FileText className="h-5 w-5 text-primary" />
           </div>
           <div>
             <h1 className="text-xl font-semibold">
-              {isEditing ? "Edit Framework" : "Create Framework"}
+              {isEditing ? "Edit Brief" : "Create Brief"}
             </h1>
             <p className="text-sm text-muted-foreground">
               Define AI instructions and templates for generating sales content
@@ -138,13 +138,13 @@ export const CreateFrameworkPage = ({ editFramework }: CreateFrameworkPageProps)
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Basic Information</CardTitle>
-            <CardDescription>Name and describe your framework</CardDescription>
+            <CardDescription>Name and describe your brief</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="name">
-                  Framework Name <span className="text-destructive">*</span>
+                  Brief Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="name"
@@ -159,7 +159,7 @@ export const CreateFrameworkPage = ({ editFramework }: CreateFrameworkPageProps)
                 <Label htmlFor="description">Summary</Label>
                 <Input
                   id="description"
-                  placeholder="Brief description of what this framework generates"
+                  placeholder="Brief description of what this generates"
                   {...register("description")}
                 />
                 {errors.description && (
@@ -174,13 +174,13 @@ export const CreateFrameworkPage = ({ editFramework }: CreateFrameworkPageProps)
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Visibility & Category</CardTitle>
-            <CardDescription>Control who can use this framework and how it&apos;s categorized</CardDescription>
+            <CardDescription>Control who can use this brief and how it&apos;s categorized</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Scope Selection */}
             <div className="space-y-3">
               <Label>
-                Framework Scope <span className="text-destructive">*</span>
+                Brief Scope <span className="text-destructive">*</span>
               </Label>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label
@@ -290,7 +290,7 @@ export const CreateFrameworkPage = ({ editFramework }: CreateFrameworkPageProps)
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Sparkles className="h-4 w-4" />
+              <FileText className="h-4 w-4" />
               AI Instructions
             </CardTitle>
             <CardDescription>
@@ -307,7 +307,7 @@ export const CreateFrameworkPage = ({ editFramework }: CreateFrameworkPageProps)
                 placeholder={`Example: You are an enterprise sales expert helping to create compelling business cases for customers.
 
 Using the opportunity context provided (call transcripts, notes, and account research), generate a personalized business case that:
-- Highlights the customer&apos;s specific pain points
+- Highlights the customer's specific pain points
 - Quantifies the business impact
 - Presents our solution as the clear choice
 - Includes relevant metrics and ROI projections
@@ -372,7 +372,7 @@ Write in a professional but conversational tone.`}
         {/* Actions */}
         <div className="flex items-center justify-end gap-3 pt-4">
           <Button type="button" variant="outline" asChild>
-            <Link href="/frameworks">Cancel</Link>
+            <Link href="/briefs">Cancel</Link>
           </Button>
           <Button type="submit" disabled={submitting}>
             {submitting ? (
@@ -383,7 +383,7 @@ Write in a professional but conversational tone.`}
             ) : isEditing ? (
               "Save Changes"
             ) : (
-              "Create Framework"
+              "Create Brief"
             )}
           </Button>
         </div>

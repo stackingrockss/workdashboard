@@ -20,6 +20,7 @@ import { recalculateNextCallDatesJob } from "@/lib/inngest/functions/recalculate
 import { generateMapJob } from "@/lib/inngest/functions/generate-map";
 import { generateFrameworkContentJob } from "@/lib/inngest/functions/generate-framework-content";
 import { generateDocumentContentJob } from "@/lib/inngest/functions/generate-document-content";
+import { generateBIPDocumentJob } from "@/lib/inngest/functions/generate-bip-document";
 import { syncGongCallsCron, syncGongCallsForOrg } from "@/lib/inngest/functions/sync-gong-calls";
 import { syncDatabaseBackupJob, fullDatabaseSyncJob } from "@/lib/inngest/functions/sync-database-backup";
 
@@ -51,6 +52,7 @@ export const { GET, POST, PUT } = serve({
     generateMapJob, // Mutual Action Plan generation
     generateFrameworkContentJob, // AI content generation using frameworks (legacy GeneratedContent)
     generateDocumentContentJob, // AI content generation for Document table (unified system)
+    generateBIPDocumentJob, // Business Impact Proposal generation
     syncGongCallsCron, // Gong calls sync (hourly cron)
     syncGongCallsForOrg, // Gong calls sync for single org (manual or scheduled)
     syncDatabaseBackupJob, // CDC sync to backup database (every 12 hours)

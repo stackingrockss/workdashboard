@@ -4,22 +4,22 @@
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/db";
 import { aggregateContext } from "@/lib/ai/context-aggregator";
-import { generateFrameworkContent } from "@/lib/ai/framework-generator";
-import { ContextSelectionInput } from "@/lib/validations/framework";
-import { FrameworkSection } from "@/types/framework";
+import { generateBriefContent } from "@/lib/ai/brief-generator";
+import { ContextSelectionInput } from "@/lib/validations/brief";
+import { BriefSection } from "@/types/brief";
 
 interface DocumentGenerateEventData {
   documentId: string;
   opportunityId: string;
-  frameworkId: string;
+  briefId: string;
   contextSelection: ContextSelectionInput;
   userId: string;
   organizationId: string;
 }
 
 /**
- * Background job that generates content for a Document using a framework template
- * Triggered when user clicks "Generate" button in the framework wizard
+ * Background job that generates content for a Document using a brief template
+ * Triggered when user clicks "Generate" button in the brief wizard
  * This is the unified document generation handler for the Document table
  */
 export const generateDocumentContentJob = inngest.createFunction(
@@ -33,7 +33,7 @@ export const generateDocumentContentJob = inngest.createFunction(
     const {
       documentId,
       opportunityId,
-      frameworkId,
+      briefId,
       contextSelection,
     } = event.data as DocumentGenerateEventData;
 
@@ -45,10 +45,10 @@ export const generateDocumentContentJob = inngest.createFunction(
       });
     });
 
-    // Step 1: Fetch the framework
-    const framework = await step.run("fetch-framework", async () => {
-      const fw = await prisma.contentFramework.findUnique({
-        where: { id: frameworkId },
+    // Step 1: Fetch the brief
+    const brief = await step.run("fetch-brief", async () => {
+      const b = await prisma.contentBrief.findUnique({
+        where: { id: briefId },
         select: {
           id: true,
           name: true,
@@ -58,11 +58,11 @@ export const generateDocumentContentJob = inngest.createFunction(
         },
       });
 
-      if (!fw) {
-        throw new Error(`Framework not found: ${frameworkId}`);
+      if (!b) {
+        throw new Error(`Brief not found: ${briefId}`);
       }
 
-      return fw;
+      return b;
     });
 
     // Step 2: Aggregate context from selected sources
@@ -72,12 +72,12 @@ export const generateDocumentContentJob = inngest.createFunction(
 
     // Step 3: Generate content using AI
     const generationResult = await step.run("generate-content-ai", async () => {
-      const result = await generateFrameworkContent(
+      const result = await generateBriefContent(
         {
-          name: framework.name,
-          systemInstruction: framework.systemInstruction,
-          outputFormat: framework.outputFormat,
-          sections: framework.sections as unknown as FrameworkSection[],
+          name: brief.name,
+          systemInstruction: brief.systemInstruction,
+          outputFormat: brief.outputFormat,
+          sections: brief.sections as unknown as BriefSection[],
         },
         aggregatedContext
       );
@@ -122,10 +122,10 @@ export const generateDocumentContentJob = inngest.createFunction(
       });
     });
 
-    // Step 6: Increment framework usage count
+    // Step 6: Increment brief usage count
     await step.run("increment-usage-count", async () => {
-      return await prisma.contentFramework.update({
-        where: { id: frameworkId },
+      return await prisma.contentBrief.update({
+        where: { id: briefId },
         data: { usageCount: { increment: 1 } },
       });
     });
@@ -134,7 +134,7 @@ export const generateDocumentContentJob = inngest.createFunction(
       success: true,
       documentId: updatedDocument.id,
       opportunityId,
-      frameworkId,
+      briefId,
       title: updatedDocument.title,
       version: updatedDocument.version,
       generatedAt: updatedDocument.generatedAt,

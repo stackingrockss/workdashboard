@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
-import { generatedContentUpdateSchema } from "@/lib/validations/framework";
+import { generatedContentUpdateSchema } from "@/lib/validations/brief";
 
 interface RouteParams {
   params: Promise<{ id: string; contentId: string }>;
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         organizationId: user.organization.id,
       },
       include: {
-        framework: {
+        brief: {
           select: {
             id: true,
             name: true,
@@ -49,7 +49,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     // Get version history - find the root and all descendants
     // First, find the root content (the one with no parent)
-    let rootId = contentId;
     let currentParentId = generatedContent.parentVersionId;
 
     // Walk up to find root
@@ -59,7 +58,6 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         select: { id: true, parentVersionId: true },
       });
       if (!parent) break;
-      rootId = parent.id;
       currentParentId = parent.parentVersionId;
     }
 
@@ -67,7 +65,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const allVersions = await prisma.generatedContent.findMany({
       where: {
         opportunityId,
-        frameworkId: generatedContent.frameworkId,
+        briefId: generatedContent.briefId,
         organizationId: user.organization.id,
       },
       select: {
@@ -143,7 +141,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         ...(data.content && { content: data.content }),
       },
       include: {
-        framework: {
+        brief: {
           select: {
             id: true,
             name: true,

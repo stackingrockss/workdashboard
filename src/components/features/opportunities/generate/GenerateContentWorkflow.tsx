@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ContentFramework, ContextSelection } from "@/types/framework";
-import { FrameworkSelectionStep } from "./FrameworkSelectionStep";
+import { ContentBrief, ContextSelection, BriefCategory } from "@/types/brief";
+import { BriefSelectionStep } from "./FrameworkSelectionStep";
 import { ContextSelectionStep } from "./ContextSelectionStep";
 import { ArrowLeft, Check, ChevronRight, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,7 +19,7 @@ interface GenerateContentWorkflowProps {
   hasConsolidatedInsights?: boolean;
 }
 
-type Step = "framework" | "context";
+type Step = "brief" | "context";
 
 export const GenerateContentWorkflow = ({
   opportunityId,
@@ -29,9 +29,12 @@ export const GenerateContentWorkflow = ({
   hasConsolidatedInsights = false,
 }: GenerateContentWorkflowProps) => {
   const router = useRouter();
-  const [step, setStep] = useState<Step>("framework");
-  const [selectedFramework, setSelectedFramework] =
-    useState<ContentFramework | null>(null);
+  const [step, setStep] = useState<Step>("brief");
+  const [selectedBrief, setSelectedBrief] =
+    useState<ContentBrief | null>(null);
+  const [isBlankDocumentSelected, setIsBlankDocumentSelected] = useState(false);
+  const [blankDocCategory, setBlankDocCategory] = useState<BriefCategory>("general");
+  const [creatingBlankDoc, setCreatingBlankDoc] = useState(false);
   const [contextSelection, setContextSelection] = useState<ContextSelection>({
     gongCallIds: [],
     granolaNoteIds: [],
@@ -51,21 +54,64 @@ export const GenerateContentWorkflow = ({
     }));
   }, [hasAccountResearch, hasConsolidatedInsights]);
 
-  const handleSelectFramework = (framework: ContentFramework | null) => {
-    setSelectedFramework(framework);
+  const handleSelectBrief = (brief: ContentBrief | null) => {
+    setSelectedBrief(brief);
+    if (brief) {
+      setIsBlankDocumentSelected(false);
+    }
+  };
+
+  const handleSelectBlankDocument = () => {
+    setIsBlankDocumentSelected(true);
+    setSelectedBrief(null);
+  };
+
+  const handleCreateBlankDocument = async () => {
+    setCreatingBlankDoc(true);
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/documents`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: "Untitled Document",
+            category: blankDocCategory,
+            content: blankDocCategory === "mutual_action_plan" ? undefined : "",
+            structuredData: blankDocCategory === "mutual_action_plan" ? { actionItems: [] } : undefined,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to create document");
+      }
+
+      const data = await response.json();
+      toast.success("Document created!");
+
+      router.push(
+        `/opportunities/${opportunityId}/documents/${data.document.id}`
+      );
+    } catch (error) {
+      console.error("Failed to create document:", error);
+      toast.error("Failed to create document");
+    } finally {
+      setCreatingBlankDoc(false);
+    }
   };
 
   const handleContinueToContext = () => {
-    if (!selectedFramework) return;
+    if (!selectedBrief) return;
     setStep("context");
   };
 
-  const handleBackToFrameworks = () => {
-    setStep("framework");
+  const handleBackToBriefs = () => {
+    setStep("brief");
   };
 
   const handleGenerate = async () => {
-    if (!selectedFramework) return;
+    if (!selectedBrief) return;
 
     setGenerating(true);
     try {
@@ -75,7 +121,7 @@ export const GenerateContentWorkflow = ({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            frameworkId: selectedFramework.id,
+            briefId: selectedBrief.id,
             contextSelection,
           }),
         }
@@ -136,14 +182,14 @@ export const GenerateContentWorkflow = ({
               aria-label="Content generation wizard"
               aria-valuemin={1}
               aria-valuemax={2}
-              aria-valuenow={step === "framework" ? 1 : 2}
-              aria-valuetext={`Step ${step === "framework" ? 1 : 2} of 2: ${step === "framework" ? "Select Framework" : "Select Context"}`}
+              aria-valuenow={step === "brief" ? 1 : 2}
+              aria-valuetext={`Step ${step === "brief" ? 1 : 2} of 2: ${step === "brief" ? "Select Brief" : "Select Context"}`}
             >
               <StepIndicator
                 number={1}
-                label="Select Framework"
+                label="Select Brief"
                 isComplete={step === "context"}
-                isActive={step === "framework"}
+                isActive={step === "brief"}
               />
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
               <StepIndicator
@@ -159,22 +205,28 @@ export const GenerateContentWorkflow = ({
 
       {/* Main content */}
       <div className="container mx-auto max-w-6xl px-4 py-6">
-        {step === "framework" ? (
-          <FrameworkSelectionStep
-            selectedFramework={selectedFramework}
-            onSelectFramework={handleSelectFramework}
+        {step === "brief" ? (
+          <BriefSelectionStep
+            selectedBrief={selectedBrief}
+            onSelectBrief={handleSelectBrief}
             onContinue={handleContinueToContext}
             onCancel={() => router.push(`/opportunities/${opportunityId}`)}
+            isBlankDocumentSelected={isBlankDocumentSelected}
+            onSelectBlankDocument={handleSelectBlankDocument}
+            onCreateBlankDocument={handleCreateBlankDocument}
+            creatingBlankDoc={creatingBlankDoc}
+            blankDocCategory={blankDocCategory}
+            onBlankDocCategoryChange={setBlankDocCategory}
           />
         ) : (
           <ContextSelectionStep
             opportunityId={opportunityId}
-            selectedFramework={selectedFramework!}
+            selectedBrief={selectedBrief!}
             contextSelection={contextSelection}
             onContextChange={setContextSelection}
             hasAccountResearch={hasAccountResearch}
             hasConsolidatedInsights={hasConsolidatedInsights}
-            onBack={handleBackToFrameworks}
+            onBack={handleBackToBriefs}
             onGenerate={handleGenerate}
             generating={generating}
           />

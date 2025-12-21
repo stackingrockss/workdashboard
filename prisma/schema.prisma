@@ -323,7 +323,7 @@ model Organization {
   parsingCompleteNotifications   ParsingCompleteNotification[]
   accountResearchNotifications   AccountResearchNotification[]
   contents                       Content[]
-  contentFrameworks              ContentFramework[]
+  contentBriefs                  ContentBrief[]
   documents                      Document[]
   generatedContents              GeneratedContent[]
   earningsTranscripts        EarningsCallTranscript[]
@@ -403,7 +403,7 @@ model User {
   createdContents            Content[]                   @relation("ContentCreatedBy")
   createdDocuments           Document[]                  @relation("DocumentCreatedBy")
   editedDocuments            Document[]                  @relation("DocumentLastEditedBy")
-  createdFrameworks          ContentFramework[]          @relation("FrameworkCreatedBy")
+  createdBriefs              ContentBrief[]              @relation("BriefCreatedBy")
   generatedContents          GeneratedContent[]          @relation("GeneratedContentCreatedBy")
   resolvedComments           Comment[]                   @relation("ResolvedComments")
   mentions                   CommentMention[]            @relation("UserMentions")
@@ -1060,10 +1060,9 @@ enum MapGenerationStatus {
   @@schema("opportunity_tracker")
 }
 
-enum FrameworkCategory {
+enum BriefCategory {
   mutual_action_plan
-  business_case
-  proposal
+  pricing_proposal
   email
   account_plan
   executive_summary
@@ -1071,14 +1070,17 @@ enum FrameworkCategory {
   notes
   general
   other
+  business_impact_proposal
 
+  @@map("FrameworkCategory")
   @@schema("opportunity_tracker")
 }
 
-enum FrameworkScope {
+enum BriefScope {
   company
   personal
 
+  @@map("FrameworkScope")
   @@schema("opportunity_tracker")
 }
 
@@ -1091,13 +1093,6 @@ enum ContentGenerationStatus {
   @@schema("opportunity_tracker")
 }
 
-enum DocumentType {
-  mutual_action_plan  // Structured MAP with action items (JSON)
-  rich_text           // Free-form rich text (markdown)
-  framework_generated // AI-generated from ContentFramework
-
-  @@schema("opportunity_tracker")
-}
 
 enum DocumentGenerationStatus {
   pending
@@ -1108,25 +1103,25 @@ enum DocumentGenerationStatus {
   @@schema("opportunity_tracker")
 }
 
-model ContentFramework {
-  id                String            @id @default(cuid())
+model ContentBrief {
+  id                String        @id @default(cuid())
   name              String
   description       String?
-  category          FrameworkCategory
-  scope             FrameworkScope
-  systemInstruction String            @db.Text
-  outputFormat      String?           @db.Text
-  sections          Json              // Array<{ title: string, description?: string, required?: boolean }>
-  contextConfig     Json?             // { meetings?: boolean, files?: boolean, notes?: boolean, accountResearch?: boolean }
+  category          BriefCategory
+  scope             BriefScope
+  systemInstruction String        @db.Text
+  outputFormat      String?       @db.Text
+  sections          Json          // Array<{ title: string, description?: string, required?: boolean }>
+  contextConfig     Json?         // { meetings?: boolean, files?: boolean, notes?: boolean, accountResearch?: boolean }
   createdById       String
   organizationId    String
-  isDefault         Boolean           @default(false)
-  usageCount        Int               @default(0)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  isDefault         Boolean       @default(false)
+  usageCount        Int           @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
 
-  createdBy         User              @relation("FrameworkCreatedBy", fields: [createdById], references: [id])
-  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy         User          @relation("BriefCreatedBy", fields: [createdById], references: [id])
+  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   documents         Document[]
   generatedContents GeneratedContent[]
 
@@ -1135,12 +1130,13 @@ model ContentFramework {
   @@index([category])
   @@index([scope])
   @@index([createdById])
+  @@map("ContentFramework")
   @@schema("opportunity_tracker")
 }
 
 model GeneratedContent {
   id               String                  @id @default(cuid())
-  frameworkId      String
+  briefId          String                  @map("frameworkId")
   opportunityId    String
   title            String
   content          String                  @db.Text
@@ -1155,7 +1151,7 @@ model GeneratedContent {
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 
-  framework        ContentFramework        @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  brief            ContentBrief            @relation(fields: [briefId], references: [id], onDelete: Cascade)
   opportunity      Opportunity             @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   parentVersion    GeneratedContent?       @relation("ContentVersions", fields: [parentVersionId], references: [id])
   childVersions    GeneratedContent[]      @relation("ContentVersions")
@@ -1163,10 +1159,10 @@ model GeneratedContent {
   organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([opportunityId])
-  @@index([frameworkId])
+  @@index([briefId])
   @@index([organizationId])
   @@index([createdById])
-  @@index([opportunityId, frameworkId])
+  @@index([opportunityId, briefId])
   @@index([generationStatus])
   @@schema("opportunity_tracker")
 }
@@ -1178,14 +1174,14 @@ model Document {
 
   // Core fields
   title             String
-  documentType      DocumentType
+  category          BriefCategory
 
   // Content - one of these will be populated based on type
-  content           String?                   @db.Text   // Markdown for rich_text/framework_generated
+  content           String?                   @db.Text   // Markdown for rich_text/brief_generated
   structuredData    Json?                     // For MAPs: { actionItems: [...] }
 
-  // Framework reference (only for framework_generated)
-  frameworkId       String?
+  // Brief reference (only for brief_generated)
+  briefId           String?                   @map("frameworkId")
 
   // Generation metadata
   generationStatus  DocumentGenerationStatus?
@@ -1207,7 +1203,7 @@ model Document {
   // Relations
   opportunity       Opportunity               @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
   organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  framework         ContentFramework?         @relation(fields: [frameworkId], references: [id])
+  brief             ContentBrief?             @relation(fields: [briefId], references: [id])
   createdBy         User                      @relation("DocumentCreatedBy", fields: [createdById], references: [id])
   lastEditedBy      User?                     @relation("DocumentLastEditedBy", fields: [lastEditedById], references: [id])
   parentVersion     Document?                 @relation("DocumentVersions", fields: [parentVersionId], references: [id])
@@ -1215,9 +1211,9 @@ model Document {
 
   @@index([opportunityId])
   @@index([organizationId])
-  @@index([documentType])
-  @@index([frameworkId])
-  @@index([opportunityId, documentType])
+  @@index([category])
+  @@index([briefId])
+  @@index([opportunityId, category])
   @@index([createdById])
   @@schema("opportunity_tracker")
 }

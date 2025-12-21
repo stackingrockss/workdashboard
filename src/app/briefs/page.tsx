@@ -1,22 +1,22 @@
 import { Suspense } from "react";
 import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { FrameworksPageClient } from "@/components/features/frameworks/frameworks-page-client";
-import { Loader2, Layers } from "lucide-react";
+import { BriefsPageClient } from "@/components/features/briefs/briefs-page-client";
+import { Loader2, FileText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Frameworks Management Page
+ * Briefs Management Page
  *
- * Lists all available frameworks (personal and company)
- * with options to create, edit, and delete frameworks.
+ * Lists all available briefs (personal and company)
+ * with options to create, edit, and delete briefs.
  */
-export default async function FrameworksPage() {
+export default async function BriefsPage() {
   const user = await requireAuth();
 
-  // Fetch frameworks - both personal and company-wide
-  const frameworks = await prisma.contentFramework.findMany({
+  // Fetch briefs - both personal and company-wide
+  const briefs = await prisma.contentBrief.findMany({
     where: {
       OR: [
         { scope: "personal", createdById: user.id },
@@ -44,10 +44,10 @@ export default async function FrameworksPage() {
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-primary/10">
-          <Layers className="h-6 w-6 text-primary" />
+          <FileText className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Frameworks</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Briefs</h1>
           <p className="text-sm text-muted-foreground">
             Create and manage AI content generation templates
           </p>
@@ -61,10 +61,10 @@ export default async function FrameworksPage() {
           </div>
         }
       >
-        <FrameworksPageClient
-          frameworks={frameworks.map(f => ({
-            ...f,
-            usageCount: f._count.generatedContents,
+        <BriefsPageClient
+          briefs={briefs.map(b => ({
+            ...b,
+            usageCount: b._count.generatedContents,
           }))}
           currentUserId={user.id}
         />

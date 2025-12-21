@@ -2,20 +2,23 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Document, DOCUMENT_TYPE_LABELS } from "@/types/document";
+import { Document, BRIEF_CATEGORY_LABELS, BriefCategory } from "@/types/document";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentCard } from "./DocumentCard";
-import { CreateDocumentDialog } from "./CreateDocumentDialog";
 import {
   FileStack,
   Plus,
-  Sparkles,
+  Search,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { MutualActionPlanTab } from "@/components/features/opportunities/map";
+import { BusinessImpactProposalListTab } from "@/components/features/opportunities/bip";
+import { useDebounce } from "@/hooks/useDebounce";
 
 interface DocumentsTabProps {
   opportunityId: string;
@@ -24,7 +27,7 @@ interface DocumentsTabProps {
   hasConsolidatedInsights?: boolean;
 }
 
-type FilterType = "all" | "mutual_action_plan" | "rich_text" | "framework_generated";
+type FilterType = BriefCategory | "all";
 
 export const DocumentsTab = ({
   opportunityId,
@@ -36,20 +39,25 @@ export const DocumentsTab = ({
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 300);
   const [pollingIds, setPollingIds] = useState<Set<string>>(new Set());
 
-  // Navigate to full-page generate workflow
-  const handleNavigateToGenerate = () => {
+  // Navigate to full-page create document workflow
+  const handleNavigateToCreate = () => {
     router.push(`/opportunities/${opportunityId}/generate`);
   };
 
   // Fetch documents for this opportunity
   const fetchDocuments = useCallback(async () => {
     try {
+      setLoading(true);
       const url = new URL(`/api/v1/opportunities/${opportunityId}/documents`, window.location.origin);
       if (filter !== "all") {
-        url.searchParams.set("documentType", filter);
+        url.searchParams.set("category", filter);
+      }
+      if (debouncedSearch) {
+        url.searchParams.set("search", debouncedSearch);
       }
 
       const response = await fetch(url.toString());
@@ -68,7 +76,7 @@ export const DocumentsTab = ({
     } finally {
       setLoading(false);
     }
-  }, [opportunityId, filter]);
+  }, [opportunityId, filter, debouncedSearch]);
 
   useEffect(() => {
     fetchDocuments();
@@ -116,16 +124,6 @@ export const DocumentsTab = ({
     return () => clearInterval(interval);
   }, [pollingIds, opportunityId]);
 
-  const handleCreateDocument = async (doc: Document) => {
-    // Add to list and possibly start polling
-    setDocuments((prev) => [doc, ...prev]);
-    if (doc.generationStatus === "pending" || doc.generationStatus === "generating") {
-      setPollingIds((prev) => new Set(prev).add(doc.id));
-    }
-    // Navigate to the document editor
-    router.push(`/opportunities/${opportunityId}/documents/${doc.id}`);
-  };
-
   const handleDeleteDocument = async (docId: string) => {
     if (!confirm("Are you sure you want to delete this document?")) return;
 
@@ -150,17 +148,18 @@ export const DocumentsTab = ({
     router.push(`/opportunities/${opportunityId}/documents/${doc.id}`);
   };
 
-  // Filter counts
-  const counts = {
+  // Calculate counts for each category
+  const counts: Record<string, number> = {
     all: documents.length,
-    mutual_action_plan: documents.filter((d) => d.documentType === "mutual_action_plan").length,
-    rich_text: documents.filter((d) => d.documentType === "rich_text").length,
-    framework_generated: documents.filter((d) => d.documentType === "framework_generated").length,
   };
 
-  const filteredDocuments = filter === "all"
-    ? documents
-    : documents.filter((d) => d.documentType === filter);
+  // Count documents by category
+  for (const doc of documents) {
+    counts[doc.category] = (counts[doc.category] || 0) + 1;
+  }
+
+  // Documents are already filtered server-side, no client-side filtering needed
+  const hasActiveFilters = filter !== "all" || debouncedSearch !== "";
 
   return (
     <div className="space-y-4">
@@ -172,72 +171,106 @@ export const DocumentsTab = ({
             Create and manage sales documents for this opportunity
           </p>
         </div>
-        {filter !== "mutual_action_plan" && (
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => setShowCreateDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Document
-            </Button>
-            <Button onClick={handleNavigateToGenerate}>
-              <Sparkles className="h-4 w-4 mr-2" />
-              Generate
-            </Button>
-          </div>
+        {filter !== "mutual_action_plan" && filter !== "business_impact_proposal" && (
+          <Button onClick={handleNavigateToCreate}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Document
+          </Button>
         )}
       </div>
 
-      {/* Filter tabs */}
+      {/* Filter tabs - show main categories */}
       <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
-        <TabsList>
+        <TabsList className="flex-wrap h-auto gap-1">
           <TabsTrigger value="all">
-            All ({counts.all})
+            All ({counts.all || 0})
           </TabsTrigger>
           <TabsTrigger value="mutual_action_plan">
-            MAPs ({counts.mutual_action_plan})
+            MAPs ({counts.mutual_action_plan || 0})
           </TabsTrigger>
-          <TabsTrigger value="rich_text">
-            Documents ({counts.rich_text})
+          <TabsTrigger value="pricing_proposal">
+            Pricing Proposal ({counts.pricing_proposal || 0})
           </TabsTrigger>
-          <TabsTrigger value="framework_generated">
-            AI Generated ({counts.framework_generated})
+          <TabsTrigger value="executive_summary">
+            Exec Summary ({counts.executive_summary || 0})
+          </TabsTrigger>
+          <TabsTrigger value="email">
+            Email ({counts.email || 0})
+          </TabsTrigger>
+          <TabsTrigger value="notes">
+            Notes ({counts.notes || 0})
+          </TabsTrigger>
+          <TabsTrigger value="general">
+            General ({counts.general || 0})
+          </TabsTrigger>
+          <TabsTrigger value="business_impact_proposal">
+            BIPs ({counts.business_impact_proposal || 0})
           </TabsTrigger>
         </TabsList>
       </Tabs>
 
-      {/* Document list - Show inline MAP for mutual_action_plan filter */}
+      {/* Search filter */}
+      <div className="flex items-center gap-3">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search documents..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="pl-9 pr-8"
+          />
+          {searchInput && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+              onClick={() => setSearchInput("")}
+            >
+              <X className="h-3.5 w-3.5" />
+              <span className="sr-only">Clear search</span>
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Document list - Show inline views for MAP and BIP tabs */}
       {filter === "mutual_action_plan" ? (
         <MutualActionPlanTab opportunityId={opportunityId} />
+      ) : filter === "business_impact_proposal" ? (
+        <BusinessImpactProposalListTab
+          opportunityId={opportunityId}
+          opportunityName={opportunityName}
+        />
       ) : loading ? (
         <div className="grid gap-3 md:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-32 rounded-lg" />
           ))}
         </div>
-      ) : filteredDocuments.length === 0 ? (
+      ) : documents.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <FileStack className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
             <h3 className="font-medium mb-1">
-              {filter === "all" ? "No documents yet" : `No ${DOCUMENT_TYPE_LABELS[filter as keyof typeof DOCUMENT_TYPE_LABELS]}s yet`}
+              {hasActiveFilters ? "No matching documents" : "No documents yet"}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Create business cases, proposals, MAPs, and more for this opportunity
+              {hasActiveFilters
+                ? "Try adjusting your filters or search term"
+                : "Create business cases, proposals, MAPs, and more for this opportunity"}
             </p>
-            <div className="flex items-center justify-center gap-2">
-              <Button variant="outline" onClick={() => setShowCreateDialog(true)}>
+            {!hasActiveFilters && (
+              <Button onClick={handleNavigateToCreate}>
                 <Plus className="h-4 w-4 mr-2" />
                 Create Document
               </Button>
-              <Button onClick={handleNavigateToGenerate}>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Generate with AI
-              </Button>
-            </div>
+            )}
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-3 md:grid-cols-2">
-          {filteredDocuments.map((doc) => (
+          {documents.map((doc) => (
             <DocumentCard
               key={doc.id}
               document={doc}
@@ -248,14 +281,6 @@ export const DocumentsTab = ({
           ))}
         </div>
       )}
-
-      {/* Create document dialog */}
-      <CreateDocumentDialog
-        open={showCreateDialog}
-        onOpenChange={setShowCreateDialog}
-        opportunityId={opportunityId}
-        onCreate={handleCreateDocument}
-      />
     </div>
   );
 };

@@ -30,17 +30,17 @@ import {
   Trash2,
   Building2,
   User,
-  Sparkles,
+  FileText,
 } from "lucide-react";
-import { FrameworkCategory, FRAMEWORK_CATEGORY_LABELS } from "@/types/framework";
+import { BriefCategory, BRIEF_CATEGORY_LABELS } from "@/types/brief";
 import { formatDateShort } from "@/lib/format";
 import { toast } from "sonner";
 
-interface Framework {
+interface Brief {
   id: string;
   name: string;
   description: string | null;
-  category: FrameworkCategory;
+  category: BriefCategory;
   scope: "company" | "personal";
   systemInstruction: string;
   outputFormat: string | null;
@@ -55,61 +55,61 @@ interface Framework {
   };
 }
 
-interface FrameworksPageClientProps {
-  frameworks: Framework[];
+interface BriefsPageClientProps {
+  briefs: Brief[];
   currentUserId: string;
 }
 
-export const FrameworksPageClient = ({
-  frameworks: initialFrameworks,
+export const BriefsPageClient = ({
+  briefs: initialBriefs,
   currentUserId,
-}: FrameworksPageClientProps) => {
-  const [frameworks, setFrameworks] = useState(initialFrameworks);
+}: BriefsPageClientProps) => {
+  const [briefs, setBriefs] = useState(initialBriefs);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterScope, setFilterScope] = useState<"all" | "personal" | "company">("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // Filter frameworks
-  const filteredFrameworks = frameworks.filter((f) => {
+  // Filter briefs
+  const filteredBriefs = briefs.filter((b) => {
     const matchesSearch =
-      f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      f.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      b.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesScope =
       filterScope === "all" ||
-      f.scope === filterScope;
+      b.scope === filterScope;
     return matchesSearch && matchesScope;
   });
 
   // Group by scope
-  const companyFrameworks = filteredFrameworks.filter((f) => f.scope === "company");
-  const personalFrameworks = filteredFrameworks.filter((f) => f.scope === "personal");
+  const companyBriefs = filteredBriefs.filter((b) => b.scope === "company");
+  const personalBriefs = filteredBriefs.filter((b) => b.scope === "personal");
 
   const handleDelete = async () => {
     if (!deleteId) return;
 
     setDeleting(true);
     try {
-      const response = await fetch(`/api/v1/frameworks/${deleteId}`, {
+      const response = await fetch(`/api/v1/briefs/${deleteId}`, {
         method: "DELETE",
       });
 
       if (!response.ok) {
-        throw new Error("Failed to delete framework");
+        throw new Error("Failed to delete brief");
       }
 
-      setFrameworks((prev) => prev.filter((f) => f.id !== deleteId));
-      toast.success("Framework deleted");
+      setBriefs((prev) => prev.filter((b) => b.id !== deleteId));
+      toast.success("Brief deleted");
     } catch (error) {
-      toast.error("Failed to delete framework");
+      toast.error("Failed to delete brief");
     } finally {
       setDeleting(false);
       setDeleteId(null);
     }
   };
 
-  const FrameworkCard = ({ framework }: { framework: Framework }) => {
-    const isOwner = framework.createdById === currentUserId;
+  const BriefCard = ({ brief }: { brief: Brief }) => {
+    const isOwner = brief.createdById === currentUserId;
 
     return (
       <Card className="group hover:border-primary/50 transition-colors">
@@ -117,19 +117,19 @@ export const FrameworksPageClient = ({
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                {framework.scope === "company" ? (
+                {brief.scope === "company" ? (
                   <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                 ) : (
                   <User className="h-4 w-4 text-muted-foreground shrink-0" />
                 )}
-                <CardTitle className="text-base truncate">{framework.name}</CardTitle>
+                <CardTitle className="text-base truncate">{brief.name}</CardTitle>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 <Badge variant="outline" className="text-xs">
-                  {FRAMEWORK_CATEGORY_LABELS[framework.category]}
+                  {BRIEF_CATEGORY_LABELS[brief.category]}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  {framework.usageCount} uses
+                  {brief.usageCount} uses
                 </span>
               </div>
             </div>
@@ -146,14 +146,14 @@ export const FrameworksPageClient = ({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link href={`/frameworks/${framework.id}/edit`}>
+                    <Link href={`/briefs/${brief.id}/edit`}>
                       <Pencil className="h-4 w-4 mr-2" />
                       Edit
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     className="text-destructive"
-                    onClick={() => setDeleteId(framework.id)}
+                    onClick={() => setDeleteId(brief.id)}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
@@ -164,15 +164,15 @@ export const FrameworksPageClient = ({
           </div>
         </CardHeader>
         <CardContent>
-          {framework.description && (
+          {brief.description && (
             <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-              {framework.description}
+              {brief.description}
             </p>
           )}
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              Created {formatDateShort(framework.createdAt)}
-              {framework.createdBy.name && ` by ${framework.createdBy.name}`}
+              Created {formatDateShort(brief.createdAt)}
+              {brief.createdBy.name && ` by ${brief.createdBy.name}`}
             </span>
           </div>
         </CardContent>
@@ -188,7 +188,7 @@ export const FrameworksPageClient = ({
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search frameworks..."
+              placeholder="Search briefs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -209,29 +209,29 @@ export const FrameworksPageClient = ({
           </div>
         </div>
         <Button asChild>
-          <Link href="/frameworks/new">
+          <Link href="/briefs/new">
             <Plus className="h-4 w-4 mr-2" />
-            Create Framework
+            Create Brief
           </Link>
         </Button>
       </div>
 
       {/* Empty State */}
-      {filteredFrameworks.length === 0 && (
+      {filteredBriefs.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
-            <Sparkles className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-            <h3 className="font-medium mb-1">No frameworks found</h3>
+            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+            <h3 className="font-medium mb-1">No briefs found</h3>
             <p className="text-sm text-muted-foreground mb-4">
               {searchQuery
                 ? "Try adjusting your search query"
-                : "Create your first framework to generate AI-powered sales content"}
+                : "Create your first brief to generate AI-powered sales content"}
             </p>
             {!searchQuery && (
               <Button asChild>
-                <Link href="/frameworks/new">
+                <Link href="/briefs/new">
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Framework
+                  Create Brief
                 </Link>
               </Button>
             )}
@@ -239,37 +239,37 @@ export const FrameworksPageClient = ({
         </Card>
       )}
 
-      {/* Company Frameworks */}
-      {companyFrameworks.length > 0 && (filterScope === "all" || filterScope === "company") && (
+      {/* Company Briefs */}
+      {companyBriefs.length > 0 && (filterScope === "all" || filterScope === "company") && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-muted-foreground" />
-            <h2 className="font-medium">Company Frameworks</h2>
+            <h2 className="font-medium">Company Briefs</h2>
             <Badge variant="secondary" className="text-xs">
-              {companyFrameworks.length}
+              {companyBriefs.length}
             </Badge>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {companyFrameworks.map((framework) => (
-              <FrameworkCard key={framework.id} framework={framework} />
+            {companyBriefs.map((brief) => (
+              <BriefCard key={brief.id} brief={brief} />
             ))}
           </div>
         </div>
       )}
 
-      {/* Personal Frameworks */}
-      {personalFrameworks.length > 0 && (filterScope === "all" || filterScope === "personal") && (
+      {/* Personal Briefs */}
+      {personalBriefs.length > 0 && (filterScope === "all" || filterScope === "personal") && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <User className="h-4 w-4 text-muted-foreground" />
-            <h2 className="font-medium">Personal Frameworks</h2>
+            <h2 className="font-medium">Personal Briefs</h2>
             <Badge variant="secondary" className="text-xs">
-              {personalFrameworks.length}
+              {personalBriefs.length}
             </Badge>
           </div>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {personalFrameworks.map((framework) => (
-              <FrameworkCard key={framework.id} framework={framework} />
+            {personalBriefs.map((brief) => (
+              <BriefCard key={brief.id} brief={brief} />
             ))}
           </div>
         </div>
@@ -279,10 +279,10 @@ export const FrameworksPageClient = ({
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Framework?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Brief?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this framework. Any generated content using this
-              framework will not be affected.
+              This will permanently delete this brief. Any generated content using this
+              brief will not be affected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
