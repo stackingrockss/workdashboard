@@ -19,6 +19,7 @@ import {
 } from "@/types/framework";
 import { FrameworkCard } from "./FrameworkCard";
 import { ContextSelectionPanel } from "./ContextSelectionPanel";
+import { CreateFrameworkDialog } from "./CreateFrameworkDialog";
 import {
   Search,
   Check,
@@ -26,6 +27,7 @@ import {
   Sparkles,
   FileText,
   Loader2,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -67,6 +69,7 @@ export const FrameworkSelectionDialog = ({
     additionalContext: "",
   });
   const [generating, setGenerating] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Fetch frameworks (auto-seed defaults if none exist)
   useEffect(() => {
@@ -192,6 +195,13 @@ export const FrameworkSelectionDialog = ({
       : []
     : [];
 
+  // Handle new framework created
+  const handleFrameworkCreated = (framework: ContentFramework) => {
+    setFrameworks((prev) => [framework, ...prev]);
+    setSelectedFramework(framework);
+    setCreateDialogOpen(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -241,14 +251,24 @@ export const FrameworkSelectionDialog = ({
                     <TabsTrigger value="personal">Personal</TabsTrigger>
                   </TabsList>
                 </Tabs>
-                <div className="relative w-64">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search frameworks..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
-                  />
+                <div className="flex items-center gap-2">
+                  <div className="relative w-64">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search frameworks..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-9"
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCreateDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Create New
+                  </Button>
                 </div>
               </div>
 
@@ -377,6 +397,13 @@ export const FrameworkSelectionDialog = ({
             </div>
           )}
         </div>
+
+        {/* Create Framework Dialog */}
+        <CreateFrameworkDialog
+          open={createDialogOpen}
+          onOpenChange={setCreateDialogOpen}
+          onCreated={handleFrameworkCreated}
+        />
       </DialogContent>
     </Dialog>
   );

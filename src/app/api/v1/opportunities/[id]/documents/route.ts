@@ -34,13 +34,13 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Parse query parameters
+    // Parse query parameters (convert null to undefined for optional fields)
     const queryParsed = documentListQuerySchema.safeParse({
-      documentType: searchParams.get("documentType"),
-      frameworkId: searchParams.get("frameworkId"),
-      search: searchParams.get("search"),
-      page: searchParams.get("page"),
-      limit: searchParams.get("limit"),
+      documentType: searchParams.get("documentType") || undefined,
+      frameworkId: searchParams.get("frameworkId") || undefined,
+      search: searchParams.get("search") || undefined,
+      page: searchParams.get("page") || undefined,
+      limit: searchParams.get("limit") || undefined,
     });
 
     if (!queryParsed.success) {

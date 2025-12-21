@@ -9,7 +9,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ContentFramework } from "@/types/framework";
 import { FrameworkCard } from "../frameworks/FrameworkCard";
-import { Search, ChevronRight, FileText, Sparkles } from "lucide-react";
+import { CreateFrameworkDialog } from "../frameworks/CreateFrameworkDialog";
+import { Search, ChevronRight, FileText, Sparkles, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -32,6 +33,7 @@ export const FrameworkSelectionStep = ({
   const [search, setSearch] = useState("");
   const [frameworks, setFrameworks] = useState<ContentFramework[]>([]);
   const [loading, setLoading] = useState(true);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   // Fetch frameworks
   useEffect(() => {
@@ -88,6 +90,13 @@ export const FrameworkSelectionStep = ({
       : []
     : [];
 
+  // Handle new framework created
+  const handleFrameworkCreated = (framework: ContentFramework) => {
+    setFrameworks((prev) => [framework, ...prev]);
+    onSelectFramework(framework);
+    setCreateDialogOpen(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Filters */}
@@ -99,14 +108,24 @@ export const FrameworkSelectionStep = ({
             <TabsTrigger value="personal">Personal</TabsTrigger>
           </TabsList>
         </Tabs>
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search frameworks..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search frameworks..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Create New
+          </Button>
         </div>
       </div>
 
@@ -232,6 +251,13 @@ export const FrameworkSelectionStep = ({
           <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
       </div>
+
+      {/* Create Framework Dialog */}
+      <CreateFrameworkDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreated={handleFrameworkCreated}
+      />
     </div>
   );
 };
