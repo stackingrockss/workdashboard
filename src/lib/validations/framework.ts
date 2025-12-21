@@ -42,7 +42,7 @@ export const frameworkCreateSchema = z.object({
     .string()
     .min(10, "System instruction must be at least 10 characters")
     .max(10000),
-  outputFormat: z.string().max(5000).optional(),
+  outputFormat: z.string().max(10000).optional(),
   sections: z
     .array(frameworkSectionSchema)
     .min(1, "At least one section is required")
