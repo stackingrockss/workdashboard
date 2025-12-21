@@ -20,8 +20,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DealVibes",
-  description: "Track deals, next steps, and forecasts in a Kanban view",
+  title: "Briefcase",
+  description: "AI-powered deal intelligence for strategic enterprise sales",
 };
 
 export default function RootLayout({
@@ -41,7 +41,7 @@ export default function RootLayout({
                 <header className="md:hidden sticky top-0 z-30 flex items-center h-14 px-4 border-b bg-background">
                   <MobileMenuTrigger />
                   <Link href="/" className="ml-3 font-semibold text-lg">
-                    DealVibes
+                    Briefcase
                   </Link>
                 </header>
                 <main className="p-6">{children}</main>

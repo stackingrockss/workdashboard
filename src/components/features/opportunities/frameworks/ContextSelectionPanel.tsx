@@ -14,12 +14,21 @@ import { ChevronDown, Phone, FileText, Folder, Brain } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+interface MeetingInsights {
+  painPoints: number;
+  goals: number;
+  nextSteps: number;
+  whyAndWhyNow: number;
+  metrics: number;
+}
+
 interface Meeting {
   id: string;
   title: string;
   date: Date | string;
   type: "gong" | "granola" | "google";
   isParsed?: boolean;
+  insights?: MeetingInsights;
 }
 
 interface ContextSelectionPanelProps {
@@ -45,60 +54,86 @@ export const ContextSelectionPanel = ({
     additional: true,
   });
 
-  // Fetch available meetings for this opportunity
+  // Fetch available meetings for this opportunity using the timeline API
+  // Timeline API fetches CalendarEvents with linked Gong/Granola records
   useEffect(() => {
     const fetchMeetings = async () => {
       try {
-        // Fetch Gong calls, Granola notes, and Google notes in parallel
-        const [gongRes, granolaRes, googleRes] = await Promise.all([
-          fetch(`/api/v1/opportunities/${opportunityId}/gong-calls`),
-          fetch(`/api/v1/opportunities/${opportunityId}/granola-notes`),
-          fetch(`/api/v1/opportunities/${opportunityId}/google-notes`),
-        ]);
+        // Use the timeline API which properly fetches meetings via CalendarEvents
+        const response = await fetch(
+          `/api/v1/opportunities/${opportunityId}/timeline`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch timeline");
+        }
+
+        const data = await response.json();
+        const events = data.events || [];
 
         const allMeetings: Meeting[] = [];
 
-        if (gongRes.ok) {
-          const gongData = await gongRes.json();
-          const gongCalls = gongData.gongCalls || [];
-          gongCalls.forEach((call: { id: string; title: string; meetingDate: string; parsingStatus?: string }) => {
+        // Helper to count array length safely
+        const countInsights = (arr: unknown): number =>
+          Array.isArray(arr) ? arr.length : 0;
+
+        // Extract Gong calls and Granola notes from timeline events
+        // Timeline API returns events with linkedGongCall and linkedGranolaNote fields
+        events.forEach((event: {
+          linkedGongCall?: {
+            id: string;
+            title: string;
+            parsingStatus?: string;
+            painPoints?: unknown[];
+            goals?: unknown[];
+            nextSteps?: unknown[];
+          } | null;
+          linkedGranolaNote?: {
+            id: string;
+            title: string;
+            parsingStatus?: string;
+            painPoints?: unknown[];
+            goals?: unknown[];
+            nextSteps?: unknown[];
+          } | null;
+          date: string;
+        }) => {
+          if (event.linkedGongCall) {
+            const call = event.linkedGongCall;
             allMeetings.push({
               id: call.id,
               title: call.title,
-              date: call.meetingDate,
+              date: event.date,
               type: "gong",
               isParsed: call.parsingStatus === "completed",
+              insights: {
+                painPoints: countInsights(call.painPoints),
+                goals: countInsights(call.goals),
+                nextSteps: countInsights(call.nextSteps),
+                whyAndWhyNow: 0,
+                metrics: 0,
+              },
             });
-          });
-        }
+          }
 
-        if (granolaRes.ok) {
-          const granolaData = await granolaRes.json();
-          const granolaNotes = granolaData.granolaNotes || [];
-          granolaNotes.forEach((note: { id: string; title: string; meetingDate: string; parsingStatus?: string }) => {
+          if (event.linkedGranolaNote) {
+            const note = event.linkedGranolaNote;
             allMeetings.push({
               id: note.id,
               title: note.title,
-              date: note.meetingDate,
+              date: event.date,
               type: "granola",
               isParsed: note.parsingStatus === "completed",
+              insights: {
+                painPoints: countInsights(note.painPoints),
+                goals: countInsights(note.goals),
+                nextSteps: countInsights(note.nextSteps),
+                whyAndWhyNow: 0,
+                metrics: 0,
+              },
             });
-          });
-        }
-
-        if (googleRes.ok) {
-          const googleData = await googleRes.json();
-          const googleNotes = googleData.googleNotes || [];
-          googleNotes.forEach((note: { id: string; title: string; createdAt: string }) => {
-            allMeetings.push({
-              id: note.id,
-              title: note.title,
-              date: note.createdAt,
-              type: "google",
-              isParsed: false,
-            });
-          });
-        }
+          }
+        });
 
         // Sort by date descending
         allMeetings.sort(
@@ -107,16 +142,20 @@ export const ContextSelectionPanel = ({
 
         setMeetings(allMeetings);
 
-        // Auto-select parsed meetings if none selected yet
+        // Auto-select the 5 most recent parsed meetings if none selected yet
+        // Meetings are already sorted by date descending
         if (
           value.gongCallIds.length === 0 &&
           value.granolaNoteIds.length === 0
         ) {
-          const parsedGong = allMeetings
-            .filter((m) => m.type === "gong" && m.isParsed)
+          const parsedMeetings = allMeetings.filter((m) => m.isParsed);
+          const topFive = parsedMeetings.slice(0, 5);
+
+          const parsedGong = topFive
+            .filter((m) => m.type === "gong")
             .map((m) => m.id);
-          const parsedGranola = allMeetings
-            .filter((m) => m.type === "granola" && m.isParsed)
+          const parsedGranola = topFive
+            .filter((m) => m.type === "granola")
             .map((m) => m.id);
 
           if (parsedGong.length > 0 || parsedGranola.length > 0) {
@@ -181,6 +220,27 @@ export const ContextSelectionPanel = ({
   const granolaMeetings = meetings.filter((m) => m.type === "granola");
   const googleMeetings = meetings.filter((m) => m.type === "google");
 
+  const handleSelectAll = () => {
+    onChange({
+      ...value,
+      gongCallIds: gongMeetings.map((m) => m.id),
+      granolaNoteIds: granolaMeetings.map((m) => m.id),
+      googleNoteIds: googleMeetings.map((m) => m.id),
+    });
+  };
+
+  const handleClearAll = () => {
+    onChange({
+      ...value,
+      gongCallIds: [],
+      granolaNoteIds: [],
+      googleNoteIds: [],
+    });
+  };
+
+  const allSelected =
+    meetings.length > 0 && selectedMeetingsCount === meetings.length;
+
   return (
     <div className="space-y-4">
       <h3 className="font-semibold text-sm">Context we&apos;ll write with:</h3>
@@ -219,6 +279,36 @@ export const ContextSelectionPanel = ({
             </p>
           ) : (
             <>
+              {/* Select All / Clear All buttons */}
+              <div className="flex items-center gap-2 pl-6 pb-1">
+                <button
+                  type="button"
+                  onClick={handleSelectAll}
+                  disabled={allSelected}
+                  className={cn(
+                    "text-xs px-2 py-1 rounded border transition-colors",
+                    allSelected
+                      ? "text-muted-foreground border-muted cursor-not-allowed"
+                      : "text-primary border-primary/30 hover:bg-primary/10"
+                  )}
+                >
+                  Select All
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearAll}
+                  disabled={selectedMeetingsCount === 0}
+                  className={cn(
+                    "text-xs px-2 py-1 rounded border transition-colors",
+                    selectedMeetingsCount === 0
+                      ? "text-muted-foreground border-muted cursor-not-allowed"
+                      : "text-muted-foreground border-muted-foreground/30 hover:bg-muted"
+                  )}
+                >
+                  Clear All
+                </button>
+              </div>
+
               {/* Gong Calls */}
               {gongMeetings.length > 0 && (
                 <div className="space-y-1">
@@ -394,6 +484,25 @@ interface MeetingItemProps {
 }
 
 const MeetingItem = ({ meeting, isSelected, onToggle }: MeetingItemProps) => {
+  // Build insight summary string
+  const getInsightSummary = () => {
+    if (!meeting.insights) return null;
+    const { painPoints, goals, nextSteps, whyAndWhyNow, metrics } = meeting.insights;
+    const total = painPoints + goals + nextSteps + whyAndWhyNow + metrics;
+    if (total === 0) return null;
+
+    const parts: string[] = [];
+    if (painPoints > 0) parts.push(`${painPoints} pain`);
+    if (goals > 0) parts.push(`${goals} goal${goals > 1 ? "s" : ""}`);
+    if (whyAndWhyNow > 0) parts.push(`${whyAndWhyNow} driver${whyAndWhyNow > 1 ? "s" : ""}`);
+    if (metrics > 0) parts.push(`${metrics} metric${metrics > 1 ? "s" : ""}`);
+    if (nextSteps > 0) parts.push(`${nextSteps} next step${nextSteps > 1 ? "s" : ""}`);
+
+    return parts.slice(0, 3).join(", ") + (parts.length > 3 ? "..." : "");
+  };
+
+  const insightSummary = getInsightSummary();
+
   return (
     <div
       className={cn(
@@ -405,12 +514,15 @@ const MeetingItem = ({ meeting, isSelected, onToggle }: MeetingItemProps) => {
       <Checkbox checked={isSelected} onCheckedChange={() => onToggle()} />
       <div className="flex-1 min-w-0">
         <p className="text-sm truncate">{meeting.title}</p>
-        <p className="text-xs text-muted-foreground">
-          {formatDateShort(meeting.date)}
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{formatDateShort(meeting.date)}</span>
           {meeting.isParsed && (
-            <span className="ml-1 text-green-600">(parsed)</span>
+            <span className="text-green-600">(parsed)</span>
           )}
-        </p>
+          {insightSummary && (
+            <span className="text-primary/70">• {insightSummary}</span>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -923,7 +923,7 @@ See existing API routes in `src/app/api/v1/` for implementation examples.
 
 ## 📊 Pagination
 
-**DealVibes API supports opt-in pagination** - endpoints return all data by default (legacy mode) and only paginate when query parameters are present.
+**Briefcase API supports opt-in pagination** - endpoints return all data by default (legacy mode) and only paginate when query parameters are present.
 
 ### Query Parameters
 

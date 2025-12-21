@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-const SIDEBAR_STORAGE_KEY = "dealvibes-sidebar-collapsed";
+const SIDEBAR_STORAGE_KEY = "briefcase-sidebar-collapsed";
 
 interface UseSidebarStateReturn {
   isCollapsed: boolean;

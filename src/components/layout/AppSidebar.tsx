@@ -141,7 +141,7 @@ export function AppSidebar() {
         )}>
           {!isCollapsed && (
             <Link href="/" className="font-semibold text-lg text-sidebar-foreground">
-              DealVibes
+              Briefcase
             </Link>
           )}
 
