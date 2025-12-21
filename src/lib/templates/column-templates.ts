@@ -52,8 +52,8 @@ export function getTemplateById(
 export function getQuarterlyTemplate(fiscalYearStartMonth: number = 1): ColumnTemplate {
   const quarterStrings = getNextQuarters(4, fiscalYearStartMonth);
 
-  // Color scheme for quarters (progressive shades of blue)
-  const quarterColors = ["#3b82f6", "#60a5fa", "#93c5fd", "#bfdbfe"];
+  // Color scheme for quarters (progressive shades of charcoal)
+  const quarterColors = ["#374151", "#4b5563", "#6b7280", "#9ca3af"];
 
   return {
     id: "quarterly",
@@ -81,31 +81,31 @@ export function getStagesTemplate(): ColumnTemplate {
     columns: [
       {
         title: "Discovery",
-        color: "#94a3b8",
+        color: "#64748b",
       },
       {
         title: "Demo",
-        color: "#60a5fa",
+        color: "#4b5563",
       },
       {
         title: "Validate Solution",
-        color: "#3b82f6",
+        color: "#374151",
       },
       {
         title: "Decision Maker Approval",
-        color: "#f59e0b",
+        color: "#92400e",
       },
       {
         title: "Contracting",
-        color: "#10b981",
+        color: "#166534",
       },
       {
         title: "Closed Won",
-        color: "#22c55e",
+        color: "#15803d",
       },
       {
         title: "Closed Lost",
-        color: "#ef4444",
+        color: "#b91c1c",
       },
     ],
   };
@@ -125,23 +125,23 @@ export function getForecastCategoriesTemplate(): ColumnTemplate {
     columns: [
       {
         title: "Pipeline",
-        color: "#94a3b8",
+        color: "#64748b",
       },
       {
         title: "Best Case",
-        color: "#3b82f6",
+        color: "#4b5563",
       },
       {
         title: "Commit",
-        color: "#10b981",
+        color: "#166534",
       },
       {
         title: "Closed Won",
-        color: "#22c55e",
+        color: "#15803d",
       },
       {
         title: "Closed Lost",
-        color: "#ef4444",
+        color: "#b91c1c",
       },
     ],
   };
