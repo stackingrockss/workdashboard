@@ -12,9 +12,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ListTodo, Settings, AlertCircle, Calendar, RefreshCw } from "lucide-react";
+import { ListTodo, Settings, AlertCircle, Calendar, RefreshCw, Plus } from "lucide-react";
 import { TaskCard } from "./TaskCard";
 import { TaskFilterControl } from "./TaskFilterControl";
+import { CreateTaskDialog } from "./CreateTaskDialog";
 import { toast } from "sonner";
 import type { TaskWithRelations } from "@/types/task";
 import { filterTasksByPreference, parseAsLocalDate, type TaskFilterPreference } from "@/lib/utils/task-filtering";
@@ -289,6 +290,9 @@ export function UpcomingTasksWidget() {
             <CardTitle>Tasks</CardTitle>
           </div>
           <div className="flex items-center gap-1">
+            {!notConnected && (
+              <CreateTaskDialog onTaskCreated={loadTasks} />
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -366,10 +370,21 @@ export function UpcomingTasksWidget() {
             <CardDescription className="mb-4">
               No tasks match the current filter.
             </CardDescription>
-            <Button onClick={handleSync} variant="outline" disabled={syncing}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Syncing..." : "Sync from Google Tasks"}
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
+              <CreateTaskDialog
+                onTaskCreated={loadTasks}
+                trigger={
+                  <Button variant="default">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Task
+                  </Button>
+                }
+              />
+              <Button onClick={handleSync} variant="outline" disabled={syncing}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
+                {syncing ? "Syncing..." : "Sync from Google Tasks"}
+              </Button>
+            </div>
           </div>
         )}
 

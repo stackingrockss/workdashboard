@@ -5,15 +5,12 @@ import { useRouter } from "next/navigation";
 import { Document, DOCUMENT_TYPE_LABELS } from "@/types/document";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentCard } from "./DocumentCard";
 import { CreateDocumentDialog } from "./CreateDocumentDialog";
-import { FrameworkSelectionDialog } from "../opportunities/frameworks/FrameworkSelectionDialog";
 import {
   FileStack,
-  FileText,
   Plus,
   Sparkles,
 } from "lucide-react";
@@ -39,8 +36,12 @@ export const DocumentsTab = ({
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [pollingIds, setPollingIds] = useState<Set<string>>(new Set());
+
+  // Navigate to full-page generate workflow
+  const handleNavigateToGenerate = () => {
+    router.push(`/opportunities/${opportunityId}/generate`);
+  };
 
   // Fetch documents for this opportunity
   const fetchDocuments = useCallback(async () => {
@@ -124,16 +125,6 @@ export const DocumentsTab = ({
     router.push(`/opportunities/${opportunityId}/documents/${doc.id}`);
   };
 
-  const handleGenerateDocument = async (content: { id: string; title: string; generationStatus: string }) => {
-    // The FrameworkSelectionDialog returns GeneratedContent, but we created a Document
-    // We need to fetch the actual document
-    const response = await fetch(`/api/v1/opportunities/${opportunityId}/documents/${content.id}`);
-    if (response.ok) {
-      const data = await response.json();
-      handleCreateDocument(data.document);
-    }
-  };
-
   const handleDeleteDocument = async (docId: string) => {
     if (!confirm("Are you sure you want to delete this document?")) return;
 
@@ -185,7 +176,7 @@ export const DocumentsTab = ({
             <Plus className="h-4 w-4 mr-2" />
             New Document
           </Button>
-          <Button onClick={() => setShowGenerateDialog(true)}>
+          <Button onClick={handleNavigateToGenerate}>
             <Sparkles className="h-4 w-4 mr-2" />
             Generate
           </Button>
@@ -232,7 +223,7 @@ export const DocumentsTab = ({
                 <Plus className="h-4 w-4 mr-2" />
                 Create Document
               </Button>
-              <Button onClick={() => setShowGenerateDialog(true)}>
+              <Button onClick={handleNavigateToGenerate}>
                 <Sparkles className="h-4 w-4 mr-2" />
                 Generate with AI
               </Button>
@@ -259,17 +250,6 @@ export const DocumentsTab = ({
         onOpenChange={setShowCreateDialog}
         opportunityId={opportunityId}
         onCreate={handleCreateDocument}
-      />
-
-      {/* Framework selection dialog for AI generation */}
-      <FrameworkSelectionDialog
-        open={showGenerateDialog}
-        onOpenChange={setShowGenerateDialog}
-        opportunityId={opportunityId}
-        opportunityName={opportunityName}
-        hasAccountResearch={hasAccountResearch}
-        hasConsolidatedInsights={hasConsolidatedInsights}
-        onGenerate={handleGenerateDocument}
       />
     </div>
   );
