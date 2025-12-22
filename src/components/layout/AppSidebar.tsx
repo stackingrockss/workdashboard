@@ -25,7 +25,7 @@ import {
 const navItems = [
   {
     title: "Dashboard",
-    href: "/",
+    href: "/dashboard",
     icon: LayoutDashboard,
   },
   {
@@ -109,7 +109,7 @@ export function AppSidebar() {
   const { isCollapsed, isMobileOpen, toggle, closeMobile } = useSidebar();
 
   const isActive = (href: string) => {
-    if (href === "/") return pathname === "/";
+    if (href === "/dashboard") return pathname === "/dashboard";
     return pathname.startsWith(href);
   };
 
@@ -140,7 +140,7 @@ export function AppSidebar() {
           isCollapsed ? "justify-center" : "justify-between"
         )}>
           {!isCollapsed && (
-            <Link href="/" className="font-semibold text-lg text-sidebar-foreground">
+            <Link href="/dashboard" className="font-semibold text-lg text-sidebar-foreground">
               Briefcase
             </Link>
           )}

@@ -58,7 +58,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Protect routes that require authentication
-  const publicPaths = ["/auth/login", "/auth/callback", "/auth/auth-code-error"];
+  const publicPaths = ["/", "/auth/login", "/auth/callback", "/auth/auth-code-error"];
   const isPublicPath = publicPaths.some((path) => request.nextUrl.pathname === path);
 
   if (!user && !isPublicPath && !request.nextUrl.pathname.startsWith("/auth")) {
@@ -73,11 +73,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Redirect authenticated users from landing page to dashboard
+  if (user && request.nextUrl.pathname === "/") {
+    console.log("[middleware] Authenticated user on landing page, redirecting to /dashboard");
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
   // Redirect authenticated users away from login page
   if (user && request.nextUrl.pathname === "/auth/login") {
-    console.log("[middleware] Authenticated user on login page, redirecting to /opportunities");
+    console.log("[middleware] Authenticated user on login page, redirecting to /dashboard");
     const url = request.nextUrl.clone();
-    url.pathname = "/opportunities";
+    url.pathname = "/dashboard";
     url.searchParams.delete("redirectTo"); // Clear any redirect params to avoid loops
     return NextResponse.redirect(url);
   }

@@ -36,15 +36,19 @@ export interface DashboardStats {
 }
 
 export function calculateDashboardStats(opportunities: Opportunity[]): DashboardStats {
-  const totalOpportunities = opportunities.length;
-  const totalValue = opportunities.reduce((sum, opp) => sum + opp.amountArr, 0);
+  // Filter to active pipeline (exclude closed deals)
+  const activeOpportunities = opportunities.filter(
+    opp => !["closedWon", "closedLost"].includes(opp.stage)
+  );
+  const totalOpportunities = activeOpportunities.length;
+  const totalValue = activeOpportunities.reduce((sum, opp) => sum + opp.amountArr, 0);
   // Weighted value: confidence level 1-5 converted to percentage (20%, 40%, 60%, 80%, 100%)
-  const weightedValue = opportunities.reduce(
+  const weightedValue = activeOpportunities.reduce(
     (sum, opp) => sum + (opp.amountArr * opp.confidenceLevel) / 5,
     0
   );
   const avgConfidenceLevel = totalOpportunities > 0
-    ? opportunities.reduce((sum, opp) => sum + opp.confidenceLevel, 0) / totalOpportunities
+    ? activeOpportunities.reduce((sum, opp) => sum + opp.confidenceLevel, 0) / totalOpportunities
     : 0;
 
   const closedWonOpportunities = opportunities.filter(opp => opp.stage === "closedWon");
