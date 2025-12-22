@@ -15,10 +15,12 @@ export const contextConfigSchema = z.object({
   accountResearch: z.boolean().optional().default(false),
 });
 
-// Brief category enum
+// Brief category enum (matches BriefCategory in Prisma)
 export const briefCategorySchema = z.enum([
   "mutual_action_plan",
   "pricing_proposal",
+  "business_case",
+  "proposal",
   "email",
   "account_plan",
   "executive_summary",

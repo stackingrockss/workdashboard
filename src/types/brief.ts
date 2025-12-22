@@ -3,6 +3,8 @@
 export type BriefCategory =
   | "mutual_action_plan"
   | "pricing_proposal"
+  | "business_case"
+  | "proposal"
   | "email"
   | "account_plan"
   | "executive_summary"
@@ -100,6 +102,8 @@ export interface GeneratedContentWithVersions extends GeneratedContent {
 export const BRIEF_CATEGORY_LABELS: Record<BriefCategory, string> = {
   mutual_action_plan: "Mutual Action Plan",
   pricing_proposal: "Pricing Proposal",
+  business_case: "Business Case",
+  proposal: "Proposal",
   email: "Email",
   account_plan: "Account Plan",
   executive_summary: "Executive Summary",

@@ -1063,6 +1063,8 @@ enum MapGenerationStatus {
 enum BriefCategory {
   mutual_action_plan
   pricing_proposal
+  business_case
+  proposal
   email
   account_plan
   executive_summary

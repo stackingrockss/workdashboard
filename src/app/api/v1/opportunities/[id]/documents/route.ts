@@ -135,7 +135,11 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Error fetching documents:", error);
+    console.error("Error fetching documents:", {
+      error,
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json(
       { error: "Failed to fetch documents" },
       { status: 500 }
