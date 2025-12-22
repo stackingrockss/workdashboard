@@ -53,6 +53,22 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // Safety check: if no conditions were added (shouldn't happen with default "all"),
+    // add both conditions to prevent empty OR array which causes Prisma errors
+    if (whereConditions.length === 0) {
+      whereConditions.push(
+        {
+          organizationId: user.organization.id,
+          scope: "company",
+        },
+        {
+          organizationId: user.organization.id,
+          scope: "personal",
+          createdById: user.id,
+        }
+      );
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const whereClause: any = {
       OR: whereConditions,
@@ -112,7 +128,11 @@ export async function GET(req: NextRequest) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Error fetching briefs:", error);
+    console.error("Error fetching briefs:", {
+      error,
+      message: error instanceof Error ? error.message : "Unknown error",
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json(
       { error: "Failed to fetch briefs" },
       { status: 500 }
