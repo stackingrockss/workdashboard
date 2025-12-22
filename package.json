@@ -67,7 +67,7 @@
     "googleapis": "^166.0.0",
     "inngest": "^3.45.0",
     "lucide-react": "^0.539.0",
-    "next": "15.4.8",
+    "next": "15.4.10",
     "react": "19.1.2",
     "react-day-picker": "^9.11.1",
     "react-dom": "19.1.2",
