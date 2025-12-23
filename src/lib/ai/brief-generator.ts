@@ -90,9 +90,21 @@ ${sectionGuide}
 - Write in professional, clear language appropriate for sales documents
 - Use specific details from the provided context whenever possible
 - Be concise but thorough - every statement should add value
-- Use markdown formatting for structure (headers, bullet points, bold text)
 - Reference specific meetings, contacts, and data points to make the content authentic
 - If information for a section is not available in the context, provide a reasonable placeholder or skip the section
+
+## Markdown Formatting Requirements
+You MUST use proper markdown syntax for all formatting:
+- For bullet points, always start with a dash followed by a space: "- item text"
+- For bold text within bullets: "- **Bold label**: description text"
+- For headers, use # symbols: "# Header 1", "## Header 2", "### Header 3"
+- For numbered lists: "1. First item", "2. Second item"
+- Ensure there is a blank line before and after lists for proper parsing
+- Example bullet list format:
+
+- **First point**: Description of the first item
+- **Second point**: Description of the second item
+- **Third point**: Description of the third item
 ${brief.outputFormat ? `\n## Output Format\n${brief.outputFormat}` : ""}`;
 }
 

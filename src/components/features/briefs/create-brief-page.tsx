@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 
 interface CreateBriefPageProps {
   editBrief?: ContentBrief | null;
+  returnTo?: string | null;
 }
 
 // Category options for tag selection
@@ -40,7 +41,7 @@ const CATEGORY_OPTIONS: { value: BriefCategory; label: string; description: stri
   { value: "general", label: "General", description: "Other content types" },
 ];
 
-export const CreateBriefPage = ({ editBrief }: CreateBriefPageProps) => {
+export const CreateBriefPage = ({ editBrief, returnTo }: CreateBriefPageProps) => {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const isEditing = !!editBrief;
@@ -98,7 +99,7 @@ export const CreateBriefPage = ({ editBrief }: CreateBriefPageProps) => {
       }
 
       toast.success(`Brief ${isEditing ? "updated" : "created"} successfully!`);
-      router.push("/briefs");
+      router.push(returnTo || "/briefs");
     } catch (error) {
       console.error(`Failed to ${isEditing ? "update" : "create"} brief:`, error);
       toast.error(
@@ -114,7 +115,7 @@ export const CreateBriefPage = ({ editBrief }: CreateBriefPageProps) => {
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/briefs">
+          <Link href={returnTo || "/briefs"}>
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
@@ -372,7 +373,7 @@ Write in a professional but conversational tone.`}
         {/* Actions */}
         <div className="flex items-center justify-end gap-3 pt-4">
           <Button type="button" variant="outline" asChild>
-            <Link href="/briefs">Cancel</Link>
+            <Link href={returnTo || "/briefs"}>Cancel</Link>
           </Button>
           <Button type="submit" disabled={submitting}>
             {submitting ? (

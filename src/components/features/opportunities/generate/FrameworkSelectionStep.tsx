@@ -18,7 +18,7 @@ import {
 import { ContentBrief, BriefCategory, BRIEF_CATEGORY_LABELS } from "@/types/brief";
 import { BriefCard } from "../frameworks/FrameworkCard";
 import { Search, ChevronRight, FileText, Sparkles, Plus, Loader2, Pencil } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -62,6 +62,7 @@ export const BriefSelectionStep = ({
   onBlankDocCategoryChange,
 }: BriefSelectionStepProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const [scope, setScope] = useState<"all" | "company" | "personal">("all");
   const [search, setSearch] = useState("");
   const [briefs, setBriefs] = useState<ContentBrief[]>([]);
@@ -147,7 +148,7 @@ export const BriefSelectionStep = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => router.push("/briefs/new")}
+            onClick={() => router.push(`/briefs/new?returnTo=${encodeURIComponent(pathname)}`)}
           >
             <Plus className="h-4 w-4 mr-1" />
             Create New

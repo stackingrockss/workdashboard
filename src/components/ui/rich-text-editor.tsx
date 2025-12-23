@@ -41,6 +41,9 @@ import {
 // Type for the markdown storage
 interface MarkdownStorage {
   getMarkdown: () => string;
+  parser: {
+    parse: (markdown: string) => string;
+  };
 }
 
 // Helper to safely get markdown from editor
@@ -48,6 +51,16 @@ function getMarkdownContent(editor: Editor | null): string {
   if (!editor) return "";
   const storage = editor.storage as { markdown?: MarkdownStorage };
   return storage.markdown?.getMarkdown() ?? "";
+}
+
+// Helper to parse markdown to HTML using the tiptap-markdown parser
+function parseMarkdownToHtml(editor: Editor | null, markdown: string): string {
+  if (!editor) return markdown;
+  const storage = editor.storage as { markdown?: MarkdownStorage };
+  if (storage.markdown?.parser) {
+    return storage.markdown.parser.parse(markdown);
+  }
+  return markdown;
 }
 
 interface RichTextEditorProps {
@@ -68,6 +81,7 @@ export function RichTextEditor({
   disabled = false,
 }: RichTextEditorProps) {
   const initialContentRef = useRef(content);
+  const hasInitialized = useRef(false);
 
   const editor = useEditor({
     extensions: [
@@ -114,10 +128,22 @@ export function RichTextEditor({
         html: true,
         transformCopiedText: true,
         transformPastedText: true,
+        bulletListMarker: "-",
+        breaks: false,
+        tightLists: true,
+        linkify: true,
       }),
     ],
-    content: initialContentRef.current,
+    content: "", // Start empty, will set content in onCreate after parser is available
     editable: !disabled,
+    onCreate: ({ editor }) => {
+      // Parse markdown and set initial content after editor is ready
+      if (!hasInitialized.current && initialContentRef.current) {
+        const htmlContent = parseMarkdownToHtml(editor, initialContentRef.current);
+        editor.commands.setContent(htmlContent);
+        hasInitialized.current = true;
+      }
+    },
     onUpdate: ({ editor }) => {
       const markdown = getMarkdownContent(editor);
       onChange(markdown);
@@ -143,9 +169,11 @@ export function RichTextEditor({
   });
 
   // Sync content when it changes externally (e.g., after generation)
+  // Parse markdown to HTML before setting content so bullet points and formatting work correctly
   useEffect(() => {
     if (editor && content !== getMarkdownContent(editor)) {
-      editor.commands.setContent(content);
+      const htmlContent = parseMarkdownToHtml(editor, content);
+      editor.commands.setContent(htmlContent);
     }
   }, [content, editor]);
 

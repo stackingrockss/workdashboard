@@ -13,8 +13,8 @@ import {
   LayoutDashboard,
   Target,
   Building2,
-  Presentation,
   FileText,
+  FileStack,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -39,14 +39,14 @@ const navItems = [
     icon: Building2,
   },
   {
-    title: "Whiteboarding",
-    href: "/whiteboarding",
-    icon: Presentation,
-  },
-  {
     title: "Content",
     href: "/content",
     icon: FileText,
+  },
+  {
+    title: "Briefs",
+    href: "/briefs",
+    icon: FileStack,
   },
 ];
 
