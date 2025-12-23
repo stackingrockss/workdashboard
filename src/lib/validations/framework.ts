@@ -62,6 +62,7 @@ export const contextSelectionSchema = z.object({
   includeConsolidatedInsights: z.boolean().optional().default(true),
   additionalContext: z.string().max(5000).optional(),
   referenceDocumentIds: z.array(z.string()).optional().default([]),
+  referenceContentIds: z.array(z.string()).optional().default([]),
 });
 
 // Generate content request schema

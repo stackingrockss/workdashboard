@@ -990,10 +990,27 @@ model Content {
   createdBy               User               @relation("ContentCreatedBy", fields: [createdById], references: [id])
   organization            Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   mapsUsingAsTemplate     MutualActionPlan[] @relation("MAPTemplateContent")
+  briefReferences         BriefReferenceContent[]
 
   @@unique([organizationId, url])
   @@index([organizationId])
   @@index([contentType])
+  @@schema("opportunity_tracker")
+}
+
+// Join table for linking Content items to Briefs as reference examples
+model BriefReferenceContent {
+  id        String   @id @default(cuid())
+  briefId   String
+  contentId String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  brief   ContentBrief @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  content Content      @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([briefId, contentId])
+  @@index([briefId])
   @@schema("opportunity_tracker")
 }
 
@@ -1122,10 +1139,11 @@ model ContentBrief {
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
 
-  createdBy         User          @relation("BriefCreatedBy", fields: [createdById], references: [id])
-  organization      Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  documents         Document[]
-  generatedContents GeneratedContent[]
+  createdBy          User          @relation("BriefCreatedBy", fields: [createdById], references: [id])
+  organization       Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documents          Document[]
+  generatedContents  GeneratedContent[]
+  referenceContents  BriefReferenceContent[]
 
   @@unique([organizationId, name, scope])
   @@index([organizationId])

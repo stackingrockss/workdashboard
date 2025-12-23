@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -11,6 +11,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   briefCreateSchema,
   BriefCreateInput,
@@ -19,7 +22,8 @@ import {
   BriefCategory,
   ContentBrief,
 } from "@/types/brief";
-import { ArrowLeft, Loader2, Building2, User, FileText } from "lucide-react";
+import { Content, CONTENT_TYPE_LABELS } from "@/types/content";
+import { ArrowLeft, Loader2, Building2, User, FileText, FileCode, Search } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +49,14 @@ export const CreateBriefPage = ({ editBrief, returnTo }: CreateBriefPageProps) =
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const isEditing = !!editBrief;
+
+  // Content library state
+  const [contents, setContents] = useState<Content[]>([]);
+  const [contentsLoading, setContentsLoading] = useState(true);
+  const [contentSearch, setContentSearch] = useState("");
+  const [selectedContentIds, setSelectedContentIds] = useState<string[]>(
+    editBrief?.referenceContents?.map((c) => c.id) || []
+  );
 
   const {
     register,
@@ -79,6 +91,46 @@ export const CreateBriefPage = ({ editBrief, returnTo }: CreateBriefPageProps) =
   const selectedCategory = watch("category");
   const selectedScope = watch("scope");
 
+  // Fetch content library
+  useEffect(() => {
+    const fetchContents = async () => {
+      try {
+        const response = await fetch("/api/v1/content?limit=100");
+        if (response.ok) {
+          const data = await response.json();
+          setContents(data.contents || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch contents:", error);
+      } finally {
+        setContentsLoading(false);
+      }
+    };
+
+    fetchContents();
+  }, []);
+
+  // Filter contents by search
+  const filteredContents = useMemo(() => {
+    if (!contentSearch) return contents;
+    return contents.filter((content) =>
+      content.title.toLowerCase().includes(contentSearch.toLowerCase())
+    );
+  }, [contents, contentSearch]);
+
+  // Toggle content selection
+  const toggleContent = (contentId: string) => {
+    setSelectedContentIds((prev) =>
+      prev.includes(contentId)
+        ? prev.filter((id) => id !== contentId)
+        : [...prev, contentId]
+    );
+  };
+
+  const handleClearContents = () => {
+    setSelectedContentIds([]);
+  };
+
   const onSubmit = async (data: BriefCreateInput) => {
     setSubmitting(true);
     try {
@@ -87,10 +139,16 @@ export const CreateBriefPage = ({ editBrief, returnTo }: CreateBriefPageProps) =
         : "/api/v1/briefs";
       const method = isEditing ? "PATCH" : "POST";
 
+      // Include selected content IDs in the request
+      const requestData = {
+        ...data,
+        referenceContentIds: selectedContentIds,
+      };
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(requestData),
       });
 
       if (!response.ok) {
@@ -367,6 +425,111 @@ Write in a professional but conversational tone.`}
                 Use markdown formatting. The AI will replace bracketed placeholders with generated content.
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Reference Examples Card */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileCode className="h-4 w-4" />
+                  Reference Examples
+                  {selectedContentIds.length > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {selectedContentIds.length} selected
+                    </Badge>
+                  )}
+                </CardTitle>
+                <CardDescription>
+                  Optional: Select content from your library to guide the AI on tone and structure.
+                </CardDescription>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClearContents}
+                disabled={selectedContentIds.length === 0}
+                className="text-xs"
+              >
+                Clear
+              </Button>
+            </div>
+            {/* Search */}
+            <div className="relative mt-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search content library..."
+                value={contentSearch}
+                onChange={(e) => setContentSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </CardHeader>
+          <CardContent>
+            {contentsLoading ? (
+              <div className="py-6 text-center text-muted-foreground">
+                <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                Loading content library...
+              </div>
+            ) : contents.length === 0 ? (
+              <div className="py-6 text-center text-muted-foreground">
+                <FileCode className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No content in your library</p>
+                <p className="text-xs mt-1">
+                  Add content items in the Content page to use as references.
+                </p>
+              </div>
+            ) : filteredContents.length === 0 ? (
+              <div className="py-6 text-center text-muted-foreground">
+                <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No content matches your search</p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[200px] pr-4">
+                <div className="space-y-1">
+                  {filteredContents.map((content) => (
+                    <div
+                      key={content.id}
+                      className={cn(
+                        "flex items-center gap-3 py-2 px-3 rounded-md cursor-pointer hover:bg-muted/50 transition-colors",
+                        selectedContentIds.includes(content.id) &&
+                          "bg-primary/5 border border-primary/20"
+                      )}
+                      onClick={() => toggleContent(content.id)}
+                    >
+                      <Checkbox
+                        checked={selectedContentIds.includes(content.id)}
+                        onCheckedChange={() => toggleContent(content.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm truncate font-medium">
+                          {content.title}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0 h-4 capitalize"
+                          >
+                            {CONTENT_TYPE_LABELS[content.contentType] || content.contentType}
+                          </Badge>
+                          {content.description && (
+                            <span className="truncate">{content.description}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            )}
+            <p className="text-xs text-muted-foreground mt-3">
+              These examples will be pre-selected when generating content with this brief.
+              Users can also add additional examples during generation.
+            </p>
           </CardContent>
         </Card>
 

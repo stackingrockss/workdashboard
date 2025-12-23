@@ -32,6 +32,19 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
             avatarUrl: true,
           },
         },
+        referenceContents: {
+          orderBy: { order: "asc" },
+          include: {
+            content: {
+              select: {
+                id: true,
+                title: true,
+                contentType: true,
+                description: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -42,7 +55,13 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    return NextResponse.json({ brief });
+    // Transform to flatten reference contents
+    const transformedBrief = {
+      ...brief,
+      referenceContents: brief.referenceContents.map((rc) => rc.content),
+    };
+
+    return NextResponse.json({ brief: transformedBrief });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -138,29 +157,88 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       }
     }
 
-    const brief = await prisma.contentBrief.update({
-      where: { id },
-      data: {
-        ...(data.name && { name: data.name }),
-        ...(data.description !== undefined && { description: data.description }),
-        ...(data.category && { category: data.category }),
-        ...(data.systemInstruction && { systemInstruction: data.systemInstruction }),
-        ...(data.outputFormat !== undefined && { outputFormat: data.outputFormat }),
-        ...(data.sections && { sections: data.sections }),
-        ...(data.contextConfig !== undefined && { contextConfig: data.contextConfig }),
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
+    // Update brief with reference content associations in a transaction
+    const brief = await prisma.$transaction(async (tx) => {
+      // Update the brief fields
+      await tx.contentBrief.update({
+        where: { id },
+        data: {
+          ...(data.name && { name: data.name }),
+          ...(data.description !== undefined && { description: data.description }),
+          ...(data.category && { category: data.category }),
+          ...(data.systemInstruction && { systemInstruction: data.systemInstruction }),
+          ...(data.outputFormat !== undefined && { outputFormat: data.outputFormat }),
+          ...(data.sections && { sections: data.sections }),
+          ...(data.contextConfig !== undefined && { contextConfig: data.contextConfig }),
+        },
+      });
+
+      // Update reference content associations if provided
+      if (data.referenceContentIds !== undefined) {
+        // Delete existing associations
+        await tx.briefReferenceContent.deleteMany({
+          where: { briefId: id },
+        });
+
+        // Create new associations if any
+        if (data.referenceContentIds.length > 0) {
+          // Validate that all content IDs exist and belong to the same org
+          const validContent = await tx.content.findMany({
+            where: {
+              id: { in: data.referenceContentIds },
+              organizationId: user.organization.id,
+            },
+            select: { id: true },
+          });
+
+          const validIds = validContent.map((c) => c.id);
+
+          // Create associations with order
+          await tx.briefReferenceContent.createMany({
+            data: validIds.map((contentId, index) => ({
+              briefId: id,
+              contentId,
+              order: index,
+            })),
+          });
+        }
+      }
+
+      // Return updated brief with reference contents
+      return tx.contentBrief.findUnique({
+        where: { id },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              avatarUrl: true,
+            },
+          },
+          referenceContents: {
+            orderBy: { order: "asc" },
+            include: {
+              content: {
+                select: {
+                  id: true,
+                  title: true,
+                  contentType: true,
+                  description: true,
+                },
+              },
+            },
           },
         },
-      },
+      });
     });
 
-    return NextResponse.json({ brief });
+    // Transform to flatten reference contents
+    const transformedBrief = {
+      ...brief,
+      referenceContents: brief?.referenceContents?.map((rc) => rc.content) || [],
+    };
+
+    return NextResponse.json({ brief: transformedBrief });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

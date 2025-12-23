@@ -16,7 +16,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ContentBrief, ContextSelection } from "@/types/brief";
+import { ContentBrief, ContextSelection, ReferenceContent } from "@/types/brief";
+import { Content, CONTENT_TYPE_LABELS } from "@/types/content";
 import {
   Search,
   ArrowLeft,
@@ -105,10 +106,15 @@ export const ContextSelectionStep = ({
     older: false,
   });
 
-  // Reference documents state
+  // Reference documents state (opportunity-level)
   const [documents, setDocuments] = useState<ReferenceDocument[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(true);
   const [documentSearch, setDocumentSearch] = useState("");
+
+  // Content library state (org-level)
+  const [orgContents, setOrgContents] = useState<Content[]>([]);
+  const [orgContentsLoading, setOrgContentsLoading] = useState(true);
+  const [contentSearch, setContentSearch] = useState("");
 
   // Token estimation hook
   const {
@@ -262,6 +268,42 @@ export const ContextSelectionStep = ({
     fetchDocuments();
   }, [opportunityId]);
 
+  // Fetch org-wide content library
+  useEffect(() => {
+    const fetchOrgContents = async () => {
+      try {
+        const response = await fetch("/api/v1/content?limit=100");
+        if (response.ok) {
+          const data = await response.json();
+          setOrgContents(data.contents || []);
+        }
+      } catch (error) {
+        console.error("Failed to fetch org contents:", error);
+      } finally {
+        setOrgContentsLoading(false);
+      }
+    };
+
+    fetchOrgContents();
+  }, []);
+
+  // Pre-populate brief's reference content IDs on mount
+  useEffect(() => {
+    if (selectedBrief.referenceContents && selectedBrief.referenceContents.length > 0) {
+      const briefContentIds = selectedBrief.referenceContents.map((c) => c.id);
+      // Merge with any existing selections, avoiding duplicates
+      const existingIds = contextSelection.referenceContentIds || [];
+      const mergedIds = [...new Set([...briefContentIds, ...existingIds])];
+      if (mergedIds.length !== existingIds.length) {
+        onContextChange({
+          ...contextSelection,
+          referenceContentIds: mergedIds,
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBrief.referenceContents]);
+
   // Filter and group meetings
   const { filteredMeetings, groupedMeetings } = useMemo(() => {
     const now = new Date();
@@ -389,6 +431,30 @@ export const ContextSelectionStep = ({
 
   const handleClearDocuments = () => {
     onContextChange({ ...contextSelection, referenceDocumentIds: [] });
+  };
+
+  // Filter org content by search
+  const filteredOrgContents = useMemo(() => {
+    if (!contentSearch) return orgContents;
+    return orgContents.filter((content) =>
+      content.title.toLowerCase().includes(contentSearch.toLowerCase())
+    );
+  }, [orgContents, contentSearch]);
+
+  // Content library selection handlers
+  const selectedContentIds = contextSelection.referenceContentIds || [];
+  const contentCount = selectedContentIds.length;
+  const briefContentIds = selectedBrief.referenceContents?.map((c) => c.id) || [];
+
+  const toggleOrgContent = (contentId: string) => {
+    const newIds = selectedContentIds.includes(contentId)
+      ? selectedContentIds.filter((id) => id !== contentId)
+      : [...selectedContentIds, contentId];
+    onContextChange({ ...contextSelection, referenceContentIds: newIds });
+  };
+
+  const handleClearOrgContents = () => {
+    onContextChange({ ...contextSelection, referenceContentIds: [] });
   };
 
   return (
@@ -568,13 +634,87 @@ export const ContextSelectionStep = ({
             </CardContent>
           </Card>
 
-          {/* Reference Examples section */}
+          {/* Reference Examples section - Content Library */}
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base flex items-center gap-2">
                   <FileCode className="h-4 w-4" />
-                  Reference Examples
+                  Content Library
+                  {contentCount > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {contentCount} selected
+                    </Badge>
+                  )}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearOrgContents}
+                  disabled={contentCount === 0}
+                  className="text-xs"
+                >
+                  Clear
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Select content from your organization library as reference examples.
+              </p>
+              {/* Search */}
+              <div className="relative mt-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search content library..."
+                  value={contentSearch}
+                  onChange={(e) => setContentSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {orgContentsLoading ? (
+                <div className="py-6 text-center text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                  Loading content library...
+                </div>
+              ) : orgContents.length === 0 ? (
+                <div className="py-6 text-center text-muted-foreground">
+                  <FileCode className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No content in your library</p>
+                  <p className="text-xs mt-1">
+                    Add content in the Content page to use as references.
+                  </p>
+                </div>
+              ) : filteredOrgContents.length === 0 ? (
+                <div className="py-6 text-center text-muted-foreground">
+                  <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No content matches your search</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[200px] pr-4">
+                  <div className="space-y-1">
+                    {filteredOrgContents.map((content) => (
+                      <ContentItem
+                        key={content.id}
+                        content={content}
+                        isSelected={selectedContentIds.includes(content.id)}
+                        isFromBrief={briefContentIds.includes(content.id)}
+                        onToggle={() => toggleOrgContent(content.id)}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Opportunity Documents section */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Opportunity Documents
                   {referenceCount > 0 && (
                     <Badge variant="secondary" className="ml-2">
                       {referenceCount} selected
@@ -592,7 +732,7 @@ export const ContextSelectionStep = ({
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Optional: Select documents to guide the AI on tone and structure.
+                Select documents from this opportunity as additional references.
               </p>
               {/* Search */}
               <div className="relative mt-3">
@@ -613,10 +753,10 @@ export const ContextSelectionStep = ({
                 </div>
               ) : documents.length === 0 ? (
                 <div className="py-6 text-center text-muted-foreground">
-                  <FileCode className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No documents in Content tab</p>
+                  <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No documents in this opportunity</p>
                   <p className="text-xs mt-1">
-                    Create documents to use as reference examples.
+                    Generate or create documents to use as references.
                   </p>
                 </div>
               ) : filteredDocuments.length === 0 ? (
@@ -808,15 +948,21 @@ export const ContextSelectionStep = ({
                   {contextSelection.additionalContext && (
                     <Badge variant="secondary">Additional Context</Badge>
                   )}
+                  {contentCount > 0 && (
+                    <Badge variant="secondary">
+                      {contentCount} Content{contentCount !== 1 ? "s" : ""}
+                    </Badge>
+                  )}
                   {referenceCount > 0 && (
                     <Badge variant="secondary">
-                      {referenceCount} Reference Example{referenceCount !== 1 ? "s" : ""}
+                      {referenceCount} Document{referenceCount !== 1 ? "s" : ""}
                     </Badge>
                   )}
                   {selectedCount === 0 &&
                     !contextSelection.includeConsolidatedInsights &&
                     !contextSelection.includeAccountResearch &&
                     !contextSelection.additionalContext &&
+                    contentCount === 0 &&
                     referenceCount === 0 && (
                       <span className="text-xs text-muted-foreground">
                         No context selected
@@ -1024,6 +1170,56 @@ const DocumentItem = ({ document, isSelected, onToggle }: DocumentItemProps) => 
           </Badge>
           {document.createdBy?.name && (
             <span className="truncate">by {document.createdBy.name}</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Content item component for org-wide content library
+interface ContentItemProps {
+  content: Content;
+  isSelected: boolean;
+  isFromBrief: boolean;
+  onToggle: () => void;
+}
+
+const ContentItem = ({ content, isSelected, isFromBrief, onToggle }: ContentItemProps) => {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 py-2 px-3 rounded-md cursor-pointer hover:bg-muted/50 transition-colors",
+        isSelected && "bg-primary/5 border border-primary/20"
+      )}
+      onClick={onToggle}
+    >
+      <Checkbox
+        checked={isSelected}
+        onCheckedChange={() => onToggle()}
+        onClick={(e) => e.stopPropagation()}
+      />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-sm truncate font-medium">{content.title}</p>
+          {isFromBrief && (
+            <Badge
+              variant="secondary"
+              className="text-[10px] px-1.5 py-0 h-4 bg-primary/10 text-primary"
+            >
+              From brief
+            </Badge>
+          )}
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Badge
+            variant="outline"
+            className="text-[10px] px-1.5 py-0 h-4"
+          >
+            {CONTENT_TYPE_LABELS[content.contentType] || content.contentType}
+          </Badge>
+          {content.description && (
+            <span className="truncate">{content.description}</span>
           )}
         </div>
       </div>

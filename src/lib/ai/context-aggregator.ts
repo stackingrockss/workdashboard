@@ -238,7 +238,10 @@ export async function aggregateContext(
     context.additionalContext = selection.additionalContext;
   }
 
-  // Fetch reference documents
+  // Initialize referenceDocuments array
+  context.referenceDocuments = [];
+
+  // Fetch reference documents (opportunity-level)
   if (selection.referenceDocumentIds && selection.referenceDocumentIds.length > 0) {
     const documents = await prisma.document.findMany({
       where: {
@@ -253,7 +256,7 @@ export async function aggregateContext(
       },
     });
 
-    context.referenceDocuments = documents
+    const docRefs = documents
       .filter((doc) => doc.content) // Only include documents with content
       .map((doc) => ({
         id: doc.id,
@@ -261,6 +264,40 @@ export async function aggregateContext(
         category: doc.category,
         content: truncateText(doc.content!, 10000), // Limit content length
       }));
+
+    context.referenceDocuments.push(...docRefs);
+  }
+
+  // Fetch reference content items (org-level Content library)
+  if (selection.referenceContentIds && selection.referenceContentIds.length > 0) {
+    const contents = await prisma.content.findMany({
+      where: {
+        id: { in: selection.referenceContentIds },
+        organizationId: opportunity.organizationId, // Ensure org-level access
+      },
+      select: {
+        id: true,
+        title: true,
+        contentType: true,
+        body: true,
+      },
+    });
+
+    const contentRefs = contents
+      .filter((content) => content.body) // Only include contents with body
+      .map((content) => ({
+        id: content.id,
+        title: content.title,
+        category: content.contentType, // Map contentType to category for consistency
+        content: truncateText(content.body!, 10000), // Limit content length
+      }));
+
+    context.referenceDocuments.push(...contentRefs);
+  }
+
+  // Clean up empty array
+  if (context.referenceDocuments.length === 0) {
+    delete context.referenceDocuments;
   }
 
   return context;

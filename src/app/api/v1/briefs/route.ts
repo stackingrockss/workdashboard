@@ -109,14 +109,33 @@ export async function GET(req: NextRequest) {
               avatarUrl: true,
             },
           },
+          referenceContents: {
+            orderBy: { order: "asc" },
+            include: {
+              content: {
+                select: {
+                  id: true,
+                  title: true,
+                  contentType: true,
+                  description: true,
+                },
+              },
+            },
+          },
         },
         skip,
         take: limit,
       }),
     ]);
 
+    // Transform to flatten reference contents
+    const transformedBriefs = briefs.map((brief) => ({
+      ...brief,
+      referenceContents: brief.referenceContents.map((rc) => rc.content),
+    }));
+
     return NextResponse.json({
-      briefs,
+      briefs: transformedBriefs,
       pagination: {
         page,
         limit,
@@ -182,32 +201,83 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const brief = await prisma.contentBrief.create({
-      data: {
-        name: data.name,
-        description: data.description,
-        category: data.category,
-        scope: data.scope,
-        systemInstruction: data.systemInstruction,
-        outputFormat: data.outputFormat,
-        sections: data.sections,
-        contextConfig: data.contextConfig,
-        createdById: user.id,
-        organizationId: user.organization.id,
-        isDefault: false,
-      },
-      include: {
-        createdBy: {
-          select: {
-            id: true,
-            name: true,
-            avatarUrl: true,
+    // Create brief with reference content associations in a transaction
+    const brief = await prisma.$transaction(async (tx) => {
+      // Create the brief
+      const newBrief = await tx.contentBrief.create({
+        data: {
+          name: data.name,
+          description: data.description,
+          category: data.category,
+          scope: data.scope,
+          systemInstruction: data.systemInstruction,
+          outputFormat: data.outputFormat,
+          sections: data.sections,
+          contextConfig: data.contextConfig,
+          createdById: user.id,
+          organizationId: user.organization.id,
+          isDefault: false,
+        },
+      });
+
+      // Create reference content associations if provided
+      if (data.referenceContentIds && data.referenceContentIds.length > 0) {
+        // Validate that all content IDs exist and belong to the same org
+        const validContent = await tx.content.findMany({
+          where: {
+            id: { in: data.referenceContentIds },
+            organizationId: user.organization.id,
+          },
+          select: { id: true },
+        });
+
+        const validIds = validContent.map((c) => c.id);
+
+        // Create associations with order
+        await tx.briefReferenceContent.createMany({
+          data: validIds.map((contentId, index) => ({
+            briefId: newBrief.id,
+            contentId,
+            order: index,
+          })),
+        });
+      }
+
+      // Return brief with reference contents
+      return tx.contentBrief.findUnique({
+        where: { id: newBrief.id },
+        include: {
+          createdBy: {
+            select: {
+              id: true,
+              name: true,
+              avatarUrl: true,
+            },
+          },
+          referenceContents: {
+            orderBy: { order: "asc" },
+            include: {
+              content: {
+                select: {
+                  id: true,
+                  title: true,
+                  contentType: true,
+                  description: true,
+                },
+              },
+            },
           },
         },
-      },
+      });
     });
 
-    return NextResponse.json({ brief }, { status: 201 });
+    // Transform the response to flatten reference contents
+    const transformedBrief = {
+      ...brief,
+      referenceContents: brief?.referenceContents?.map((rc) => rc.content) || [],
+    };
+
+    return NextResponse.json({ brief: transformedBrief }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

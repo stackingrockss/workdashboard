@@ -31,6 +31,14 @@ export interface ContextConfig {
   accountResearch?: boolean;
 }
 
+export interface ReferenceContent {
+  id: string;
+  title: string;
+  contentType: string;
+  description?: string | null;
+  body?: string | null;
+}
+
 export interface ContentBrief {
   id: string;
   name: string;
@@ -52,6 +60,7 @@ export interface ContentBrief {
     name: string | null;
     avatarUrl: string | null;
   };
+  referenceContents?: ReferenceContent[];
 }
 
 export interface ContextSelection {
@@ -62,6 +71,7 @@ export interface ContextSelection {
   includeConsolidatedInsights: boolean;
   additionalContext?: string;
   referenceDocumentIds?: string[];
+  referenceContentIds?: string[];
 }
 
 export interface GeneratedContent {
