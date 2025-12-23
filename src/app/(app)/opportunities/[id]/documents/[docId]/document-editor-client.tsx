@@ -235,7 +235,7 @@ export const DocumentEditorClient = ({
       }
 
       toast.success("Document deleted");
-      router.push(`/opportunities/${document.opportunityId}`);
+      router.push(`/opportunities/${document.opportunityId}?tab=documents`);
     } catch (error) {
       toast.error("Failed to delete document");
     }
@@ -273,7 +273,7 @@ export const DocumentEditorClient = ({
         <div className="container flex h-14 items-center justify-between px-4">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" asChild>
-              <Link href={`/opportunities/${document.opportunityId}`}>
+              <Link href={`/opportunities/${document.opportunityId}?tab=documents`}>
                 <ArrowLeft className="h-4 w-4 mr-1" />
                 {document.opportunity?.name || "Back"}
               </Link>

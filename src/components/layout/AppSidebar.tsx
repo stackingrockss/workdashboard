@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Menu,
   X,
+  Search,
 } from "lucide-react";
 
 const navItems = [
@@ -66,6 +67,55 @@ interface NavItemProps {
   };
   isCollapsed: boolean;
   isActive: boolean;
+}
+
+function SearchButton({ isCollapsed }: { isCollapsed: boolean }) {
+  const handleClick = () => {
+    // Simulate Cmd+K keypress to open command palette
+    const event = new KeyboardEvent("keydown", {
+      key: "k",
+      metaKey: true,
+      bubbles: true,
+    });
+    document.dispatchEvent(event);
+  };
+
+  const content = (
+    <button
+      onClick={handleClick}
+      className={cn(
+        "flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150",
+        "bg-sidebar-accent/50 text-sidebar-foreground/80",
+        "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        isCollapsed && "justify-center px-2"
+      )}
+    >
+      <Search className="h-4 w-4 shrink-0" />
+      {!isCollapsed && (
+        <>
+          <span className="flex-1 text-left">Search...</span>
+          <kbd className="pointer-events-none hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
+            <span className="text-xs">⌘</span>K
+          </kbd>
+        </>
+      )}
+    </button>
+  );
+
+  if (isCollapsed) {
+    return (
+      <TooltipProvider delayDuration={0}>
+        <Tooltip>
+          <TooltipTrigger asChild>{content}</TooltipTrigger>
+          <TooltipContent side="right" className="font-medium">
+            Search (⌘K)
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  return content;
 }
 
 function NavItem({ item, isCollapsed, isActive }: NavItemProps) {
@@ -170,6 +220,11 @@ export function AppSidebar() {
           >
             <X className="h-4 w-4" />
           </Button>
+        </div>
+
+        {/* Search button */}
+        <div className="px-3 pt-3">
+          <SearchButton isCollapsed={isCollapsed} />
         </div>
 
         {/* Navigation */}

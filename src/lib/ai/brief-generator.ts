@@ -32,8 +32,8 @@ export async function generateBriefContent(
   context: AggregatedContext
 ): Promise<BriefGenerationResult> {
   try {
-    // Build the system instruction with brief context
-    const systemInstruction = buildSystemInstruction(brief);
+    // Build the system instruction with brief context and reference examples
+    const systemInstruction = buildSystemInstruction(brief, context);
 
     // Build the user prompt with context
     const prompt = buildPrompt(brief, context);
@@ -72,7 +72,10 @@ export async function generateBriefContent(
 /**
  * Builds the system instruction for the AI model
  */
-function buildSystemInstruction(brief: BriefGenerationInput): string {
+function buildSystemInstruction(
+  brief: BriefGenerationInput,
+  context: AggregatedContext
+): string {
   const sectionGuide = brief.sections
     .map(
       (s, i) =>
@@ -80,7 +83,7 @@ function buildSystemInstruction(brief: BriefGenerationInput): string {
     )
     .join("\n");
 
-  return `${brief.systemInstruction}
+  let instruction = `${brief.systemInstruction}
 
 ## Document Structure
 Your output should include the following sections:
@@ -106,6 +109,24 @@ You MUST use proper markdown syntax for all formatting:
 - **Second point**: Description of the second item
 - **Third point**: Description of the third item
 ${brief.outputFormat ? `\n## Output Format\n${brief.outputFormat}` : ""}`;
+
+  // Append reference examples if provided
+  if (context.referenceDocuments && context.referenceDocuments.length > 0) {
+    const examples = context.referenceDocuments
+      .map((doc, i) => `### Example ${i + 1}: ${doc.title}\n\n${doc.content}`)
+      .join("\n\n---\n\n");
+
+    instruction += `
+
+## Reference Examples
+The following show the desired tone and structure:
+
+${examples}
+
+Adapt to each situation—do not copy these verbatim.`;
+  }
+
+  return instruction;
 }
 
 /**

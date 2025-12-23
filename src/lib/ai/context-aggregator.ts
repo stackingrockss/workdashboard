@@ -48,6 +48,13 @@ export interface ConsolidatedInsights {
   riskAssessment?: RiskAssessment | null;
 }
 
+export interface AggregatedReferenceDocument {
+  id: string;
+  title: string;
+  category: string;
+  content: string;
+}
+
 export interface AggregatedContext {
   opportunity: {
     id: string;
@@ -72,6 +79,7 @@ export interface AggregatedContext {
   meetings: AggregatedMeeting[];
   accountResearch?: string | null;
   additionalContext?: string;
+  referenceDocuments?: AggregatedReferenceDocument[];
 }
 
 /**
@@ -228,6 +236,31 @@ export async function aggregateContext(
   // Add additional context
   if (selection.additionalContext) {
     context.additionalContext = selection.additionalContext;
+  }
+
+  // Fetch reference documents
+  if (selection.referenceDocumentIds && selection.referenceDocumentIds.length > 0) {
+    const documents = await prisma.document.findMany({
+      where: {
+        id: { in: selection.referenceDocumentIds },
+        opportunityId: opportunityId,
+      },
+      select: {
+        id: true,
+        title: true,
+        category: true,
+        content: true,
+      },
+    });
+
+    context.referenceDocuments = documents
+      .filter((doc) => doc.content) // Only include documents with content
+      .map((doc) => ({
+        id: doc.id,
+        title: doc.title,
+        category: doc.category,
+        content: truncateText(doc.content!, 10000), // Limit content length
+      }));
   }
 
   return context;

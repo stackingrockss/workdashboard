@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -108,6 +108,10 @@ const platformTypeOptions = [
   { value: "isv", label: "ISV" },
 ];
 
+// Valid tab values for the opportunity detail page
+const VALID_TABS = ["overview", "research", "activity", "account-intel", "contacts", "documents", "proposal"] as const;
+type TabValue = typeof VALID_TABS[number];
+
 export function OpportunityDetailClient({ opportunity, organizationId, userId, currentUser, organizationUsers }: OpportunityDetailClientProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -124,7 +128,26 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
   const [selectedGongCallForParsing, setSelectedGongCallForParsing] = useState<GongCall | null>(null);
   const [selectedGongCallForViewing, setSelectedGongCallForViewing] = useState<GongCall | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { setEntityContext, openSidebarWithSelection } = useCommentSidebar();
+
+  // Get active tab from URL search params, default to "overview"
+  const tabParam = searchParams.get("tab");
+  const activeTab: TabValue = tabParam && VALID_TABS.includes(tabParam as TabValue)
+    ? (tabParam as TabValue)
+    : "overview";
+
+  // Handle tab change - update URL
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value === "overview") {
+      params.delete("tab"); // Clean URL for default tab
+    } else {
+      params.set("tab", value);
+    }
+    const queryString = params.toString();
+    router.push(`/opportunities/${opportunity.id}${queryString ? `?${queryString}` : ""}`, { scroll: false });
+  };
 
   // Handle comment toolbar click - opens sidebar when user clicks Comment button
   const handleCommentClick = (selection: TextSelection) => {
@@ -437,7 +460,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
         <TabsList className="flex w-full overflow-x-auto gap-1 scrollbar-none md:grid md:grid-cols-7">
           <TabsTrigger value="overview" className="flex items-center gap-2 shrink-0">
             <LayoutDashboard className="h-4 w-4" />

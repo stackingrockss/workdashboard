@@ -42,6 +42,7 @@ export const GenerateContentWorkflow = ({
     includeAccountResearch: hasAccountResearch,
     includeConsolidatedInsights: hasConsolidatedInsights,
     additionalContext: "",
+    referenceDocumentIds: [],
   });
   const [generating, setGenerating] = useState(false);
 
@@ -157,7 +158,7 @@ export const GenerateContentWorkflow = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" asChild>
-                <Link href={`/opportunities/${opportunityId}`}>
+                <Link href={`/opportunities/${opportunityId}?tab=documents`}>
                   <ArrowLeft className="h-4 w-4" />
                 </Link>
               </Button>
@@ -210,7 +211,7 @@ export const GenerateContentWorkflow = ({
             selectedBrief={selectedBrief}
             onSelectBrief={handleSelectBrief}
             onContinue={handleContinueToContext}
-            onCancel={() => router.push(`/opportunities/${opportunityId}`)}
+            onCancel={() => router.push(`/opportunities/${opportunityId}?tab=documents`)}
             isBlankDocumentSelected={isBlankDocumentSelected}
             onSelectBlankDocument={handleSelectBlankDocument}
             onCreateBlankDocument={handleCreateBlankDocument}

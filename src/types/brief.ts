@@ -61,6 +61,7 @@ export interface ContextSelection {
   includeAccountResearch: boolean;
   includeConsolidatedInsights: boolean;
   additionalContext?: string;
+  referenceDocumentIds?: string[];
 }
 
 export interface GeneratedContent {

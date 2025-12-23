@@ -4,6 +4,7 @@ import { CommentSidebarWrapper } from "@/components/comments/CommentSidebarWrapp
 import { SidebarProvider } from "@/components/layout/SidebarContext";
 import { AppSidebar, MobileMenuTrigger } from "@/components/layout/AppSidebar";
 import { SidebarContent } from "@/components/layout/SidebarContent";
+import { CommandPalette } from "@/components/layout/CommandPalette";
 
 export default function AppLayout({
   children,
@@ -27,6 +28,7 @@ export default function AppLayout({
           </SidebarContent>
         </div>
         <CommentSidebarWrapper />
+        <CommandPalette />
       </SidebarProvider>
     </CommentSidebarProvider>
   );

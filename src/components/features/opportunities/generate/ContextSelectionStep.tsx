@@ -9,6 +9,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { ContentBrief, ContextSelection } from "@/types/brief";
 import {
   Search,
@@ -21,6 +28,9 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
+  Zap,
+  Info,
+  FileCode,
 } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -31,6 +41,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { useTokenEstimate } from "@/hooks/useTokenEstimate";
 
 interface ContextSelectionStepProps {
   opportunityId: string;
@@ -64,6 +75,16 @@ type MeetingGroup = {
   meetings: Meeting[];
 };
 
+interface ReferenceDocument {
+  id: string;
+  title: string;
+  category: string;
+  updatedAt: Date | string;
+  createdBy?: {
+    name: string | null;
+  };
+}
+
 export const ContextSelectionStep = ({
   opportunityId,
   selectedBrief,
@@ -82,6 +103,25 @@ export const ContextSelectionStep = ({
     thisWeek: true,
     lastWeek: true,
     older: false,
+  });
+
+  // Reference documents state
+  const [documents, setDocuments] = useState<ReferenceDocument[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(true);
+  const [documentSearch, setDocumentSearch] = useState("");
+
+  // Token estimation hook
+  const {
+    estimate: tokenEstimate,
+    loading: tokenLoading,
+    totalFormatted,
+    percentageOfLimit,
+    usageColor,
+    meetingTokens,
+  } = useTokenEstimate({
+    opportunityId,
+    briefId: selectedBrief.id,
+    contextSelection,
   });
 
   // Fetch meetings from timeline API
@@ -198,6 +238,30 @@ export const ContextSelectionStep = ({
     fetchMeetings();
   }, [opportunityId]);
 
+  // Fetch documents from Content tab
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      try {
+        const response = await fetch(
+          `/api/v1/opportunities/${opportunityId}/documents?limit=50`
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch documents");
+        }
+
+        const data = await response.json();
+        setDocuments(data.documents || []);
+      } catch (error) {
+        console.error("Failed to fetch documents:", error);
+      } finally {
+        setDocumentsLoading(false);
+      }
+    };
+
+    fetchDocuments();
+  }, [opportunityId]);
+
   // Filter and group meetings
   const { filteredMeetings, groupedMeetings } = useMemo(() => {
     const now = new Date();
@@ -304,6 +368,29 @@ export const ContextSelectionStep = ({
   const getGroupKey = (label: string) =>
     label.toLowerCase().replace(/\s+/g, "");
 
+  // Filter documents by search
+  const filteredDocuments = useMemo(() => {
+    if (!documentSearch) return documents;
+    return documents.filter((doc) =>
+      doc.title.toLowerCase().includes(documentSearch.toLowerCase())
+    );
+  }, [documents, documentSearch]);
+
+  // Reference document selection handlers
+  const selectedReferenceIds = contextSelection.referenceDocumentIds || [];
+  const referenceCount = selectedReferenceIds.length;
+
+  const toggleDocument = (docId: string) => {
+    const newIds = selectedReferenceIds.includes(docId)
+      ? selectedReferenceIds.filter((id) => id !== docId)
+      : [...selectedReferenceIds, docId];
+    onContextChange({ ...contextSelection, referenceDocumentIds: newIds });
+  };
+
+  const handleClearDocuments = () => {
+    onContextChange({ ...contextSelection, referenceDocumentIds: [] });
+  };
+
   return (
     <div className="space-y-6">
       {/* Main content: Context selection + Template preview */}
@@ -406,6 +493,7 @@ export const ContextSelectionStep = ({
                                 meeting={meeting}
                                 isSelected={isMeetingSelected(meeting)}
                                 onToggle={() => toggleMeeting(meeting)}
+                                estimatedTokens={meetingTokens.get(meeting.id)}
                               />
                             ))}
                           </CollapsibleContent>
@@ -480,6 +568,79 @@ export const ContextSelectionStep = ({
             </CardContent>
           </Card>
 
+          {/* Reference Examples section */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <FileCode className="h-4 w-4" />
+                  Reference Examples
+                  {referenceCount > 0 && (
+                    <Badge variant="secondary" className="ml-2">
+                      {referenceCount} selected
+                    </Badge>
+                  )}
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearDocuments}
+                  disabled={referenceCount === 0}
+                  className="text-xs"
+                >
+                  Clear
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Optional: Select documents to guide the AI on tone and structure.
+              </p>
+              {/* Search */}
+              <div className="relative mt-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search documents..."
+                  value={documentSearch}
+                  onChange={(e) => setDocumentSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {documentsLoading ? (
+                <div className="py-6 text-center text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                  Loading documents...
+                </div>
+              ) : documents.length === 0 ? (
+                <div className="py-6 text-center text-muted-foreground">
+                  <FileCode className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No documents in Content tab</p>
+                  <p className="text-xs mt-1">
+                    Create documents to use as reference examples.
+                  </p>
+                </div>
+              ) : filteredDocuments.length === 0 ? (
+                <div className="py-6 text-center text-muted-foreground">
+                  <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No documents match your search</p>
+                </div>
+              ) : (
+                <ScrollArea className="h-[200px] pr-4">
+                  <div className="space-y-1">
+                    {filteredDocuments.map((doc) => (
+                      <DocumentItem
+                        key={doc.id}
+                        document={doc}
+                        isSelected={selectedReferenceIds.includes(doc.id)}
+                        onToggle={() => toggleDocument(doc.id)}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Additional context */}
           <Card>
             <CardHeader className="pb-3">
@@ -524,6 +685,107 @@ export const ContextSelectionStep = ({
               )}
             </CardHeader>
             <CardContent>
+              {/* Token usage estimate */}
+              <TooltipProvider>
+                <div className="mb-4 p-3 rounded-lg bg-muted/50 border">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Token Usage
+                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs">
+                          <p className="text-xs">
+                            Estimated tokens to be sent to Gemini. More context
+                            = richer output but higher cost. Gemini 1.5 Pro
+                            supports up to 2M tokens.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {tokenLoading ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                      ) : (
+                        <span className={cn("text-sm font-semibold", usageColor)}>
+                          {totalFormatted}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <Progress
+                    value={Math.min(percentageOfLimit, 100)}
+                    className="h-1.5"
+                  />
+                  <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
+                    <span>{percentageOfLimit.toFixed(1)}% of limit</span>
+                    <span>
+                      {tokenEstimate?.modelLimits?.inputLimitFormatted || "2M"} max
+                    </span>
+                  </div>
+
+                  {/* Token breakdown */}
+                  {tokenEstimate && !tokenLoading && (
+                    <Collapsible className="mt-3">
+                      <CollapsibleTrigger className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                        <ChevronRight className="h-3 w-3" />
+                        View breakdown
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-2 space-y-1">
+                        <TokenBreakdownRow
+                          label="Brief template"
+                          tokens={tokenEstimate.brief.total}
+                        />
+                        <TokenBreakdownRow
+                          label="Opportunity info"
+                          tokens={tokenEstimate.context.opportunity}
+                        />
+                        {tokenEstimate.context.account > 0 && (
+                          <TokenBreakdownRow
+                            label="Account info"
+                            tokens={tokenEstimate.context.account}
+                          />
+                        )}
+                        {tokenEstimate.context.contacts > 0 && (
+                          <TokenBreakdownRow
+                            label="Contacts"
+                            tokens={tokenEstimate.context.contacts}
+                          />
+                        )}
+                        {tokenEstimate.context.consolidatedInsights > 0 && (
+                          <TokenBreakdownRow
+                            label="Consolidated insights"
+                            tokens={tokenEstimate.context.consolidatedInsights}
+                          />
+                        )}
+                        {tokenEstimate.context.meetings > 0 && (
+                          <TokenBreakdownRow
+                            label={`Meetings (${tokenEstimate.meetings.length})`}
+                            tokens={tokenEstimate.context.meetings}
+                          />
+                        )}
+                        {tokenEstimate.context.accountResearch > 0 && (
+                          <TokenBreakdownRow
+                            label="Account research"
+                            tokens={tokenEstimate.context.accountResearch}
+                          />
+                        )}
+                        {tokenEstimate.context.additionalContext > 0 && (
+                          <TokenBreakdownRow
+                            label="Additional context"
+                            tokens={tokenEstimate.context.additionalContext}
+                          />
+                        )}
+                      </CollapsibleContent>
+                    </Collapsible>
+                  )}
+                </div>
+              </TooltipProvider>
+
               {/* Context summary */}
               <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-dashed">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
@@ -546,10 +808,16 @@ export const ContextSelectionStep = ({
                   {contextSelection.additionalContext && (
                     <Badge variant="secondary">Additional Context</Badge>
                   )}
+                  {referenceCount > 0 && (
+                    <Badge variant="secondary">
+                      {referenceCount} Reference Example{referenceCount !== 1 ? "s" : ""}
+                    </Badge>
+                  )}
                   {selectedCount === 0 &&
                     !contextSelection.includeConsolidatedInsights &&
                     !contextSelection.includeAccountResearch &&
-                    !contextSelection.additionalContext && (
+                    !contextSelection.additionalContext &&
+                    referenceCount === 0 && (
                       <span className="text-xs text-muted-foreground">
                         No context selected
                       </span>
@@ -628,9 +896,35 @@ interface MeetingItemProps {
   meeting: Meeting;
   isSelected: boolean;
   onToggle: () => void;
+  estimatedTokens?: number;
 }
 
-const MeetingItem = ({ meeting, isSelected, onToggle }: MeetingItemProps) => {
+// Token breakdown row component
+interface TokenBreakdownRowProps {
+  label: string;
+  tokens: number;
+}
+
+const TokenBreakdownRow = ({ label, tokens }: TokenBreakdownRowProps) => {
+  const formatTokens = (n: number): string => {
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+    return n.toString();
+  };
+
+  return (
+    <div className="flex items-center justify-between text-[10px]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium tabular-nums">{formatTokens(tokens)}</span>
+    </div>
+  );
+};
+
+const MeetingItem = ({ meeting, isSelected, onToggle, estimatedTokens }: MeetingItemProps) => {
+  const formatTokens = (n: number): string => {
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+    return n.toString();
+  };
+
   const getInsightSummary = () => {
     if (!meeting.insights) return null;
     const { painPoints, goals, nextSteps } = meeting.insights;
@@ -685,6 +979,51 @@ const MeetingItem = ({ meeting, isSelected, onToggle }: MeetingItemProps) => {
           )}
           {insightSummary && (
             <span className="text-primary/70">• {insightSummary}</span>
+          )}
+        </div>
+      </div>
+      {isSelected && estimatedTokens !== undefined && (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 shrink-0">
+          ~{formatTokens(estimatedTokens)}
+        </Badge>
+      )}
+    </div>
+  );
+};
+
+// Document item component for reference examples
+interface DocumentItemProps {
+  document: ReferenceDocument;
+  isSelected: boolean;
+  onToggle: () => void;
+}
+
+const DocumentItem = ({ document, isSelected, onToggle }: DocumentItemProps) => {
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 py-2 px-3 rounded-md cursor-pointer hover:bg-muted/50 transition-colors",
+        isSelected && "bg-primary/5 border border-primary/20"
+      )}
+      onClick={onToggle}
+    >
+      <Checkbox
+        checked={isSelected}
+        onCheckedChange={() => onToggle()}
+        onClick={(e) => e.stopPropagation()}
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm truncate font-medium">{document.title}</p>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{formatDateShort(document.updatedAt)}</span>
+          <Badge
+            variant="outline"
+            className="text-[10px] px-1.5 py-0 h-4 capitalize"
+          >
+            {document.category.replace(/_/g, " ")}
+          </Badge>
+          {document.createdBy?.name && (
+            <span className="truncate">by {document.createdBy.name}</span>
           )}
         </div>
       </div>
