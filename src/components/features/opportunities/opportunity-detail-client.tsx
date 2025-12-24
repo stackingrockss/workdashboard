@@ -131,22 +131,30 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
   const searchParams = useSearchParams();
   const { setEntityContext, openSidebarWithSelection } = useCommentSidebar();
 
-  // Get active tab from URL search params, default to "overview"
+  // Get initial tab from URL search params, default to "overview"
   const tabParam = searchParams.get("tab");
-  const activeTab: TabValue = tabParam && VALID_TABS.includes(tabParam as TabValue)
+  const initialTab: TabValue = tabParam && VALID_TABS.includes(tabParam as TabValue)
     ? (tabParam as TabValue)
     : "overview";
 
-  // Handle tab change - update URL
+  // Use local state for instant tab switching (no server round-trip)
+  const [activeTab, setActiveTab] = useState<TabValue>(initialTab);
+
+  // Handle tab change - instant switch with URL update (no navigation)
   const handleTabChange = (value: string) => {
+    const newTab = value as TabValue;
+    setActiveTab(newTab); // Instant UI update
+
+    // Update URL without triggering navigation/refetch
     const params = new URLSearchParams(searchParams.toString());
-    if (value === "overview") {
-      params.delete("tab"); // Clean URL for default tab
+    if (newTab === "overview") {
+      params.delete("tab");
     } else {
-      params.set("tab", value);
+      params.set("tab", newTab);
     }
     const queryString = params.toString();
-    router.push(`/opportunities/${opportunity.id}${queryString ? `?${queryString}` : ""}`, { scroll: false });
+    const newUrl = `/opportunities/${opportunity.id}${queryString ? `?${queryString}` : ""}`;
+    window.history.replaceState(null, "", newUrl);
   };
 
   // Handle comment toolbar click - opens sidebar when user clicks Comment button
