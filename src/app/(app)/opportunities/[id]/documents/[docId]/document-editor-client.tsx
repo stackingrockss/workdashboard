@@ -367,6 +367,8 @@ export const DocumentEditorClient = ({
               onChange={setContent}
               placeholder="Start writing..."
               className="min-h-[500px]"
+              enableAI={true}
+              opportunityId={document.opportunityId}
             />
           </div>
         )}

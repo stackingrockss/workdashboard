@@ -225,6 +225,8 @@ export function BusinessProposalTab({
                 rows={20}
                 className="border-indigo-200 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-950"
                 useRichTextEditor={true}
+                enableAI={true}
+                opportunityId={opportunityId}
               />
             </CardContent>
           </CollapsibleContent>
@@ -258,6 +260,8 @@ export function BusinessProposalTab({
                   placeholder="Questions will appear here after generation..."
                   rows={8}
                   useRichTextEditor={true}
+                  enableAI={true}
+                  opportunityId={opportunityId}
                 />
               </CardContent>
             </CollapsibleContent>

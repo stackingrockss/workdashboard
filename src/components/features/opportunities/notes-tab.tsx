@@ -230,6 +230,8 @@ export function NotesTab({
             placeholder="Start typing your notes here... AI insights from call transcripts will appear when available."
             className="min-h-[400px]"
             editorClassName="min-h-[350px]"
+            enableAI={true}
+            opportunityId={opportunity.id}
           />
         </CardContent>
       </Card>

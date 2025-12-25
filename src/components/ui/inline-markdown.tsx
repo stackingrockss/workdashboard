@@ -22,6 +22,10 @@ interface InlineMarkdownWithAIProps {
   generateButtonLabel?: string;
   /** Use rich text WYSIWYG editor instead of markdown textarea */
   useRichTextEditor?: boolean;
+  /** Opportunity ID for AI context (required when enableAI is true) */
+  opportunityId?: string;
+  /** Enable AI features in the rich text editor */
+  enableAI?: boolean;
 }
 
 export function InlineMarkdownWithAI({
@@ -35,6 +39,8 @@ export function InlineMarkdownWithAI({
   isGenerating = false,
   generateButtonLabel = "Generate with Gemini",
   useRichTextEditor = false,
+  opportunityId,
+  enableAI = false,
 }: InlineMarkdownWithAIProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value?.toString() || "");
@@ -233,6 +239,8 @@ export function InlineMarkdownWithAI({
           disabled={isSaving}
           className="min-h-[300px]"
           editorClassName="min-h-[300px]"
+          enableAI={enableAI}
+          opportunityId={opportunityId}
         />
 
         <div className="flex items-center justify-end gap-2 mt-3">

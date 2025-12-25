@@ -10,7 +10,8 @@ import { Placeholder } from "@tiptap/extension-placeholder";
 import { Underline } from "@tiptap/extension-underline";
 import { Link } from "@tiptap/extension-link";
 import { Markdown } from "tiptap-markdown";
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -30,6 +31,7 @@ import {
   Plus,
   Trash2,
   Link as LinkIcon,
+  Sparkles,
 } from "lucide-react";
 import {
   Tooltip,
@@ -37,6 +39,26 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { toast } from "sonner";
+
+// AI Editor Components
+import { EditorBubbleMenu } from "@/components/editor/EditorBubbleMenu";
+import { PlusButtonMenu } from "@/components/editor/PlusButtonMenu";
+import { AISidebar, AISidebarToggle } from "@/components/editor/AISidebar";
+import { AIPromptDialog } from "@/components/editor/AIPromptDialog";
+import {
+  SlashCommand,
+  SlashCommandItem,
+  getSlashCommands,
+  filterSlashCommands,
+} from "@/components/editor/extensions/slash-command";
+import type { SuggestionProps, SuggestionKeyDownProps } from "@tiptap/suggestion";
+import {
+  SlashCommandMenu,
+  SlashCommandMenuRef,
+} from "@/components/editor/SlashCommandMenu";
+import { useEditorAI } from "@/hooks/useEditorAI";
+import { AIAction, ToneOption } from "@/types/editor";
 
 // Type for the markdown storage
 interface MarkdownStorage {
@@ -70,6 +92,11 @@ interface RichTextEditorProps {
   className?: string;
   editorClassName?: string;
   disabled?: boolean;
+  // AI features
+  enableAI?: boolean;
+  opportunityId?: string;
+  showAISidebar?: boolean;
+  onAISidebarToggle?: (open: boolean) => void;
 }
 
 export function RichTextEditor({
@@ -79,9 +106,41 @@ export function RichTextEditor({
   className,
   editorClassName,
   disabled = false,
+  enableAI = false,
+  opportunityId,
+  showAISidebar: externalShowSidebar,
+  onAISidebarToggle,
 }: RichTextEditorProps) {
   const initialContentRef = useRef(content);
   const hasInitialized = useRef(false);
+
+  // AI State
+  const [internalShowSidebar, setInternalShowSidebar] = useState(false);
+  const [showAIPromptDialog, setShowAIPromptDialog] = useState(false);
+  const [slashCommandItems, setSlashCommandItems] = useState<SlashCommandItem[]>([]);
+  const [slashCommandClientRect, setSlashCommandClientRect] = useState<(() => DOMRect | null) | null>(null);
+  const slashCommandMenuRef = useRef<SlashCommandMenuRef | null>(null);
+
+  // Use external or internal sidebar state
+  const showSidebar = externalShowSidebar ?? internalShowSidebar;
+  const setShowSidebar = onAISidebarToggle ?? setInternalShowSidebar;
+
+  // AI Hook
+  const {
+    isLoading: isAILoading,
+    streamingText,
+    generateContent,
+    improveText,
+    expandText,
+    shortenText,
+    changeTone,
+  } = useEditorAI({
+    opportunityId,
+    documentContext: content,
+  });
+
+  // Get slash commands with AI prompt handler
+  const allSlashCommands = getSlashCommands(() => setShowAIPromptDialog(true));
 
   const editor = useEditor({
     extensions: [
@@ -133,6 +192,41 @@ export function RichTextEditor({
         tightLists: true,
         linkify: true,
       }),
+      // Conditionally add slash command extension when AI is enabled
+      ...(enableAI
+        ? [
+            SlashCommand.configure({
+              suggestion: {
+                items: ({ query }: { query: string }) => {
+                  return filterSlashCommands(allSlashCommands, query);
+                },
+                render: () => {
+                  return {
+                    onStart: (props: SuggestionProps<SlashCommandItem, SlashCommandItem>) => {
+                      setSlashCommandItems(props.items);
+                      setSlashCommandClientRect(() => props.clientRect ?? null);
+                    },
+                    onUpdate: (props: SuggestionProps<SlashCommandItem, SlashCommandItem>) => {
+                      setSlashCommandItems(props.items);
+                      setSlashCommandClientRect(() => props.clientRect ?? null);
+                    },
+                    onKeyDown: (props: SuggestionKeyDownProps) => {
+                      if (props.event.key === "Escape") {
+                        setSlashCommandItems([]);
+                        return true;
+                      }
+                      return slashCommandMenuRef.current?.onKeyDown({ event: props.event }) ?? false;
+                    },
+                    onExit: () => {
+                      setSlashCommandItems([]);
+                      setSlashCommandClientRect(null);
+                    },
+                  };
+                },
+              },
+            }),
+          ]
+        : []),
     ],
     content: "", // Start empty, will set content in onCreate after parser is available
     editable: !disabled,
@@ -200,6 +294,98 @@ export function RichTextEditor({
 
     editor?.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   }, [editor]);
+
+  // Handle AI bubble menu actions
+  const handleAIAction = useCallback(
+    async (action: AIAction, text: string, tone?: ToneOption) => {
+      if (!editor) return;
+
+      try {
+        let result: string;
+
+        switch (action) {
+          case "improve":
+            result = await improveText(text);
+            break;
+          case "expand":
+            result = await expandText(text);
+            break;
+          case "shorten":
+            result = await shortenText(text);
+            break;
+          case "tone":
+            if (!tone) throw new Error("Tone is required for tone action");
+            result = await changeTone(text, tone);
+            break;
+          default:
+            throw new Error(`Unknown action: ${action}`);
+        }
+
+        // Replace the selected text with the AI result
+        const { from, to } = editor.state.selection;
+        editor
+          .chain()
+          .focus()
+          .deleteRange({ from, to })
+          .insertContent(result)
+          .run();
+
+        toast.success("Text updated with AI");
+      } catch (error) {
+        console.error("AI action failed:", error);
+        toast.error(
+          error instanceof Error ? error.message : "AI action failed"
+        );
+      }
+    },
+    [editor, improveText, expandText, shortenText, changeTone]
+  );
+
+  // Handle AI prompt generation
+  const handleAIGenerate = useCallback(
+    async (prompt: string) => {
+      if (!editor) return;
+
+      try {
+        const result = await generateContent(prompt);
+
+        // Insert the generated content at cursor position
+        editor.chain().focus().insertContent(result).run();
+
+        toast.success("Content generated");
+      } catch (error) {
+        console.error("AI generation failed:", error);
+        toast.error(
+          error instanceof Error ? error.message : "AI generation failed"
+        );
+      }
+    },
+    [editor, generateContent]
+  );
+
+  // Handle inserting text from AI sidebar
+  const handleInsertFromSidebar = useCallback(
+    (text: string) => {
+      if (!editor) return;
+      editor.chain().focus().insertContent(text).run();
+    },
+    [editor]
+  );
+
+  // Handle slash command selection
+  const handleSlashCommand = useCallback(
+    (item: SlashCommandItem) => {
+      if (!editor) return;
+
+      const { from, to } = editor.state.selection;
+      // Delete the slash and query text
+      const range = { from: from - 1, to }; // -1 to include the "/"
+
+      item.command({ editor, range });
+      setSlashCommandItems([]);
+    },
+    [editor]
+  );
 
   if (!editor) {
     return null;
@@ -329,6 +515,17 @@ export function RichTextEditor({
           >
             <Redo className="h-4 w-4" />
           </ToolbarButton>
+
+          {/* AI Toggle - only shown when AI is enabled */}
+          {enableAI && (
+            <>
+              <div className="w-px h-6 bg-border mx-1" />
+              <AISidebarToggle
+                isOpen={showSidebar}
+                onClick={() => setShowSidebar(!showSidebar)}
+              />
+            </>
+          )}
         </div>
 
         {/* Table Controls - shown when cursor is in a table */}
@@ -399,8 +596,71 @@ export function RichTextEditor({
           </div>
         )}
 
-        {/* Editor Content */}
-        <EditorContent editor={editor} />
+        {/* Editor Content with AI Features */}
+        <div className="flex">
+          <div className="flex-1 relative">
+            <EditorContent editor={editor} />
+
+            {/* AI Features - only rendered when AI is enabled */}
+            {enableAI && (
+              <>
+                {/* Bubble Menu for text selection */}
+                <EditorBubbleMenu
+                  editor={editor}
+                  onAIAction={handleAIAction}
+                  isAILoading={isAILoading}
+                />
+
+                {/* Plus Button Menu for empty lines */}
+                <PlusButtonMenu
+                  editor={editor}
+                  onAIPrompt={() => setShowAIPromptDialog(true)}
+                />
+
+                {/* Slash Command Menu (rendered via portal) */}
+                {slashCommandItems.length > 0 &&
+                  slashCommandClientRect &&
+                  typeof document !== "undefined" &&
+                  createPortal(
+                    <div
+                      style={{
+                        position: "fixed",
+                        top: (slashCommandClientRect()?.bottom ?? 0) + 8,
+                        left: slashCommandClientRect()?.left ?? 0,
+                        zIndex: 50,
+                      }}
+                    >
+                      <SlashCommandMenu
+                        ref={slashCommandMenuRef}
+                        items={slashCommandItems}
+                        command={handleSlashCommand}
+                      />
+                    </div>,
+                    document.body
+                  )}
+
+                {/* AI Prompt Dialog */}
+                <AIPromptDialog
+                  open={showAIPromptDialog}
+                  onOpenChange={setShowAIPromptDialog}
+                  onGenerate={handleAIGenerate}
+                  isLoading={isAILoading}
+                />
+              </>
+            )}
+          </div>
+
+          {/* AI Sidebar */}
+          {enableAI && showSidebar && (
+            <AISidebar
+              isOpen={showSidebar}
+              onClose={() => setShowSidebar(false)}
+              opportunityId={opportunityId}
+              documentContent={content}
+              onInsertText={handleInsertFromSidebar}
+            />
+          )}
+        </div>
       </div>
     </TooltipProvider>
   );
