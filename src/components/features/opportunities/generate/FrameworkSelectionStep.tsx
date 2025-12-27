@@ -21,8 +21,7 @@ import { Search, ChevronRight, FileText, Sparkles, Plus, Loader2, Pencil } from 
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { RichTextViewer } from "@/components/ui/rich-text-editor";
 
 interface BriefSelectionStepProps {
   selectedBrief: ContentBrief | null;
@@ -78,35 +77,45 @@ export const BriefSelectionStep = ({
         if (search) params.set("search", search);
 
         const response = await fetch(`/api/v1/briefs?${params.toString()}`);
-        if (response.ok) {
-          const data = await response.json();
-          let fetchedBriefs = data.briefs || [];
 
-          // Auto-seed if no briefs exist
-          if (fetchedBriefs.length === 0 && scope === "all" && !search) {
-            try {
-              const seedResponse = await fetch("/api/v1/briefs/seed", {
-                method: "POST",
-              });
-              if (seedResponse.ok) {
-                const retryResponse = await fetch(
-                  `/api/v1/briefs?${params.toString()}`
-                );
-                if (retryResponse.ok) {
-                  const retryData = await retryResponse.json();
-                  fetchedBriefs = retryData.briefs || [];
-                }
-              }
-            } catch (seedError) {
-              console.error("Failed to seed default briefs:", seedError);
-            }
-          }
-
-          setBriefs(fetchedBriefs);
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error("Failed to fetch briefs:", response.status, errorData);
+          toast.error(errorData.error || "Failed to load briefs");
+          setBriefs([]);
+          return;
         }
+
+        const data = await response.json();
+        let fetchedBriefs = data.briefs || [];
+
+        // Auto-seed if no briefs exist
+        if (fetchedBriefs.length === 0 && scope === "all" && !search) {
+          try {
+            const seedResponse = await fetch("/api/v1/briefs/seed", {
+              method: "POST",
+            });
+            if (seedResponse.ok) {
+              const retryResponse = await fetch(
+                `/api/v1/briefs?${params.toString()}`
+              );
+              if (retryResponse.ok) {
+                const retryData = await retryResponse.json();
+                fetchedBriefs = retryData.briefs || [];
+              }
+            } else {
+              console.error("Failed to seed briefs:", await seedResponse.text());
+            }
+          } catch (seedError) {
+            console.error("Failed to seed default briefs:", seedError);
+          }
+        }
+
+        setBriefs(fetchedBriefs);
       } catch (error) {
         console.error("Failed to fetch briefs:", error);
         toast.error("Failed to load briefs");
+        setBriefs([]);
       } finally {
         setLoading(false);
       }
@@ -345,10 +354,8 @@ export const BriefSelectionStep = ({
                         Output Template
                       </p>
                       <ScrollArea className="h-[200px] rounded-md border bg-muted/30 p-3">
-                        <div className="prose prose-sm dark:prose-invert prose-headings:text-sm prose-headings:font-medium prose-p:text-xs prose-p:text-muted-foreground">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                            {selectedBrief.outputFormat}
-                          </ReactMarkdown>
+                        <div className="text-sm">
+                          <RichTextViewer content={selectedBrief.outputFormat} />
                         </div>
                       </ScrollArea>
                     </div>

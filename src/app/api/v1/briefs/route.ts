@@ -33,6 +33,8 @@ export async function GET(req: NextRequest) {
     const skip = (page - 1) * limit;
 
     // Build where clause based on scope
+    // Note: Personal briefs are filtered by createdById only (not organizationId)
+    // to match the briefs page query and handle legacy data
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const whereConditions: any[] = [];
 
@@ -46,8 +48,8 @@ export async function GET(req: NextRequest) {
 
     if (scope === "personal" || scope === "all") {
       // Personal briefs: only the creator can see them
+      // Don't require organizationId to handle legacy data
       whereConditions.push({
-        organizationId: user.organization.id,
         scope: "personal",
         createdById: user.id,
       });
@@ -62,7 +64,6 @@ export async function GET(req: NextRequest) {
           scope: "company",
         },
         {
-          organizationId: user.organization.id,
           scope: "personal",
           createdById: user.id,
         }
