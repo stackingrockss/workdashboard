@@ -20,6 +20,7 @@ export interface KanbanBoardProps {
   onColumnChange?: (opportunityId: string, newColumnId: string, newCloseDate?: string | null) => Promise<void>;
   isVirtualMode?: boolean;
   fiscalYearStartMonth?: number;
+  showOwner?: boolean;
 }
 
 export function KanbanBoard({
@@ -28,6 +29,7 @@ export function KanbanBoard({
   onColumnChange,
   isVirtualMode = false,
   fiscalYearStartMonth = 1,
+  showOwner = false,
 }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [movingOpportunityId, setMovingOpportunityId] = useState<string | null>(null);
@@ -183,13 +185,14 @@ export function KanbanBoard({
               onOpenOpportunity={handleOpen}
               isVirtualMode={isVirtualMode}
               movingOpportunityId={movingOpportunityId}
+              showOwner={showOwner}
             />
           </div>
         ))}
       </div>
       <DragOverlay>
         {activeOpportunity ? (
-          <OpportunityCard opportunity={activeOpportunity} />
+          <OpportunityCard opportunity={activeOpportunity} showOwner={showOwner} />
         ) : null}
       </DragOverlay>
     </DndContext>

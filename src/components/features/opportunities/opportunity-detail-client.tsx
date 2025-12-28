@@ -58,6 +58,7 @@ import { BusinessProposalTab } from "./business-proposal-tab";
 import { AccountIntelSummaryCard } from "./account-intel-summary-card";
 import { NotesTab } from "./notes-tab";
 import { DocumentsTab } from "../documents";
+import { CreateFollowUpTaskDialog } from "@/components/tasks/CreateFollowUpTaskDialog";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -127,6 +128,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
   const [addGranolaDialogEvent, setAddGranolaDialogEvent] = useState<{id: string; title: string; startTime: string | Date} | null>(null);
   const [selectedGongCallForParsing, setSelectedGongCallForParsing] = useState<GongCall | null>(null);
   const [selectedGongCallForViewing, setSelectedGongCallForViewing] = useState<GongCall | null>(null);
+  const [isFollowUpTaskDialogOpen, setIsFollowUpTaskDialogOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setEntityContext, openSidebarWithSelection } = useCommentSidebar();
@@ -556,11 +558,22 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
 
                 {/* Warning banner if needs next call scheduled */}
                 {opportunity.needsNextCallScheduled && (
-                  <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
-                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
-                    <span className="text-sm text-amber-800 dark:text-amber-200">
-                      No upcoming meeting scheduled. Consider booking the next call to maintain momentum.
-                    </span>
+                  <div className="flex items-center justify-between gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span className="text-sm text-amber-800 dark:text-amber-200">
+                        No upcoming meeting scheduled.
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsFollowUpTaskDialogOpen(true)}
+                      className="shrink-0 bg-white dark:bg-transparent"
+                    >
+                      <ListChecks className="h-3.5 w-3.5 mr-1.5" />
+                      Set Follow-up
+                    </Button>
                   </div>
                 )}
 
@@ -1113,6 +1126,15 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
           }}
         />
       )}
+
+      {/* Follow-up Task Dialog (when no next call scheduled) */}
+      <CreateFollowUpTaskDialog
+        open={isFollowUpTaskDialogOpen}
+        onOpenChange={setIsFollowUpTaskDialogOpen}
+        opportunityId={opportunity.id}
+        companyName={opportunity.account?.name || opportunity.accountName || opportunity.name}
+        onSuccess={() => router.refresh()}
+      />
     </div>
   );
 }

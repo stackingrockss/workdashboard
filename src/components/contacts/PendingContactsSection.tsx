@@ -29,6 +29,27 @@ interface PendingContactsSectionProps {
   onImportComplete?: () => void;
 }
 
+// Helper to get dismissed IDs from sessionStorage
+const getDismissedIds = (opportunityId: string): Set<string> => {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const stored = sessionStorage.getItem(`dismissed-contact-imports-${opportunityId}`);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+// Helper to save dismissed IDs to sessionStorage
+const saveDismissedIds = (opportunityId: string, ids: Set<string>) => {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.setItem(`dismissed-contact-imports-${opportunityId}`, JSON.stringify([...ids]));
+  } catch {
+    // Ignore storage errors
+  }
+};
+
 export function PendingContactsSection({
   opportunityId,
   onImportComplete,
@@ -37,24 +58,31 @@ export function PendingContactsSection({
   const [isLoading, setIsLoading] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState<ContactsReadyNotification | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  // Track dismissed notification IDs - persisted to sessionStorage to survive tab switches
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(() => getDismissedIds(opportunityId));
 
   // Fetch pending notifications for this opportunity
   const fetchNotifications = useCallback(async () => {
     console.log("[PendingContactsSection] Fetching notifications for opportunityId:", opportunityId);
     try {
+      // Add cache-busting to prevent stale data
       const response = await fetch(
-        `/api/v1/notifications/contacts?opportunityId=${opportunityId}&includeRead=false`
+        `/api/v1/notifications/contacts?opportunityId=${opportunityId}&includeRead=false&_t=${Date.now()}`
       );
       if (!response.ok) throw new Error("Failed to fetch notifications");
       const data = await response.json();
       console.log("[PendingContactsSection] Received notifications:", data);
-      setNotifications(data.notifications || []);
+      // Filter out any locally dismissed notifications (handles race conditions)
+      const filteredNotifications = (data.notifications || []).filter(
+        (n: ContactsReadyNotification) => !dismissedIds.has(n.id)
+      );
+      setNotifications(filteredNotifications);
     } catch (error) {
       console.error("[PendingContactsSection] Failed to load pending contacts:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [opportunityId]);
+  }, [opportunityId, dismissedIds]);
 
   useEffect(() => {
     fetchNotifications();
@@ -63,6 +91,14 @@ export function PendingContactsSection({
   // Dismiss (mark as read) a notification
   const handleDismiss = async (notificationId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
+
+    // Immediately add to dismissed set and remove from local state
+    // This prevents the notification from reappearing on tab switch
+    const newDismissedIds = new Set([...dismissedIds, notificationId]);
+    setDismissedIds(newDismissedIds);
+    saveDismissedIds(opportunityId, newDismissedIds);
+    setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+
     try {
       const response = await fetch("/api/v1/notifications/contacts", {
         method: "PATCH",
@@ -70,12 +106,15 @@ export function PendingContactsSection({
         body: JSON.stringify({ notificationIds: [notificationId] }),
       });
       if (!response.ok) throw new Error("Failed to dismiss");
-
-      // Remove from local state
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
       toast.success("Notification dismissed");
     } catch {
+      // Revert on failure - remove from dismissed set and refetch
+      const revertedIds = new Set(dismissedIds);
+      revertedIds.delete(notificationId);
+      setDismissedIds(revertedIds);
+      saveDismissedIds(opportunityId, revertedIds);
       toast.error("Failed to dismiss notification");
+      fetchNotifications();
     }
   };
 
@@ -172,6 +211,11 @@ export function PendingContactsSection({
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         onImportComplete={handleImportComplete}
+        onDismiss={() => {
+          if (selectedNotification) {
+            handleDismiss(selectedNotification.id);
+          }
+        }}
       />
     </>
   );

@@ -74,6 +74,7 @@ interface ContactImportReviewProps {
   opportunityId: string;
   onImportComplete?: (result: BulkImportResult) => void;
   onCancel?: () => void;
+  onDontImport?: () => void;
 }
 
 // ============================================================================
@@ -103,6 +104,7 @@ export function ContactImportReview({
   opportunityId,
   onImportComplete,
   onCancel,
+  onDontImport,
 }: ContactImportReviewProps) {
   const [contacts, setContacts] = useState<ContactImportItem[]>([]);
   const [isImporting, setIsImporting] = useState(false);
@@ -530,6 +532,16 @@ export function ContactImportReview({
             : "No contacts to import"}
         </p>
         <div className="flex gap-3">
+          {onDontImport && (
+            <Button
+              variant="ghost"
+              onClick={onDontImport}
+              disabled={isImporting}
+              className="text-muted-foreground"
+            >
+              Don&apos;t Import
+            </Button>
+          )}
           {onCancel && (
             <Button variant="outline" onClick={onCancel} disabled={isImporting}>
               Cancel
@@ -584,14 +596,10 @@ function DuplicateContactCard({
       }`}
     >
       {/* Header - always visible */}
-      <div
-        className="flex items-center gap-3 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50"
-        onClick={() => onToggleExpand(index)}
-      >
+      <div className="flex items-center gap-3 p-3">
         <Checkbox
           checked={contact.selected}
           onCheckedChange={() => onToggleSelect(index)}
-          onClick={(e) => e.stopPropagation()}
           aria-label={`Select ${contact.editedFirstName} ${contact.editedLastName}`}
         />
         <div className="flex-1 min-w-0">
@@ -601,10 +609,13 @@ function DuplicateContactCard({
             </span>
             <Badge
               variant="outline"
-              className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-xs"
+              className={
+                contact.duplicateAction === "skip"
+                  ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 text-xs"
+                  : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 text-xs"
+              }
             >
-              <AlertTriangle className="h-3 w-3 mr-1" />
-              {contact.duplicateAction === "skip" ? "Will Skip" : "Will Update"}
+              {contact.duplicateAction === "skip" ? "Skip" : "Update"}
             </Badge>
           </div>
           {contact.person.organization && (
@@ -613,11 +624,22 @@ function DuplicateContactCard({
             </p>
           )}
         </div>
-        {isExpanded ? (
-          <ChevronUp className="h-4 w-4 text-slate-400" />
-        ) : (
-          <ChevronDown className="h-4 w-4 text-slate-400" />
-        )}
+        <button
+          onClick={() => onToggleExpand(index)}
+          className="text-xs text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap"
+        >
+          {isExpanded ? "Collapse" : "Edit details"}
+        </button>
+        <button
+          onClick={() => onToggleExpand(index)}
+          className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+        >
+          {isExpanded ? (
+            <ChevronUp className="h-4 w-4 text-slate-400" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-slate-400" />
+          )}
+        </button>
       </div>
 
       {/* Expanded content */}

@@ -75,6 +75,14 @@ export const DocumentEditorClient = ({
         const response = await fetch(
           `/api/v1/opportunities/${document.opportunityId}/documents/${document.id}`
         );
+
+        // Stop polling on authentication errors
+        if (response.status === 401) {
+          setIsPolling(false);
+          toast.error("Session expired. Please refresh the page.");
+          return;
+        }
+
         if (response.ok) {
           const data = await response.json();
           const updatedDoc = data.document;

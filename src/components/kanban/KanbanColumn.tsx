@@ -38,9 +38,10 @@ export interface KanbanColumnProps {
   onOpenOpportunity?: (id: string) => void;
   isVirtualMode?: boolean;
   movingOpportunityId?: string | null;
+  showOwner?: boolean;
 }
 
-export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtualMode = false, movingOpportunityId }: KanbanColumnProps) {
+export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtualMode = false, movingOpportunityId, showOwner = false }: KanbanColumnProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(column.title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -188,6 +189,7 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
               opportunity={opp}
               onClick={onOpenOpportunity}
               isMoving={movingOpportunityId === opp.id}
+              showOwner={showOwner}
             />
           ))}
           {count === 0 && (

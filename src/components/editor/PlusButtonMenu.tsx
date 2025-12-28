@@ -92,17 +92,22 @@ export function PlusButtonMenu({ editor, onAIPrompt }: PlusButtonMenuProps) {
       }}
       shouldShow={({ state }) => {
         const { $from } = state.selection;
-        const currentLineText = $from.nodeBefore?.textContent || "";
+        const parent = $from.parent;
 
-        // Show on empty lines or at the start of empty paragraphs
-        const isEmptyParagraph =
-          $from.parent.type.name === "paragraph" &&
-          $from.parent.content.size === 0;
+        // Only show on paragraph nodes
+        if (parent.type.name !== "paragraph") {
+          return false;
+        }
 
-        // Also show if we're at the start of a line with no content before cursor
-        const isAtStart = $from.parentOffset === 0 && currentLineText === "";
+        // Show if the paragraph is empty (no content at all)
+        const isEmptyParagraph = parent.content.size === 0;
 
-        return isEmptyParagraph || isAtStart;
+        // Also show if cursor is at the very start of an empty text node
+        // (handles case where paragraph has an empty text node)
+        const isAtStartOfEmptyLine =
+          $from.parentOffset === 0 && parent.textContent === "";
+
+        return isEmptyParagraph || isAtStartOfEmptyLine;
       }}
       className="flex items-center"
     >

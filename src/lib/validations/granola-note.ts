@@ -16,6 +16,9 @@ export const granolaCreateSchema = z.object({
     .optional(),
 });
 
+// Schema for insight arrays (pain points, goals, next steps)
+const insightArraySchema = z.array(z.string().max(1000)).optional();
+
 export const granolaUpdateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   url: z.string().url().optional(),
@@ -28,6 +31,10 @@ export const granolaUpdateSchema = z.object({
     .max(250000, "Transcript must not exceed 250,000 characters")
     .nullable()
     .optional(),
+  // Allow updating AI-generated insights
+  painPoints: insightArraySchema,
+  goals: insightArraySchema,
+  nextSteps: insightArraySchema,
 });
 
 export type GranolaCreateInput = z.infer<typeof granolaCreateSchema>;

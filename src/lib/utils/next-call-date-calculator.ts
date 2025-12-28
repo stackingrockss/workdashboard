@@ -5,6 +5,7 @@ import {
   type CbcCalculation,
   type MeetingData,
 } from "./cbc-calculator";
+import { processCbcTaskForOpportunity } from "./cbc-task-creator";
 
 /**
  * Result of next call date calculation
@@ -284,6 +285,12 @@ export async function recalculateOpportunityDates(
       // Warning flag
       needsNextCallScheduled: calculated.needsNextCallScheduled,
     },
+  });
+
+  // Process CBC task (create, update, or delete based on calculated dates)
+  // This runs asynchronously but we don't wait for it to complete
+  processCbcTaskForOpportunity(opportunityId).catch((error) => {
+    console.error(`[recalculateOpportunityDates] Failed to process CBC task for ${opportunityId}:`, error);
   });
 
   return {

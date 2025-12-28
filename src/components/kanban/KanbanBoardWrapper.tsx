@@ -37,13 +37,15 @@ interface KanbanBoardWrapperProps {
   views: SerializedKanbanView[];
   activeView: SerializedKanbanView;
   fiscalYearStartMonth?: number;
+  showOwner?: boolean; // For managers/admins viewing team opportunities
 }
 
 export function KanbanBoardWrapper({
   opportunities,
   views: initialViews,
   activeView: initialActiveView,
-  fiscalYearStartMonth = 1
+  fiscalYearStartMonth = 1,
+  showOwner = false
 }: KanbanBoardWrapperProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -355,6 +357,7 @@ export function KanbanBoardWrapper({
               onColumnChange={handleColumnChange}
               isVirtualMode={true}
               fiscalYearStartMonth={fiscalYearStartMonth}
+              showOwner={showOwner}
             />
           )}
         </TabsContent>

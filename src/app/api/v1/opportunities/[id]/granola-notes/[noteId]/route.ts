@@ -47,6 +47,10 @@ export async function PATCH(
         ...(parsed.data.transcriptText !== undefined && {
           transcriptText: parsed.data.transcriptText,
         }),
+        // Editable insight fields
+        ...(parsed.data.painPoints !== undefined && { painPoints: parsed.data.painPoints }),
+        ...(parsed.data.goals !== undefined && { goals: parsed.data.goals }),
+        ...(parsed.data.nextSteps !== undefined && { nextSteps: parsed.data.nextSteps }),
       },
     });
 

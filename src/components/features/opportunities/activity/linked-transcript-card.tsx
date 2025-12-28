@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { formatDateShort } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { InsightsDisplay } from "./insights-display";
+import { EditableInsightsDisplay } from "./editable-insights-display";
 import type { LinkedTranscriptSummary, TimelineEvent } from "@/types/timeline";
 
 interface LinkedTranscriptCardProps {
@@ -207,14 +208,17 @@ export function LinkedTranscriptCard({
         {renderParsingBadge()}
       </div>
 
-      {/* Insights */}
-      {showInsights && transcript.hasInsights && (
+      {/* Insights - Editable inline */}
+      {showInsights && (
         <div className="pt-2 border-t border-dashed">
-          <InsightsDisplay
+          <EditableInsightsDisplay
+            transcriptId={transcript.id}
+            transcriptType={type}
+            opportunityId={opportunityId}
             painPoints={transcript.painPoints}
             goals={transcript.goals}
             nextSteps={transcript.nextSteps}
-            compact
+            onUpdate={onRefresh}
           />
         </div>
       )}

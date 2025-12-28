@@ -21,6 +21,7 @@ interface ContactImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onImportComplete?: () => void;
+  onDismiss?: () => void;
 }
 
 export function ContactImportDialog({
@@ -28,6 +29,7 @@ export function ContactImportDialog({
   open,
   onOpenChange,
   onImportComplete,
+  onDismiss,
 }: ContactImportDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [parsedPeople, setParsedPeople] = useState<PersonExtracted[]>([]);
@@ -87,6 +89,11 @@ export function ContactImportDialog({
     onOpenChange(false);
   };
 
+  const handleDontImport = () => {
+    onDismiss?.();
+    onOpenChange(false);
+  };
+
   if (!notification) return null;
 
   return (
@@ -112,6 +119,7 @@ export function ContactImportDialog({
             opportunityId={notification.opportunityId}
             onImportComplete={handleImportComplete}
             onCancel={handleCancel}
+            onDontImport={handleDontImport}
           />
         )}
       </DialogContent>

@@ -15,7 +15,15 @@ export const gongCallCreateSchema = z.object({
   calendarEventId: z.string().optional(),
 });
 
-export const gongCallUpdateSchema = gongCallCreateSchema.partial();
+// Schema for insight arrays (pain points, goals, next steps)
+export const insightArraySchema = z.array(z.string().max(1000)).optional();
+
+export const gongCallUpdateSchema = gongCallCreateSchema.partial().extend({
+  // Allow updating AI-generated insights
+  painPoints: insightArraySchema,
+  goals: insightArraySchema,
+  nextSteps: insightArraySchema,
+});
 
 export type GongCallCreateInput = z.infer<typeof gongCallCreateSchema>;
 export type GongCallUpdateInput = z.infer<typeof gongCallUpdateSchema>;

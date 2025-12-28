@@ -7,7 +7,7 @@ import { prisma } from "@/lib/db";
 import { requireAuthOrRedirect } from "@/lib/auth";
 import { SerializedKanbanView } from "@/types/view";
 import { getAllBuiltInViews } from "@/lib/utils/built-in-views";
-import { getVisibleUserIds, isAdmin } from "@/lib/permissions";
+import { getVisibleUserIds, isAdmin, isAdminOrManager } from "@/lib/permissions";
 import { Target } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrencyCompact } from "@/lib/format";
@@ -144,6 +144,7 @@ export default async function OpportunitiesPage() {
         views={builtInViews}
         activeView={activeView}
         fiscalYearStartMonth={fiscalYearStartMonth}
+        showOwner={isAdminOrManager(user)}
       />
     </div>
   );
