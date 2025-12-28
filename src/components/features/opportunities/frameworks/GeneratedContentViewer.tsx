@@ -7,8 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { RichTextViewer } from "@/components/ui/rich-text-editor";
 import {
   Copy,
   Edit2,
@@ -231,22 +230,9 @@ export const GeneratedContentViewer = ({
             className="font-mono text-sm resize-none"
           />
         ) : (
-          <div
-            className={cn(
-              "prose prose-sm dark:prose-invert max-w-none",
-              "prose-headings:font-semibold prose-headings:text-foreground",
-              "prose-p:text-muted-foreground prose-p:leading-relaxed",
-              "prose-li:text-muted-foreground",
-              "prose-strong:text-foreground",
-              "prose-table:text-sm",
-              "prose-th:bg-muted prose-th:p-2 prose-th:text-left",
-              "prose-td:p-2 prose-td:border-t"
-            )}
-          >
+          <div>
             {content.content ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {content.content}
-              </ReactMarkdown>
+              <RichTextViewer content={content.content} />
             ) : (
               <p className="text-muted-foreground italic">
                 No content generated yet

@@ -1,10 +1,9 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { parseContentCards } from "@/lib/utils/parse-content-cards";
 import { ContentSuggestion } from "@/types/content-suggestion";
 import { ContentSuggestionCard } from "./ContentSuggestionCard";
+import { RichTextViewer } from "@/components/ui/rich-text-editor";
 
 interface ChatMessageContentProps {
   content: string;
@@ -27,10 +26,8 @@ export function ChatMessageContent({
       {segments.map((segment, index) => {
         if (segment.type === "text") {
           return (
-            <div key={index} className="text-sm prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-ul:my-1 prose-li:my-0">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {segment.content as string}
-              </ReactMarkdown>
+            <div key={index} className="text-sm">
+              <RichTextViewer content={segment.content as string} />
             </div>
           );
         } else {

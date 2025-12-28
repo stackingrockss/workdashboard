@@ -32,6 +32,7 @@ import {
   Trash2,
   Link as LinkIcon,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import {
   Tooltip,
@@ -46,6 +47,7 @@ import { EditorBubbleMenu } from "@/components/editor/EditorBubbleMenu";
 import { PlusButtonMenu } from "@/components/editor/PlusButtonMenu";
 import { AISidebar, AISidebarToggle } from "@/components/editor/AISidebar";
 import { AIPromptDialog } from "@/components/editor/AIPromptDialog";
+import { AIReviewBar } from "@/components/editor/AIReviewBar";
 import {
   SlashCommand,
   SlashCommandItem,
@@ -120,6 +122,17 @@ export function RichTextEditor({
   const [slashCommandItems, setSlashCommandItems] = useState<SlashCommandItem[]>([]);
   const [slashCommandClientRect, setSlashCommandClientRect] = useState<(() => DOMRect | null) | null>(null);
   const slashCommandMenuRef = useRef<SlashCommandMenuRef | null>(null);
+
+  // AI Review State - tracks pending AI changes awaiting user approval
+  const [pendingAIChange, setPendingAIChange] = useState<{
+    type: "replace" | "insert";
+    originalText: string;
+    newText: string;
+    from: number;
+    to: number;
+  } | null>(null);
+  const [isAIStreaming, setIsAIStreaming] = useState(false);
+  const pendingContentRef = useRef<HTMLDivElement | null>(null);
 
   // Use external or internal sidebar state
   const showSidebar = externalShowSidebar ?? internalShowSidebar;
@@ -245,17 +258,8 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: cn(
-          "prose prose-sm max-w-none dark:prose-invert focus:outline-none min-h-[200px] p-4",
-          "prose-headings:mt-4 prose-headings:mb-2 prose-headings:first:mt-0",
-          "prose-p:mb-3 prose-p:leading-relaxed",
-          "prose-ul:list-disc prose-ul:list-inside prose-ul:mb-3 prose-ul:space-y-1 prose-ul:ml-2",
-          "prose-ol:list-decimal prose-ol:list-inside prose-ol:mb-3 prose-ol:space-y-1 prose-ol:ml-2",
-          "prose-li:ml-4",
-          "prose-blockquote:border-l-4 prose-blockquote:border-muted prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:my-3 prose-blockquote:text-muted-foreground",
-          "prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono",
-          "[&_table]:min-w-full [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_table]:text-sm [&_table]:my-4",
-          "[&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_th]:bg-muted/50",
-          "[&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2",
+          getProseStyles(),
+          "focus:outline-none min-h-[200px] p-4",
           editorClassName
         ),
       },
@@ -295,10 +299,15 @@ export function RichTextEditor({
     editor?.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   }, [editor]);
 
-  // Handle AI bubble menu actions
+  // Handle AI bubble menu actions - now with review workflow
   const handleAIAction = useCallback(
     async (action: AIAction, text: string, tone?: ToneOption) => {
       if (!editor) return;
+
+      // Capture selection before starting
+      const { from, to } = editor.state.selection;
+
+      setIsAIStreaming(true);
 
       try {
         let result: string;
@@ -321,17 +330,18 @@ export function RichTextEditor({
             throw new Error(`Unknown action: ${action}`);
         }
 
-        // Replace the selected text with the AI result
-        const { from, to } = editor.state.selection;
-        editor
-          .chain()
-          .focus()
-          .deleteRange({ from, to })
-          .insertContent(result)
-          .run();
+        setIsAIStreaming(false);
 
-        toast.success("Text updated with AI");
+        // Store pending change for review instead of applying immediately
+        setPendingAIChange({
+          type: "replace",
+          originalText: text,
+          newText: result,
+          from,
+          to,
+        });
       } catch (error) {
+        setIsAIStreaming(false);
         console.error("AI action failed:", error);
         toast.error(
           error instanceof Error ? error.message : "AI action failed"
@@ -341,19 +351,31 @@ export function RichTextEditor({
     [editor, improveText, expandText, shortenText, changeTone]
   );
 
-  // Handle AI prompt generation
+  // Handle AI prompt generation - now with review workflow
   const handleAIGenerate = useCallback(
     async (prompt: string) => {
       if (!editor) return;
 
+      // Capture cursor position before starting
+      const { from } = editor.state.selection;
+
+      setIsAIStreaming(true);
+
       try {
         const result = await generateContent(prompt);
 
-        // Insert the generated content at cursor position
-        editor.chain().focus().insertContent(result).run();
+        setIsAIStreaming(false);
 
-        toast.success("Content generated");
+        // Store pending change for review instead of applying immediately
+        setPendingAIChange({
+          type: "insert",
+          originalText: "",
+          newText: result,
+          from,
+          to: from,
+        });
       } catch (error) {
+        setIsAIStreaming(false);
         console.error("AI generation failed:", error);
         toast.error(
           error instanceof Error ? error.message : "AI generation failed"
@@ -362,6 +384,40 @@ export function RichTextEditor({
     },
     [editor, generateContent]
   );
+
+  // Handle accepting pending AI change
+  const handleAcceptAIChange = useCallback(() => {
+    if (!editor || !pendingAIChange) return;
+
+    const { type, newText, from, to } = pendingAIChange;
+
+    if (type === "replace") {
+      // Delete original text and insert new text
+      editor
+        .chain()
+        .focus()
+        .deleteRange({ from, to })
+        .insertContent(newText)
+        .run();
+    } else {
+      // Insert new text at cursor position
+      editor
+        .chain()
+        .focus()
+        .setTextSelection(from)
+        .insertContent(newText)
+        .run();
+    }
+
+    setPendingAIChange(null);
+    toast.success("AI changes accepted");
+  }, [editor, pendingAIChange]);
+
+  // Handle discarding pending AI change
+  const handleDiscardAIChange = useCallback(() => {
+    setPendingAIChange(null);
+    toast.info("AI changes discarded");
+  }, []);
 
   // Handle inserting text from AI sidebar
   const handleInsertFromSidebar = useCallback(
@@ -646,6 +702,57 @@ export function RichTextEditor({
                   onGenerate={handleAIGenerate}
                   isLoading={isAILoading}
                 />
+
+                {/* Pending AI Change Review UI */}
+                {(pendingAIChange || isAIStreaming) && (
+                  <div className="border-t border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+                    {/* Preview of AI-generated content */}
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="h-4 w-4 text-purple-600" />
+                        <span className="text-sm font-medium text-purple-700 dark:text-purple-300">
+                          {pendingAIChange?.type === "replace"
+                            ? "AI Suggestion"
+                            : "AI Generated Content"}
+                        </span>
+                      </div>
+                      <div
+                        ref={pendingContentRef}
+                        className={cn(
+                          "p-3 rounded-md border-2 border-purple-300 dark:border-purple-700",
+                          "bg-white dark:bg-slate-900",
+                          "prose prose-sm max-w-none dark:prose-invert",
+                          "[&_p]:mb-2 [&_p]:last:mb-0",
+                          "[&_ul]:list-disc [&_ul]:ml-4 [&_ol]:list-decimal [&_ol]:ml-4"
+                        )}
+                      >
+                        {isAIStreaming ? (
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <span>Generating...</span>
+                          </div>
+                        ) : (
+                          <div
+                            dangerouslySetInnerHTML={{
+                              __html: pendingAIChange
+                                ? parseMarkdownToHtml(editor, pendingAIChange.newText)
+                                : "",
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Review action bar */}
+                    <div className="flex justify-end px-4 pb-4">
+                      <AIReviewBar
+                        onAccept={handleAcceptAIChange}
+                        onDiscard={handleDiscardAIChange}
+                        isStreaming={isAIStreaming}
+                      />
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -715,4 +822,120 @@ function ToolbarButton({
   }
 
   return button;
+}
+
+// Shared prose styles for both editor and viewer
+function getProseStyles() {
+  return cn(
+    "prose prose-sm max-w-none dark:prose-invert",
+    // Headings - match React-Markdown view mode
+    "[&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-6 [&_h1]:mb-4 [&_h1]:first:mt-0",
+    "[&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-5 [&_h2]:mb-3 [&_h2]:first:mt-0",
+    "[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:first:mt-0",
+    // Paragraphs
+    "[&_p]:mb-3 [&_p]:leading-relaxed",
+    // Lists - proper indentation and spacing
+    "[&_ul]:list-disc [&_ul]:mb-3 [&_ul]:space-y-1 [&_ul]:ml-6",
+    "[&_ol]:list-decimal [&_ol]:mb-3 [&_ol]:space-y-1 [&_ol]:ml-6",
+    "[&_li]:ml-2 [&_li>p]:mb-0",
+    "[&_li_ul]:mt-1 [&_li_ol]:mt-1",
+    // Bold and emphasis
+    "[&_strong]:font-semibold [&_strong]:text-foreground",
+    "[&_em]:italic",
+    // Blockquotes
+    "[&_blockquote]:border-l-4 [&_blockquote]:border-muted [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:my-3 [&_blockquote]:text-muted-foreground",
+    // Code
+    "[&_code]:bg-muted [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:font-mono",
+    "[&_pre]:bg-muted [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_pre]:my-3 [&_pre]:text-sm",
+    // Tables - match React-Markdown view mode
+    "[&_table]:min-w-full [&_table]:border-collapse [&_table]:border [&_table]:border-border [&_table]:text-sm [&_table]:my-4",
+    "[&_thead]:bg-muted/50",
+    "[&_tr]:border-b [&_tr]:border-border",
+    "[&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold",
+    "[&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2",
+    // Links
+    "[&_a]:text-blue-600 [&_a]:hover:underline dark:[&_a]:text-blue-400"
+  );
+}
+
+/**
+ * RichTextViewer - Read-only markdown viewer using TipTap
+ * Uses the same rendering engine as RichTextEditor for consistent display
+ */
+interface RichTextViewerProps {
+  content: string;
+  className?: string;
+}
+
+export function RichTextViewer({ content, className }: RichTextViewerProps) {
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+      Underline,
+      Link.configure({
+        openOnClick: true,
+        HTMLAttributes: {
+          class: "text-blue-600 hover:underline dark:text-blue-400",
+        },
+      }),
+      Table.configure({
+        resizable: false,
+        HTMLAttributes: {
+          class: "border-collapse border border-border",
+        },
+      }),
+      TableRow.configure({
+        HTMLAttributes: {
+          class: "border-b border-border",
+        },
+      }),
+      TableHeader.configure({
+        HTMLAttributes: {
+          class: "border border-border px-3 py-2 text-left font-semibold bg-muted/50",
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          class: "border border-border px-3 py-2",
+        },
+      }),
+      Markdown.configure({
+        html: true,
+        transformCopiedText: true,
+        transformPastedText: true,
+        bulletListMarker: "-",
+        breaks: false,
+        tightLists: true,
+        linkify: true,
+      }),
+    ],
+    content: "",
+    editable: false,
+    editorProps: {
+      attributes: {
+        class: cn(getProseStyles(), className),
+      },
+    },
+  });
+
+  // Update content when it changes
+  useEffect(() => {
+    if (editor && content) {
+      const storage = editor.storage as { markdown?: MarkdownStorage };
+      if (storage.markdown?.parser) {
+        const htmlContent = storage.markdown.parser.parse(content);
+        editor.commands.setContent(htmlContent);
+      }
+    }
+  }, [content, editor]);
+
+  if (!editor) {
+    return null;
+  }
+
+  return <EditorContent editor={editor} />;
 }

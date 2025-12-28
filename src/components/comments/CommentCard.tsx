@@ -5,8 +5,7 @@
 
 import { useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { RichTextViewer } from "@/components/ui/rich-text-editor";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -257,21 +256,7 @@ export function CommentCard({
           </div>
         ) : (
           <div className="prose prose-sm max-w-none dark:prose-invert">
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={{
-                p: ({ children }) => (
-                  <p
-                    className="mb-2 last:mb-0"
-                    dangerouslySetInnerHTML={{
-                      __html: renderMention(String(children)),
-                    }}
-                  />
-                ),
-              }}
-            >
-              {comment.content}
-            </ReactMarkdown>
+            <RichTextViewer content={comment.content} />
           </div>
         )}
 

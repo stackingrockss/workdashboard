@@ -6,9 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pencil, X, Check, Loader2, Sparkles, Eye, Code } from "lucide-react";
 import { cn } from "@/lib/utils";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RichTextEditor, RichTextViewer } from "@/components/ui/rich-text-editor";
 
 interface InlineMarkdownWithAIProps {
   label: string;
@@ -101,75 +99,6 @@ export function InlineMarkdownWithAI({
   // Show generate button only if field is empty and onGenerate is provided
   const showGenerateButton = onGenerate && (!value || value.toString().trim().length === 0);
 
-  // Markdown renderer component
-  const MarkdownContent = ({ content }: { content: string }) => (
-    <div className="markdown-content prose prose-sm max-w-none dark:prose-invert">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          h1: ({ children }) => <h1 className="text-2xl font-bold mt-6 mb-4 first:mt-0">{children}</h1>,
-          h2: ({ children }) => <h2 className="text-xl font-bold mt-5 mb-3 first:mt-0">{children}</h2>,
-          h3: ({ children }) => <h3 className="text-lg font-semibold mt-4 mb-2 first:mt-0">{children}</h3>,
-          p: ({ children }) => <p className="mb-3 leading-relaxed">{children}</p>,
-          ul: ({ children }) => <ul className="list-disc list-inside mb-3 space-y-1 ml-2">{children}</ul>,
-          ol: ({ children }) => <ol className="list-decimal list-inside mb-3 space-y-1 ml-2">{children}</ol>,
-          li: ({ children }) => <li className="ml-4">{children}</li>,
-          strong: ({ children }) => <strong className="font-semibold text-foreground">{children}</strong>,
-          em: ({ children }) => <em className="italic">{children}</em>,
-          blockquote: ({ children }) => (
-            <blockquote className="border-l-4 border-muted pl-4 italic my-3 text-muted-foreground">
-              {children}
-            </blockquote>
-          ),
-          code: ({ children }) => (
-            <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono">
-              {children}
-            </code>
-          ),
-          pre: ({ children }) => (
-            <pre className="bg-muted p-3 rounded-lg overflow-x-auto my-3 text-sm">
-              {children}
-            </pre>
-          ),
-          a: ({ href, children }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline dark:text-blue-400"
-            >
-              {children}
-            </a>
-          ),
-          table: ({ children }) => (
-            <div className="overflow-x-auto my-4">
-              <table className="min-w-full border-collapse border border-border text-sm">
-                {children}
-              </table>
-            </div>
-          ),
-          thead: ({ children }) => (
-            <thead className="bg-muted/50">{children}</thead>
-          ),
-          tbody: ({ children }) => <tbody>{children}</tbody>,
-          tr: ({ children }) => (
-            <tr className="border-b border-border">{children}</tr>
-          ),
-          th: ({ children }) => (
-            <th className="border border-border px-3 py-2 text-left font-semibold">
-              {children}
-            </th>
-          ),
-          td: ({ children }) => (
-            <td className="border border-border px-3 py-2">{children}</td>
-          ),
-        }}
-      >
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
-
   if (!isEditing) {
     return (
       <div
@@ -216,7 +145,7 @@ export function InlineMarkdownWithAI({
           </div>
         </div>
         {value && value.toString().trim().length > 0 ? (
-          <MarkdownContent content={value.toString()} />
+          <RichTextViewer content={value.toString()} />
         ) : (
           <div className="text-muted-foreground italic text-sm">{placeholder}</div>
         )}
@@ -303,7 +232,7 @@ export function InlineMarkdownWithAI({
             style={{ height: `${rows * 24}px` }}
           >
             {editValue.trim().length > 0 ? (
-              <MarkdownContent content={editValue} />
+              <RichTextViewer content={editValue} />
             ) : (
               <div className="text-muted-foreground italic text-sm">{placeholder}</div>
             )}

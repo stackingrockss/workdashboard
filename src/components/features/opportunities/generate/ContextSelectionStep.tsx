@@ -35,8 +35,7 @@ import {
 } from "lucide-react";
 import { formatDateShort } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { RichTextViewer } from "@/components/ui/rich-text-editor";
 import {
   Collapsible,
   CollapsibleContent,
@@ -1000,10 +999,8 @@ export const ContextSelectionStep = ({
                     Output Template
                   </p>
                   <ScrollArea className="h-[280px] rounded-md border bg-muted/30 p-3">
-                    <div className="prose prose-sm dark:prose-invert prose-headings:text-sm prose-headings:font-medium prose-p:text-xs prose-p:text-muted-foreground">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {selectedBrief.outputFormat}
-                      </ReactMarkdown>
+                    <div className="text-sm">
+                      <RichTextViewer content={selectedBrief.outputFormat} />
                     </div>
                   </ScrollArea>
                 </div>

@@ -20,8 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEditorAIChat, AIEditorChatMessage } from "@/hooks/useEditorAI";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { RichTextViewer } from "@/components/ui/rich-text-editor";
 import { toast } from "sonner";
 
 interface AISidebarProps {
@@ -229,9 +228,7 @@ export function AISidebar({
                 {/* Message content */}
                 <div className="prose prose-sm max-w-none dark:prose-invert">
                   {message.role === "assistant" ? (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {message.content || "..."}
-                    </ReactMarkdown>
+                    <RichTextViewer content={message.content || "..."} />
                   ) : (
                     <p className="m-0">{message.content}</p>
                   )}
