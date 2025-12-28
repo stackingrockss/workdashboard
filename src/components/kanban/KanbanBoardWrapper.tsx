@@ -19,7 +19,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, LayoutGrid, Table, Search } from "lucide-react";
+import { Plus, LayoutGrid, Table, Search, Calendar } from "lucide-react";
+import { Card } from "@/components/ui/card";
 import { KanbanBoard } from "./KanbanBoard";
 import { ViewSelector } from "./ViewSelector";
 import { OpportunitiesListView } from "@/components/opportunities/OpportunitiesListView";
@@ -334,14 +335,28 @@ export function KanbanBoardWrapper({
         </TabsList>
 
         <TabsContent value="board" className="mt-4">
-          <KanbanBoard
-            opportunities={filteredOpportunities}
-            columns={displayColumns}
-            onStageChange={handleStageChange}
-            onColumnChange={handleColumnChange}
-            isVirtualMode={true}
-            fiscalYearStartMonth={fiscalYearStartMonth}
-          />
+          {activeView.viewType === "currentQuarter" ? (
+            <Card className="p-8">
+              <div className="flex flex-col items-center justify-center text-center text-muted-foreground">
+                <Calendar className="h-12 w-12 mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">
+                  Board view is available for Quarterly, Stages, and Forecast views
+                </p>
+                <p className="text-sm">
+                  Current Quarter is optimized for the list view, or select a different view from the dropdown.
+                </p>
+              </div>
+            </Card>
+          ) : (
+            <KanbanBoard
+              opportunities={filteredOpportunities}
+              columns={displayColumns}
+              onStageChange={handleStageChange}
+              onColumnChange={handleColumnChange}
+              isVirtualMode={true}
+              fiscalYearStartMonth={fiscalYearStartMonth}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="list" className="mt-4">

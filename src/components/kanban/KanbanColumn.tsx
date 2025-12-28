@@ -119,9 +119,9 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
             </div>
           ) : (
             <>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold tracking-tight">
+                  <h3 className="text-sm font-semibold tracking-tight truncate">
                     {column.title}
                   </h3>
                   {quarterStatus === "past" && (
@@ -137,16 +137,16 @@ export function KanbanColumn({ column, opportunities, onOpenOpportunity, isVirtu
                     </Badge>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-muted-foreground">{count} deals</span>
+                <div className="flex items-center gap-2 mt-1 min-w-0">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">{count} deals</span>
                   {count > 0 && (
-                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                       {formatCurrencyCompact(totalArr)} ARR
                     </span>
                   )}
                 </div>
                 {column.subtitle && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{column.subtitle}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">{column.subtitle}</p>
                 )}
               </div>
               {canEdit && (

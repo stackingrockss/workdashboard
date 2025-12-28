@@ -152,28 +152,28 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-baseline gap-1">
+        <div className="flex items-center justify-between gap-2 min-w-0">
+          <div className="flex items-baseline gap-1 shrink-0">
             <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400" suppressHydrationWarning>
               {formatCurrencyCompact(opportunity.amountArr)}
             </span>
             <span className="text-xs text-muted-foreground">ARR</span>
           </div>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <CalendarDays size={14} />
-            <span className="text-xs" suppressHydrationWarning>{closeDate}</span>
+          <div className="flex items-center gap-1.5 text-muted-foreground shrink-0">
+            <CalendarDays size={14} className="shrink-0" />
+            <span className="text-xs whitespace-nowrap" suppressHydrationWarning>{closeDate}</span>
             {opportunity.riskNotes && (
-              <AlertTriangle size={14} className="text-yellow-600 dark:text-yellow-400" />
+              <AlertTriangle size={14} className="text-yellow-600 dark:text-yellow-400 shrink-0" />
             )}
           </div>
         </div>
 
         {opportunity.nextCallDate && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CalendarClock className="h-3 w-3" />
-            <span suppressHydrationWarning>Next call: {formatDateShort(opportunity.nextCallDate)}</span>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+            <CalendarClock className="h-3 w-3 shrink-0" />
+            <span className="truncate" suppressHydrationWarning>Next call: {formatDateShort(opportunity.nextCallDate)}</span>
             {opportunity.nextCallDateSource === 'auto_calendar' && (
-              <Badge variant="outline" className="h-4 text-[10px] px-1">Auto</Badge>
+              <Badge variant="outline" className="h-4 text-[10px] px-1 shrink-0">Auto</Badge>
             )}
           </div>
         )}
@@ -187,8 +187,8 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
           </div>
         )}
 
-        <div className="flex items-center gap-2 pt-1">
-          <Avatar className="h-6 w-6">
+        <div className="flex items-center gap-2 pt-1 min-w-0">
+          <Avatar className="h-6 w-6 shrink-0">
             <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
           </Avatar>
           <TooltipProvider>

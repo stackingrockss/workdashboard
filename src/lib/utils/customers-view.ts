@@ -36,10 +36,10 @@ export function customerBucketToColumnId(bucket: CustomerValueBucket): string {
  */
 export function generateCustomersColumns(): SerializedKanbanColumn[] {
   const buckets = [
-    { id: "enterprise", title: "Enterprise ($500K+)", color: "#8b5cf6" }, // violet-500
-    { id: "midMarket", title: "Mid-Market ($100K-$500K)", color: "#3b82f6" }, // blue-500
-    { id: "commercial", title: "Commercial ($25K-$100K)", color: "#10b981" }, // emerald-500
-    { id: "smb", title: "SMB (<$25K)", color: "#6b7280" }, // gray-500
+    { id: "enterprise", title: "$500K+", color: "#8b5cf6" }, // violet-500
+    { id: "midMarket", title: "$100K-$500K", color: "#3b82f6" }, // blue-500
+    { id: "commercial", title: "$25K-$100K", color: "#10b981" }, // emerald-500
+    { id: "smb", title: "<$25K", color: "#6b7280" }, // gray-500
   ];
 
   const now = new Date().toISOString();

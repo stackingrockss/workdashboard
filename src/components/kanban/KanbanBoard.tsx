@@ -172,8 +172,8 @@ export function KanbanBoard({
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div
-        className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent lg:grid lg:overflow-visible lg:pb-0"
-        style={{ gridTemplateColumns: `repeat(${Math.min(columns.length, 6)}, minmax(320px, 1fr))` }}
+        className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent lg:grid lg:pb-0"
+        style={{ gridTemplateColumns: `repeat(${Math.min(columns.length, 6)}, minmax(280px, 1fr))` }}
       >
         {columns.map((col) => (
           <div key={col.id} className="flex-shrink-0 w-[85vw] snap-center sm:w-[45vw] lg:w-auto lg:flex-shrink">
