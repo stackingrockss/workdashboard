@@ -6,12 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Opportunity } from "@/types/opportunity";
-import { CircleDollarSign, CalendarDays, ArrowRight, AlertTriangle, Pin, ExternalLink, CalendarClock, CheckCircle } from "lucide-react";
+import { CalendarDays, ArrowRight, AlertTriangle, Pin, ExternalLink, CalendarClock, CheckCircle, Mail, CalendarPlus } from "lucide-react";
 import { formatCurrencyCompact, formatDateShort } from "@/lib/format";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { FORECAST_LABELS } from "@/lib/constants";
+import { isCbcDue, isCbcOverdue, getDaysUntilCbc } from "@/lib/utils/cbc-calculator";
 
 export interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -32,6 +33,22 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
   const closeDate = formatDateShort(opportunity.closeDate);
   const accountName = opportunity.account?.name || opportunity.accountName || "No Account";
   const accountWebsite = opportunity.account?.website;
+
+  // CBC (Contact Before Call) status
+  const cbcStatus = useMemo(() => {
+    const cbcDate = opportunity.cbc ? new Date(opportunity.cbc) : null;
+    const isDue = isCbcDue(cbcDate);
+    const isOverdue = isCbcOverdue(cbcDate);
+    const daysUntil = getDaysUntilCbc(cbcDate);
+
+    return {
+      date: cbcDate,
+      isDue,
+      isOverdue,
+      daysUntil,
+      needsNextCall: opportunity.needsNextCallScheduled ?? false,
+    };
+  }, [opportunity.cbc, opportunity.needsNextCallScheduled]);
 
   const handlePinToggle = async (e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
@@ -176,6 +193,65 @@ export function OpportunityCard({ opportunity, onClick }: OpportunityCardProps) 
               <Badge variant="outline" className="h-4 text-[10px] px-1 shrink-0">Auto</Badge>
             )}
           </div>
+        )}
+
+        {/* CBC (Contact Before Call) indicator */}
+        {cbcStatus.needsNextCall && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 text-xs text-amber-600 dark:text-amber-400 min-w-0">
+                  <CalendarPlus className="h-3 w-3 shrink-0" />
+                  <span className="truncate font-medium">Schedule next call</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>No upcoming meeting scheduled. Consider booking the next call.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
+        {cbcStatus.date && !cbcStatus.needsNextCall && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className={`flex items-center gap-2 text-xs min-w-0 ${
+                  cbcStatus.isOverdue
+                    ? "text-red-600 dark:text-red-400"
+                    : cbcStatus.isDue
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-muted-foreground"
+                }`}>
+                  <Mail className={`h-3 w-3 shrink-0 ${cbcStatus.isDue ? "animate-pulse" : ""}`} />
+                  <span className="truncate" suppressHydrationWarning>
+                    {cbcStatus.isOverdue
+                      ? `Outreach overdue (${Math.abs(cbcStatus.daysUntil!)}d ago)`
+                      : cbcStatus.isDue
+                        ? "Reach out today"
+                        : `Reach out: ${formatDateShort(cbcStatus.date)}`
+                    }
+                  </span>
+                  {(cbcStatus.isDue || cbcStatus.isOverdue) && (
+                    <Badge
+                      variant={cbcStatus.isOverdue ? "destructive" : "secondary"}
+                      className="h-4 text-[10px] px-1 shrink-0"
+                    >
+                      {cbcStatus.isOverdue ? "Overdue" : "Due"}
+                    </Badge>
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>
+                  Contact Before Call - optimal time to reach out between meetings.
+                  {cbcStatus.daysUntil !== null && cbcStatus.daysUntil > 0 &&
+                    ` ${cbcStatus.daysUntil} days until due.`
+                  }
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
 
         {opportunity.nextStep && (

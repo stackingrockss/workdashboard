@@ -46,9 +46,11 @@ export function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
               <Badge variant="outline" className="text-xs">
                 {roleLabel}
               </Badge>
-              <Badge className={`text-xs ${sentimentColorClass}`}>
-                {contact.sentiment.charAt(0).toUpperCase() + contact.sentiment.slice(1)}
-              </Badge>
+              {contact.sentiment !== "unknown" && (
+                <Badge className={`text-xs ${sentimentColorClass}`}>
+                  {contact.sentiment.charAt(0).toUpperCase() + contact.sentiment.slice(1)}
+                </Badge>
+              )}
             </div>
 
             {/* Contact Details */}
@@ -85,12 +87,17 @@ export function ContactCard({ contact, onEdit, onDelete }: ContactCardProps) {
               )}
             </div>
 
-            {/* Notes */}
-            {contact.notes && (
-              <p className="text-sm text-muted-foreground mt-3 line-clamp-2">
-                {contact.notes}
-              </p>
-            )}
+            {/* Notes - strip Gong import metadata */}
+            {(() => {
+              const cleanedNotes = contact.notes
+                ?.replace(/^Imported from Gong transcript\. Organization: .+$/, '')
+                .trim();
+              return cleanedNotes ? (
+                <p className="text-sm text-muted-foreground mt-3 line-clamp-2">
+                  {cleanedNotes}
+                </p>
+              ) : null;
+            })()}
           </div>
         </div>
 

@@ -16,7 +16,7 @@ import { processEarningsTranscriptJob } from "@/lib/inngest/functions/process-ea
 import { refreshSecCacheJob } from "@/lib/inngest/functions/refresh-sec-cache";
 import { syncEarningsDatesJob } from "@/lib/inngest/functions/sync-earnings-dates";
 import { generateAccountResearchJob } from "@/lib/inngest/functions/generate-account-research";
-import { recalculateNextCallDatesJob } from "@/lib/inngest/functions/recalculate-next-call-dates";
+import { recalculateNextCallDatesJob, recalculateOpportunityDatesEvent } from "@/lib/inngest/functions/recalculate-next-call-dates";
 import { generateMapJob } from "@/lib/inngest/functions/generate-map";
 import { generateFrameworkContentJob } from "@/lib/inngest/functions/generate-framework-content";
 import { generateDocumentContentJob } from "@/lib/inngest/functions/generate-document-content";
@@ -48,7 +48,8 @@ export const { GET, POST, PUT } = serve({
     refreshSecCacheJob, // SEC company data cache refresh (daily at 2 AM UTC)
     syncEarningsDatesJob, // Earnings dates sync and reminder tasks (daily at 9 AM)
     generateAccountResearchJob, // AI account research generation on opportunity creation
-    recalculateNextCallDatesJob, // Next call date recalculation (daily at 2 AM)
+    recalculateNextCallDatesJob, // Next call date & CBC recalculation (daily at 2 AM)
+    recalculateOpportunityDatesEvent, // Event-triggered date recalculation
     generateMapJob, // Mutual Action Plan generation
     generateFrameworkContentJob, // AI content generation using frameworks (legacy GeneratedContent)
     generateDocumentContentJob, // AI content generation for Document table (unified system)

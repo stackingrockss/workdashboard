@@ -101,7 +101,12 @@ export interface Opportunity {
   amountArr: number; // annual recurring revenue forecast
   confidenceLevel: number; // 1-5 scale (replaces probability)
   nextStep?: string;
-  cbc?: string | null; // Call Between Call date (ISO date string)
+  cbc?: string | null; // Contact Before Call date (ISO date string) - midpoint between last and next call
+  cbcLastCalculated?: string | null; // ISO datetime string
+  lastCallDate?: string | null; // Last call date (ISO datetime string) - most recent past meeting
+  lastCallDateSource?: 'auto_calendar' | 'auto_gong' | 'auto_granola' | 'manual' | null;
+  lastCallDateEventId?: string | null;
+  needsNextCallScheduled?: boolean; // Flag when there's a past meeting but no future meeting scheduled
   nextCallDate?: string | null; // Next call date (ISO datetime string) - auto-populated or manual
   nextCallDateSource?: 'auto_calendar' | 'auto_gong' | 'auto_granola' | 'manual' | null;
   nextCallDateManuallySet?: boolean;

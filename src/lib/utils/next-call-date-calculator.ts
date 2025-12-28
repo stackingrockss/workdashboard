@@ -1,5 +1,10 @@
 import { prisma } from "@/lib/db";
 import type { NextCallDateSource } from "@prisma/client";
+import {
+  calculateCbcDates,
+  type CbcCalculation,
+  type MeetingData,
+} from "./cbc-calculator";
 
 /**
  * Result of next call date calculation
@@ -14,6 +19,14 @@ export interface NextCallDateCalculation {
 }
 
 /**
+ * Result of full opportunity date recalculation (includes CBC)
+ */
+export interface OpportunityDatesCalculation extends CbcCalculation {
+  /** Timestamp of when calculation was performed */
+  calculatedAt: Date;
+}
+
+/**
  * Opportunity with meeting relations for calculation
  * @internal
  */
@@ -22,6 +35,44 @@ interface OpportunityWithMeetings {
   calendarEvents?: Array<{ id: string; startTime: Date }>;
   gongCalls?: Array<{ id: string; meetingDate: Date }>;
   granolaNotes?: Array<{ id: string; meetingDate: Date }>;
+}
+
+/**
+ * Convert opportunity meeting data to unified MeetingData array
+ */
+function collectMeetingsFromOpportunity(
+  opportunity: OpportunityWithMeetings
+): MeetingData[] {
+  const meetings: MeetingData[] = [];
+
+  // Collect from CalendarEvents (external only - filtered at query level)
+  opportunity.calendarEvents?.forEach((e) =>
+    meetings.push({
+      date: e.startTime,
+      source: "auto_calendar",
+      eventId: e.id,
+    })
+  );
+
+  // Collect from GongCalls
+  opportunity.gongCalls?.forEach((c) =>
+    meetings.push({
+      date: c.meetingDate,
+      source: "auto_gong",
+      eventId: c.id,
+    })
+  );
+
+  // Collect from GranolaNotes
+  opportunity.granolaNotes?.forEach((n) =>
+    meetings.push({
+      date: n.meetingDate,
+      source: "auto_granola",
+      eventId: n.id,
+    })
+  );
+
+  return meetings;
 }
 
 /**
@@ -127,6 +178,8 @@ export function calculateNextCallDate(
  *   console.log(`Next call: ${result.nextCallDate.toISOString()}`);
  *   console.log(`Source: ${result.source}`);
  * }
+ *
+ * @deprecated Use recalculateOpportunityDates instead for full CBC calculation
  */
 export async function recalculateNextCallDateForOpportunity(
   opportunityId: string
@@ -163,4 +216,106 @@ export async function recalculateNextCallDateForOpportunity(
   });
 
   return calculated;
+}
+
+/**
+ * Recalculate all dates for an opportunity including CBC.
+ *
+ * This function:
+ * 1. Fetches the opportunity with all meeting sources (CalendarEvent, GongCall, GranolaNote)
+ * 2. Calculates the last call date (most recent past meeting)
+ * 3. Calculates the next call date (earliest future meeting)
+ * 4. Calculates the CBC date (midpoint between last and next)
+ * 5. Sets needsNextCallScheduled flag if there's a past meeting but no future meeting
+ * 6. Updates all fields in a single database transaction
+ *
+ * @param opportunityId - The ID of the opportunity to recalculate
+ * @returns Complete calculation result with all dates and flags
+ * @throws Error if opportunity not found
+ *
+ * @example
+ * const result = await recalculateOpportunityDates('opp_123');
+ * console.log(result.cbcDate);               // 2024-12-22
+ * console.log(result.needsNextCallScheduled); // false
+ */
+export async function recalculateOpportunityDates(
+  opportunityId: string
+): Promise<OpportunityDatesCalculation> {
+  // Fetch opportunity with all meeting sources
+  const opportunity = await prisma.opportunity.findUnique({
+    where: { id: opportunityId },
+    include: {
+      calendarEvents: {
+        where: { isExternal: true }, // Only external meetings
+        orderBy: { startTime: "asc" },
+      },
+      gongCalls: { orderBy: { meetingDate: "asc" } },
+      granolaNotes: { orderBy: { meetingDate: "asc" } },
+    },
+  });
+
+  if (!opportunity) {
+    throw new Error(`Opportunity ${opportunityId} not found`);
+  }
+
+  // Collect all meetings into unified format
+  const meetings = collectMeetingsFromOpportunity(opportunity);
+
+  // Calculate all dates using CBC calculator
+  const calculated = calculateCbcDates(meetings);
+  const calculatedAt = new Date();
+
+  // Update database with all calculated values
+  await prisma.opportunity.update({
+    where: { id: opportunityId },
+    data: {
+      // Last call date fields
+      lastCallDate: calculated.lastCallDate,
+      lastCallDateSource: calculated.lastCallDateSource,
+      lastCallDateEventId: calculated.lastCallDateEventId,
+      // Next call date fields
+      nextCallDate: calculated.nextCallDate,
+      nextCallDateSource: calculated.nextCallDateSource,
+      nextCallDateLastCalculated: calculatedAt,
+      nextCallDateEventId: calculated.nextCallDateEventId,
+      // CBC fields
+      cbc: calculated.cbcDate,
+      cbcLastCalculated: calculatedAt,
+      // Warning flag
+      needsNextCallScheduled: calculated.needsNextCallScheduled,
+    },
+  });
+
+  return {
+    ...calculated,
+    calculatedAt,
+  };
+}
+
+/**
+ * Recalculate dates for multiple opportunities.
+ * Useful for batch processing or scheduled jobs.
+ *
+ * @param opportunityIds - Array of opportunity IDs to recalculate
+ * @returns Array of calculation results
+ */
+export async function recalculateOpportunityDatesBatch(
+  opportunityIds: string[]
+): Promise<Array<{ opportunityId: string; result: OpportunityDatesCalculation | null; error?: string }>> {
+  const results: Array<{ opportunityId: string; result: OpportunityDatesCalculation | null; error?: string }> = [];
+
+  for (const opportunityId of opportunityIds) {
+    try {
+      const result = await recalculateOpportunityDates(opportunityId);
+      results.push({ opportunityId, result });
+    } catch (error) {
+      results.push({
+        opportunityId,
+        result: null,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  return results;
 }

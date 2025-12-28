@@ -550,36 +550,111 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                 rows={4}
                 className="md:col-span-2 lg:col-span-3"
               />
-              <InlineDatePicker
-                label="CBC Date"
-                value={opportunity.cbc || ""}
-                onSave={async (value) => handleFieldUpdate("cbc", value)}
-                placeholder="Select next call date"
-              />
-              <div className="space-y-1">
-                <label className="text-sm text-muted-foreground">Next Call Date</label>
-                <div className="flex items-center gap-2">
-                  {opportunity.nextCallDate ? (
-                    <>
-                      <span className="text-sm">
-                        {new Date(opportunity.nextCallDate).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric'
-                        })}
-                      </span>
-                      {opportunity.nextCallDateSource && (
-                        <Badge variant={opportunity.nextCallDateSource === 'manual' ? 'secondary' : 'default'} className="text-xs">
-                          {opportunity.nextCallDateSource === 'auto_calendar' && 'Auto from Calendar'}
-                          {opportunity.nextCallDateSource === 'auto_gong' && 'Auto from Gong'}
-                          {opportunity.nextCallDateSource === 'auto_granola' && 'Auto from Granola'}
-                          {opportunity.nextCallDateSource === 'manual' && 'Manual'}
-                        </Badge>
+              {/* Meeting Cadence Section */}
+              <div className="md:col-span-2 lg:col-span-3 space-y-3">
+                <label className="text-sm font-medium">Meeting Cadence</label>
+
+                {/* Warning banner if needs next call scheduled */}
+                {opportunity.needsNextCallScheduled && (
+                  <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-md">
+                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span className="text-sm text-amber-800 dark:text-amber-200">
+                      No upcoming meeting scheduled. Consider booking the next call to maintain momentum.
+                    </span>
+                  </div>
+                )}
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  {/* Last Call */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Last Call</label>
+                    <div className="flex items-center gap-2">
+                      {opportunity.lastCallDate ? (
+                        <>
+                          <span className="text-sm">
+                            {new Date(opportunity.lastCallDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </span>
+                          {opportunity.lastCallDateSource && (
+                            <Badge variant="outline" className="text-xs">
+                              {opportunity.lastCallDateSource === 'auto_calendar' && 'Calendar'}
+                              {opportunity.lastCallDateSource === 'auto_gong' && 'Gong'}
+                              {opportunity.lastCallDateSource === 'auto_granola' && 'Granola'}
+                            </Badge>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No past calls</span>
                       )}
-                    </>
-                  ) : (
-                    <span className="text-sm text-muted-foreground">No upcoming calls</span>
-                  )}
+                    </div>
+                  </div>
+
+                  {/* CBC (Contact Before Call) */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Reach Out By</label>
+                    <div className="flex items-center gap-2">
+                      {opportunity.cbc ? (
+                        <>
+                          <span className={`text-sm ${
+                            new Date(opportunity.cbc) < new Date()
+                              ? 'text-red-600 dark:text-red-400 font-medium'
+                              : new Date(opportunity.cbc).toDateString() === new Date().toDateString()
+                                ? 'text-amber-600 dark:text-amber-400 font-medium'
+                                : ''
+                          }`}>
+                            {new Date(opportunity.cbc).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </span>
+                          {new Date(opportunity.cbc) < new Date() && (
+                            <Badge variant="destructive" className="text-xs">Overdue</Badge>
+                          )}
+                          {new Date(opportunity.cbc).toDateString() === new Date().toDateString() && (
+                            <Badge variant="secondary" className="text-xs">Today</Badge>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          {opportunity.lastCallDate && !opportunity.nextCallDate
+                            ? 'Schedule next call'
+                            : 'Auto-calculated'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Next Call */}
+                  <div className="space-y-1">
+                    <label className="text-xs text-muted-foreground">Next Call</label>
+                    <div className="flex items-center gap-2">
+                      {opportunity.nextCallDate ? (
+                        <>
+                          <span className="text-sm">
+                            {new Date(opportunity.nextCallDate).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </span>
+                          {opportunity.nextCallDateSource && (
+                            <Badge variant={opportunity.nextCallDateSource === 'manual' ? 'secondary' : 'default'} className="text-xs">
+                              {opportunity.nextCallDateSource === 'auto_calendar' && 'Calendar'}
+                              {opportunity.nextCallDateSource === 'auto_gong' && 'Gong'}
+                              {opportunity.nextCallDateSource === 'auto_granola' && 'Granola'}
+                              {opportunity.nextCallDateSource === 'manual' && 'Manual'}
+                            </Badge>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">No upcoming calls</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
