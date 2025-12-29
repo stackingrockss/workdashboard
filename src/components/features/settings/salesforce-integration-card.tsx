@@ -35,8 +35,18 @@ import {
   AlertCircle,
   Settings2,
   ExternalLink,
+  Download,
+  Building2,
+  Users,
+  Target,
 } from "lucide-react";
 import { toast } from "sonner";
+
+interface SyncedCounts {
+  accounts: number;
+  contacts: number;
+  opportunities: number;
+}
 
 interface SalesforceStatus {
   connected: boolean;
@@ -48,6 +58,7 @@ interface SalesforceStatus {
   lastSyncError: string | null;
   syncDirection: string | null;
   syncIntervalMinutes: number | null;
+  syncedCounts?: SyncedCounts;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -58,6 +69,7 @@ interface SalesforceIntegrationCardProps {
 
 export function SalesforceIntegrationCard({ userRole }: SalesforceIntegrationCardProps) {
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
@@ -85,10 +97,29 @@ export function SalesforceIntegrationCard({ userRole }: SalesforceIntegrationCar
   const checkStatus = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/v1/integrations/salesforce/status");
-      if (response.ok) {
-        const data = await response.json();
+      // Fetch both status and sync info
+      const [statusRes, syncRes] = await Promise.all([
+        fetch("/api/v1/integrations/salesforce/status"),
+        fetch("/api/v1/integrations/salesforce/sync"),
+      ]);
+
+      if (statusRes.ok) {
+        const data = await statusRes.json();
+        // Merge sync data if available
+        if (syncRes.ok) {
+          const syncData = await syncRes.json();
+          data.syncedCounts = syncData.syncedCounts;
+          data.lastSyncAt = syncData.lastSyncAt || data.lastSyncAt;
+          data.lastSyncStatus = syncData.lastSyncStatus || data.lastSyncStatus;
+          data.lastSyncError = syncData.lastSyncError || data.lastSyncError;
+        }
         setStatus(data);
+        // Update syncing state based on status
+        if (data.lastSyncStatus === "in_progress") {
+          setSyncing(true);
+        } else {
+          setSyncing(false);
+        }
         // Initialize settings form with current values
         if (data.connected) {
           setSettingsForm({
@@ -109,9 +140,62 @@ export function SalesforceIntegrationCard({ userRole }: SalesforceIntegrationCar
     checkStatus();
   }, [checkStatus]);
 
+  // Poll for sync status while syncing
+  useEffect(() => {
+    if (!syncing) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch("/api/v1/integrations/salesforce/sync");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.lastSyncStatus !== "in_progress") {
+            setSyncing(false);
+            checkStatus(); // Refresh full status
+            if (data.lastSyncStatus === "success") {
+              toast.success("Salesforce sync completed successfully");
+            } else if (data.lastSyncStatus === "failed") {
+              toast.error("Salesforce sync failed", {
+                description: data.lastSyncError,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to poll sync status:", error);
+      }
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [syncing, checkStatus]);
+
   const handleConnect = () => {
     // Redirect to Salesforce OAuth
     window.location.href = "/api/v1/integrations/salesforce/auth";
+  };
+
+  const handleSync = async (fullSync = false) => {
+    setSyncing(true);
+    try {
+      const response = await fetch("/api/v1/integrations/salesforce/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullSync }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to start sync");
+      }
+
+      toast.success(data.message || "Sync started");
+      setStatus((prev) => ({ ...prev, lastSyncStatus: "in_progress" }));
+    } catch (error) {
+      console.error("Failed to trigger sync:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to start sync");
+      setSyncing(false);
+    }
   };
 
   const handleDisconnect = async () => {
@@ -318,11 +402,41 @@ export function SalesforceIntegrationCard({ userRole }: SalesforceIntegrationCar
                     </span>
                     {status.lastSyncStatus && (
                       <Badge
-                        variant={status.lastSyncStatus === "success" ? "default" : "destructive"}
+                        variant={
+                          status.lastSyncStatus === "success"
+                            ? "default"
+                            : status.lastSyncStatus === "in_progress"
+                            ? "secondary"
+                            : "destructive"
+                        }
                       >
+                        {status.lastSyncStatus === "in_progress" && (
+                          <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        )}
                         {status.lastSyncStatus}
                       </Badge>
                     )}
+                  </div>
+                )}
+
+                {/* Synced record counts */}
+                {status.syncedCounts && (
+                  <div className="flex flex-wrap gap-4 pt-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Accounts:</span>
+                      <span className="font-medium">{status.syncedCounts.accounts}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Contacts:</span>
+                      <span className="font-medium">{status.syncedCounts.contacts}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Target className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-muted-foreground">Opportunities:</span>
+                      <span className="font-medium">{status.syncedCounts.opportunities}</span>
+                    </div>
                   </div>
                 )}
 
@@ -346,10 +460,25 @@ export function SalesforceIntegrationCard({ userRole }: SalesforceIntegrationCar
               <Separator />
 
               <div className="flex items-center gap-3 flex-wrap">
+                {isAdmin && status.syncDirection !== "export_only" && (
+                  <Button
+                    onClick={() => handleSync(false)}
+                    disabled={syncing || loading}
+                    className="gap-2"
+                  >
+                    {syncing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    {syncing ? "Syncing..." : "Import Now"}
+                  </Button>
+                )}
+
                 <Button
                   variant="outline"
                   onClick={checkStatus}
-                  disabled={loading}
+                  disabled={loading || syncing}
                   className="gap-2"
                 >
                   <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
@@ -361,6 +490,7 @@ export function SalesforceIntegrationCard({ userRole }: SalesforceIntegrationCar
                     <Button
                       variant="outline"
                       onClick={() => setShowSettingsDialog(true)}
+                      disabled={syncing}
                       className="gap-2"
                     >
                       <Settings2 className="h-4 w-4" />
@@ -370,7 +500,7 @@ export function SalesforceIntegrationCard({ userRole }: SalesforceIntegrationCar
                     <Button
                       variant="destructive"
                       onClick={() => setShowDisconnectDialog(true)}
-                      disabled={disconnecting}
+                      disabled={disconnecting || syncing}
                       className="gap-2"
                     >
                       <Unplug className="h-4 w-4" />

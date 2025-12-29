@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -194,17 +195,21 @@ export const BriefsPageClient = ({
               className="pl-9"
             />
           </div>
-          <div className="flex items-center gap-1 border rounded-lg p-1">
+          <div className="flex flex-wrap gap-2">
             {(["all", "personal", "company"] as const).map((scope) => (
-              <Button
+              <button
                 key={scope}
-                variant={filterScope === scope ? "secondary" : "ghost"}
-                size="sm"
                 onClick={() => setFilterScope(scope)}
-                className="capitalize"
+                className={cn(
+                  "px-4 py-2 text-sm font-medium rounded-full border transition-colors capitalize",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  filterScope === scope
+                    ? "bg-foreground text-background border-foreground"
+                    : "bg-background text-foreground border-border hover:bg-muted"
+                )}
               >
                 {scope}
-              </Button>
+              </button>
             ))}
           </div>
         </div>

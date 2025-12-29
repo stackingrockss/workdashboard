@@ -7,15 +7,16 @@
  * - User's personal notes
  * - AI-generated consolidated insights from call transcripts
  *
- * AI insights are automatically merged into the notes when available,
- * preserving all user edits by prepending new content.
+ * Features:
+ * - InsightsStatusCard shows current state of AI insights
+ * - Progressive disclosure: compact view with expandable details
+ * - Preview of new insights before pulling them in
  */
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { StickyNote, Sparkles, RefreshCw } from "lucide-react";
+import { StickyNote } from "lucide-react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { OpportunityUpdateInput } from "@/lib/validations/opportunity";
 import { toast } from "sonner";
@@ -23,10 +24,13 @@ import {
   insightsToMarkdown,
   mergeInsightsIntoNotes,
   notesContainInsights,
-  hasConsolidatedInsights,
   extractInsightsData,
 } from "@/lib/utils/insights-to-markdown";
+import { getInsightsStatus } from "@/lib/utils/insights-status";
+import { InsightsStatusCard } from "./insights-status-card";
 import type { RiskAssessment } from "@/types/gong-call";
+import type { GongCall } from "@/types/gong-call";
+import type { GranolaNote } from "@/types/granola-note";
 
 // ============================================================================
 // Types
@@ -45,6 +49,8 @@ interface NotesTabProps {
     lastConsolidatedAt?: Date | string | null;
     consolidationCallCount?: number | null;
   };
+  gongCalls: GongCall[];
+  granolaNotes: GranolaNote[];
   onFieldUpdate: (
     field: keyof OpportunityUpdateInput,
     value: string | number | null
@@ -58,6 +64,8 @@ interface NotesTabProps {
 
 export function NotesTab({
   opportunity,
+  gongCalls,
+  granolaNotes,
   onFieldUpdate,
   onReconsolidate,
 }: NotesTabProps) {
@@ -68,8 +76,13 @@ export function NotesTab({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check if insights are available and if they're already in the notes
-  const insightsAvailable = hasConsolidatedInsights(opportunity);
+  // Calculate insights status
+  const insightsStatus = useMemo(
+    () => getInsightsStatus(opportunity, gongCalls, granolaNotes),
+    [opportunity, gongCalls, granolaNotes]
+  );
+
+  // Check if insights are already in the notes
   const insightsInNotes = notesContainInsights(notesContent);
 
   // Cleanup timeout on unmount
@@ -169,7 +182,17 @@ export function NotesTab({
 
   return (
     <div className="space-y-4">
-      {/* Single RTF Editor Card */}
+      {/* AI Insights Status Card */}
+      <InsightsStatusCard
+        status={insightsStatus}
+        notesContainInsights={insightsInNotes}
+        onAddInsights={handleAddInsights}
+        onRefreshInsights={handleRefreshInsights}
+        isAddingInsights={isMerging}
+        isRefreshingInsights={isRefreshing}
+      />
+
+      {/* Notes Editor Card */}
       <Card className="border-2 border-primary/10 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -178,46 +201,15 @@ export function NotesTab({
                 <StickyNote className="h-4 w-4 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">Notes & Insights</CardTitle>
+                <CardTitle className="text-lg">Notes</CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Editable notes with AI-generated insights from call transcripts
+                  Your notes and AI-generated insights
                 </p>
               </div>
             </div>
 
-            {/* Action buttons and save status */}
+            {/* Save status indicator */}
             <div className="flex items-center gap-2">
-              {/* Add Insights button - shown when insights available but not in notes */}
-              {insightsAvailable && !insightsInNotes && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddInsights}
-                  disabled={isMerging}
-                  className="gap-1.5"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  {isMerging ? "Adding..." : "Add AI Insights"}
-                </Button>
-              )}
-
-              {/* Refresh Insights button - shown when insights already in notes */}
-              {insightsAvailable && insightsInNotes && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleRefreshInsights}
-                  disabled={isRefreshing}
-                  className="gap-1.5"
-                >
-                  <RefreshCw
-                    className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`}
-                  />
-                  {isRefreshing ? "Refreshing..." : "Refresh Insights"}
-                </Button>
-              )}
-
-              {/* Save status indicator */}
               {isSaving && (
                 <Badge variant="secondary" className="gap-1 text-xs">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-yellow-500" />

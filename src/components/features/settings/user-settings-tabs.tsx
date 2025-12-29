@@ -59,7 +59,7 @@ export function UserSettingsTabs({ user }: UserSettingsTabsProps) {
 
       <TabsContent value="integrations" className="space-y-6">
         <Suspense fallback={<div className="text-muted-foreground">Loading integrations...</div>}>
-          <IntegrationsSettingsContent />
+          <IntegrationsSettingsContent userRole={user.role} />
         </Suspense>
       </TabsContent>
 

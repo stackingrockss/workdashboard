@@ -750,6 +750,8 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
               lastConsolidatedAt: opportunity.lastConsolidatedAt,
               consolidationCallCount: opportunity.consolidationCallCount,
             }}
+            gongCalls={allGongCalls}
+            granolaNotes={allGranolaNotes}
             onFieldUpdate={handleFieldUpdate}
             onReconsolidate={() => router.refresh()}
           />
