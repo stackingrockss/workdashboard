@@ -16,6 +16,7 @@ export interface ParsedCallInfo {
   parsedAt: Date | null;
   meetingDate: Date | null;
   source: "gong" | "granola";
+  isParsed: boolean;
 }
 
 export interface NewInsightsPreview {
@@ -79,6 +80,9 @@ export function getInsightsStatus(
       parsedAt: c.parsedAt ? new Date(c.parsedAt) : null,
       meetingDate: c.meetingDate ? new Date(c.meetingDate) : null,
       source: "gong" as const,
+      // A call is considered parsed if parsingStatus is "completed"
+      // Fall back to checking parsedAt for backwards compatibility
+      isParsed: c.parsingStatus === "completed" || c.parsedAt !== null,
     })),
     ...granolaNotes.map((n) => ({
       id: n.id,
@@ -86,6 +90,7 @@ export function getInsightsStatus(
       parsedAt: n.parsedAt ? new Date(n.parsedAt) : null,
       meetingDate: n.meetingDate ? new Date(n.meetingDate) : null,
       source: "granola" as const,
+      isParsed: n.parsingStatus === "completed" || n.parsedAt !== null,
     })),
   ];
 
@@ -96,9 +101,9 @@ export function getInsightsStatus(
     return dateB - dateA;
   });
 
-  // Categorize calls
-  const parsedCalls = allCalls.filter((c) => c.parsedAt !== null);
-  const pendingCalls = allCalls.filter((c) => c.parsedAt === null);
+  // Categorize calls based on parsing status
+  const parsedCalls = allCalls.filter((c) => c.isParsed);
+  const pendingCalls = allCalls.filter((c) => !c.isParsed);
 
   // Determine which parsed calls are new (parsed after last consolidation)
   let consolidatedCalls: ParsedCallInfo[] = [];

@@ -36,6 +36,8 @@ import {
   Settings2,
   ExternalLink,
   Download,
+  Upload,
+  ArrowLeftRight,
   Building2,
   Users,
   Target,
@@ -174,13 +176,13 @@ export function SalesforceIntegrationCard({ userRole }: SalesforceIntegrationCar
     window.location.href = "/api/v1/integrations/salesforce/auth";
   };
 
-  const handleSync = async (fullSync = false) => {
+  const handleSync = async (fullSync = false, direction?: string) => {
     setSyncing(true);
     try {
       const response = await fetch("/api/v1/integrations/salesforce/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullSync }),
+        body: JSON.stringify({ fullSync, direction }),
       });
 
       const data = await response.json();
@@ -460,19 +462,58 @@ export function SalesforceIntegrationCard({ userRole }: SalesforceIntegrationCar
               <Separator />
 
               <div className="flex items-center gap-3 flex-wrap">
-                {isAdmin && status.syncDirection !== "export_only" && (
-                  <Button
-                    onClick={() => handleSync(false)}
-                    disabled={syncing || loading}
-                    className="gap-2"
-                  >
-                    {syncing ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Download className="h-4 w-4" />
+                {isAdmin && (
+                  <>
+                    {/* Bidirectional sync button - shown for bidirectional mode */}
+                    {status.syncDirection === "bidirectional" && (
+                      <Button
+                        onClick={() => handleSync(false)}
+                        disabled={syncing || loading}
+                        className="gap-2"
+                      >
+                        {syncing ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ArrowLeftRight className="h-4 w-4" />
+                        )}
+                        {syncing ? "Syncing..." : "Sync Now"}
+                      </Button>
                     )}
-                    {syncing ? "Syncing..." : "Import Now"}
-                  </Button>
+
+                    {/* Import button - shown for import_only or bidirectional */}
+                    {(status.syncDirection === "import_only" || status.syncDirection === "bidirectional") && (
+                      <Button
+                        variant={status.syncDirection === "bidirectional" ? "outline" : "default"}
+                        onClick={() => handleSync(false, "import_only")}
+                        disabled={syncing || loading}
+                        className="gap-2"
+                      >
+                        {syncing ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="h-4 w-4" />
+                        )}
+                        {syncing ? "Importing..." : "Import"}
+                      </Button>
+                    )}
+
+                    {/* Export button - shown for export_only or bidirectional */}
+                    {(status.syncDirection === "export_only" || status.syncDirection === "bidirectional") && (
+                      <Button
+                        variant={status.syncDirection === "bidirectional" ? "outline" : "default"}
+                        onClick={() => handleSync(false, "export_only")}
+                        disabled={syncing || loading}
+                        className="gap-2"
+                      >
+                        {syncing ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4" />
+                        )}
+                        {syncing ? "Exporting..." : "Export"}
+                      </Button>
+                    )}
+                  </>
                 )}
 
                 <Button

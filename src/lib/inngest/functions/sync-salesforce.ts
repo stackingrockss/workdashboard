@@ -1,16 +1,21 @@
 /**
  * Inngest background job for syncing Salesforce data
  *
- * This job:
- * 1. Imports Accounts from Salesforce
- * 2. Imports Contacts (linked to Accounts)
- * 3. Imports Opportunities (linked to Accounts and Owners)
+ * This job handles bidirectional sync:
+ * 1. Imports Accounts, Contacts, Opportunities from Salesforce
+ * 2. Exports local changes to Salesforce
  */
 
 import { inngest } from '@/lib/inngest/client';
 import { prisma } from '@/lib/db';
 import { createSalesforceClient } from '@/lib/integrations/salesforce';
-import { performFullImport } from '@/lib/integrations/salesforce/sync';
+import {
+  performFullImport,
+  performFullExport,
+  performBidirectionalSync,
+  type ImportResult,
+  type ExportResult,
+} from '@/lib/integrations/salesforce/sync';
 
 /**
  * Scheduled job that syncs Salesforce data for all enabled integrations
@@ -150,17 +155,18 @@ export const syncSalesforceForOrg = inngest.createFunction(
       };
     });
 
-    // Step 4: Perform import (only if direction allows)
-    let result;
+    // Step 4: Perform sync based on direction
+    let importResult: ImportResult | null = null;
+    let exportResult: ExportResult | null = null;
+
+    // Import from Salesforce (if not export_only)
     if (syncOptions.direction !== 'export_only') {
-      result = await step.run('import-from-salesforce', async () => {
-        // Re-create client in this step (can't pass between steps)
+      importResult = await step.run('import-from-salesforce', async () => {
         const salesforceClient = await createSalesforceClient(organizationId);
         if (!salesforceClient) {
           throw new Error('Failed to create Salesforce client');
         }
 
-        // Convert syncCursor string back to Date (Inngest serializes dates)
         const modifiedSince = syncOptions.modifiedSince
           ? new Date(syncOptions.modifiedSince)
           : undefined;
@@ -170,58 +176,104 @@ export const syncSalesforceForOrg = inngest.createFunction(
           modifiedSince,
         });
       });
-    } else {
-      result = {
-        success: true,
-        accounts: { created: 0, updated: 0, skipped: 0, errors: [] },
-        contacts: { created: 0, updated: 0, skipped: 0, errors: [] },
-        opportunities: { created: 0, updated: 0, skipped: 0, errors: [] },
-        duration: 0,
-      };
+    }
+
+    // Export to Salesforce (if not import_only)
+    if (syncOptions.direction !== 'import_only') {
+      exportResult = await step.run('export-to-salesforce', async () => {
+        const salesforceClient = await createSalesforceClient(organizationId);
+        if (!salesforceClient) {
+          throw new Error('Failed to create Salesforce client');
+        }
+
+        return performFullExport(salesforceClient, organizationId);
+      });
     }
 
     // Step 5: Update sync status
     await step.run('update-sync-status', async () => {
-      const allErrors = [
-        ...result.accounts.errors,
-        ...result.contacts.errors,
-        ...result.opportunities.errors,
-      ];
+      const allErrors: string[] = [];
+
+      if (importResult) {
+        allErrors.push(...importResult.accounts.errors);
+        allErrors.push(...importResult.contacts.errors);
+        allErrors.push(...importResult.opportunities.errors);
+      }
+
+      if (exportResult) {
+        allErrors.push(...exportResult.accounts.errors);
+        allErrors.push(...exportResult.contacts.errors);
+        allErrors.push(...exportResult.opportunities.errors);
+      }
+
+      const success =
+        (importResult?.success ?? true) && (exportResult?.success ?? true);
 
       await prisma.salesforceIntegration.update({
         where: { organizationId },
         data: {
           lastSyncAt: new Date(),
-          lastSyncStatus: result.success ? 'success' : 'failed',
+          lastSyncStatus: success ? 'success' : 'failed',
           lastSyncError: allErrors.length > 0
             ? allErrors.slice(0, 3).join('; ')
             : null,
-          syncCursor: new Date(), // Update cursor for incremental sync
+          syncCursor: new Date(),
         },
       });
     });
 
+    // Build result summary
+    const emptyStats = { created: 0, updated: 0, skipped: 0, errorCount: 0 };
+
     return {
-      success: result.success,
-      accounts: {
-        created: result.accounts.created,
-        updated: result.accounts.updated,
-        skipped: result.accounts.skipped,
-        errorCount: result.accounts.errors.length,
-      },
-      contacts: {
-        created: result.contacts.created,
-        updated: result.contacts.updated,
-        skipped: result.contacts.skipped,
-        errorCount: result.contacts.errors.length,
-      },
-      opportunities: {
-        created: result.opportunities.created,
-        updated: result.opportunities.updated,
-        skipped: result.opportunities.skipped,
-        errorCount: result.opportunities.errors.length,
-      },
-      duration: result.duration,
+      success:
+        (importResult?.success ?? true) && (exportResult?.success ?? true),
+      import: importResult
+        ? {
+            accounts: {
+              created: importResult.accounts.created,
+              updated: importResult.accounts.updated,
+              skipped: importResult.accounts.skipped,
+              errorCount: importResult.accounts.errors.length,
+            },
+            contacts: {
+              created: importResult.contacts.created,
+              updated: importResult.contacts.updated,
+              skipped: importResult.contacts.skipped,
+              errorCount: importResult.contacts.errors.length,
+            },
+            opportunities: {
+              created: importResult.opportunities.created,
+              updated: importResult.opportunities.updated,
+              skipped: importResult.opportunities.skipped,
+              errorCount: importResult.opportunities.errors.length,
+            },
+            duration: importResult.duration,
+          }
+        : { accounts: emptyStats, contacts: emptyStats, opportunities: emptyStats, duration: 0 },
+      export: exportResult
+        ? {
+            accounts: {
+              created: exportResult.accounts.created,
+              updated: exportResult.accounts.updated,
+              skipped: exportResult.accounts.skipped,
+              errorCount: exportResult.accounts.errors.length,
+            },
+            contacts: {
+              created: exportResult.contacts.created,
+              updated: exportResult.contacts.updated,
+              skipped: exportResult.contacts.skipped,
+              errorCount: exportResult.contacts.errors.length,
+            },
+            opportunities: {
+              created: exportResult.opportunities.created,
+              updated: exportResult.opportunities.updated,
+              skipped: exportResult.opportunities.skipped,
+              errorCount: exportResult.opportunities.errors.length,
+            },
+            duration: exportResult.duration,
+          }
+        : { accounts: emptyStats, contacts: emptyStats, opportunities: emptyStats, duration: 0 },
     };
   }
 );

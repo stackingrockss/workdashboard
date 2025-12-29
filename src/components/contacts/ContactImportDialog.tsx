@@ -1,5 +1,10 @@
 // src/components/contacts/ContactImportDialog.tsx
 // Dialog wrapper for importing contacts from notification
+//
+// @deprecated This modal component has been replaced by a full-page experience
+// at /contacts/import for better UX with complex contact tables and duplicate handling.
+// Use ContactImportPageClient instead. This file is kept for reference.
+// See: src/app/(app)/contacts/import/page.tsx
 
 "use client";
 

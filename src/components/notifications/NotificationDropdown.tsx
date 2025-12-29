@@ -4,6 +4,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -20,23 +21,27 @@ import { MentionNotificationItem } from "./MentionNotificationItem";
 import { ContactNotificationItem } from "./ContactNotificationItem";
 import { ParsingCompleteNotificationItem } from "./ParsingCompleteNotificationItem";
 import { AccountResearchNotificationItem } from "./AccountResearchNotificationItem";
-import { ContactImportDialog } from "@/components/contacts/ContactImportDialog";
 import { GongCallInsightsDialog } from "@/components/features/opportunities/gong-call-insights-dialog";
 import { Badge } from "@/components/ui/badge";
 import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 import type { RiskAssessment } from "@/types/gong-call";
 
 export function NotificationDropdown() {
-  const [selectedContactNotification, setSelectedContactNotification] = useState<ContactsReadyNotification | null>(null);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const router = useRouter();
   const [selectedParsingNotification, setSelectedParsingNotification] = useState<ParsingCompleteNotification | null>(null);
   const [isInsightsDialogOpen, setIsInsightsDialogOpen] = useState(false);
 
-  // Handler for when a contact notification is clicked
+  // Handler for when a contact notification is clicked - navigate to full page
   const handleContactsReadyClick = useCallback((notification: ContactsReadyNotification) => {
-    setSelectedContactNotification(notification);
-    setIsImportDialogOpen(true);
-  }, []);
+    // Build URL params for the import page
+    const params = new URLSearchParams({
+      opportunityId: notification.opportunityId,
+      ...(notification.gongCallId && { gongCallId: notification.gongCallId }),
+      ...(notification.granolaNoteId && { granolaNoteId: notification.granolaNoteId }),
+      notificationId: notification.id,
+    });
+    router.push(`/contacts/import?${params.toString()}`);
+  }, [router]);
 
   // Handler for when a parsing complete notification is clicked
   const handleParsingCompleteClick = useCallback((notification: ParsingCompleteNotification) => {
@@ -57,11 +62,6 @@ export function NotificationDropdown() {
     onContactsReadyClick: handleContactsReadyClick,
     onParsingCompleteClick: handleParsingCompleteClick,
   });
-
-  // Handle import complete - refresh notifications
-  const handleImportComplete = useCallback(() => {
-    refetch();
-  }, [refetch]);
 
   // Handle insights dialog close
   const handleInsightsDialogClose = useCallback(() => {
@@ -213,14 +213,6 @@ export function NotificationDropdown() {
           </>
         )}
       </DropdownMenuContent>
-
-      {/* Contact Import Dialog */}
-      <ContactImportDialog
-        notification={selectedContactNotification}
-        open={isImportDialogOpen}
-        onOpenChange={setIsImportDialogOpen}
-        onImportComplete={handleImportComplete}
-      />
 
       {/* Insights Dialog - Use GongCallInsightsDialog for both types */}
       {selectedParsingNotification && (

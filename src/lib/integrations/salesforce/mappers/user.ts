@@ -105,3 +105,15 @@ export function getSalesforceOwnerId(
 ): string | undefined {
   return userIdMap.appToSf.get(appOwnerId);
 }
+
+/**
+ * Build a reverse user ID map (for export operations)
+ * This is the same as buildUserIdMap but named for clarity
+ */
+export async function buildReverseUserIdMap(
+  client: SalesforceClient,
+  organizationId: string
+): Promise<UserIdMap> {
+  // Uses the same function since UserIdMap contains both directions
+  return buildUserIdMap(client, organizationId);
+}

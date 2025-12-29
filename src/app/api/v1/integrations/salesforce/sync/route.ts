@@ -53,12 +53,20 @@ export async function POST(request: NextRequest) {
 
     // Parse optional body params
     let fullSync = false;
+    let directionOverride: string | null = null;
     try {
       const body = await request.json();
       fullSync = body.fullSync === true;
+      // Allow overriding direction for manual sync (import_only, export_only, bidirectional)
+      if (body.direction && ['import_only', 'export_only', 'bidirectional'].includes(body.direction)) {
+        directionOverride = body.direction;
+      }
     } catch {
       // No body or invalid JSON - use defaults
     }
+
+    // Determine sync direction
+    const syncDirection = directionOverride || integration.syncDirection;
 
     // Update status to in_progress
     await prisma.salesforceIntegration.update({
@@ -76,16 +84,25 @@ export async function POST(request: NextRequest) {
         organizationId: user.organization.id,
         triggeredBy: user.id,
         fullSync,
-        direction: integration.syncDirection,
+        direction: syncDirection,
       },
     });
 
+    // Build appropriate message
+    let message = 'Sync started';
+    if (syncDirection === 'import_only') {
+      message = fullSync ? 'Full import started' : 'Import started';
+    } else if (syncDirection === 'export_only') {
+      message = 'Export to Salesforce started';
+    } else {
+      message = fullSync ? 'Full bidirectional sync started' : 'Bidirectional sync started';
+    }
+
     return NextResponse.json({
       success: true,
-      message: fullSync
-        ? 'Full sync started - this may take several minutes'
-        : 'Incremental sync started',
+      message,
       status: 'in_progress',
+      direction: syncDirection,
     });
   } catch (error) {
     console.error('Failed to trigger Salesforce sync:', error);
