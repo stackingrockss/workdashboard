@@ -5,7 +5,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertTriangle,
   Target,
@@ -17,6 +17,65 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+// Auto-expanding textarea that grows with content
+function AutoExpandTextarea({
+  value,
+  onChange,
+  onKeyDown,
+  onBlur,
+  placeholder,
+  disabled,
+  className,
+  autoFocus,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onBlur?: () => void;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+  autoFocus?: boolean;
+}) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize on value change
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      // Reset height to recalculate
+      textarea.style.height = "auto";
+      // Set to scrollHeight (min 28px for single line)
+      textarea.style.height = `${Math.max(28, textarea.scrollHeight)}px`;
+    }
+  }, [value]);
+
+  // Focus and select on mount if autoFocus
+  useEffect(() => {
+    if (autoFocus && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.select();
+    }
+  }, [autoFocus]);
+
+  return (
+    <Textarea
+      ref={textareaRef}
+      value={value}
+      onChange={onChange}
+      onKeyDown={onKeyDown}
+      onBlur={onBlur}
+      placeholder={placeholder}
+      disabled={disabled}
+      className={cn(
+        "min-h-[28px] py-1 px-2 text-xs resize-none overflow-hidden",
+        className
+      )}
+      rows={1}
+    />
+  );
+}
 
 interface EditableInsightsDisplayProps {
   transcriptId: string;
@@ -53,28 +112,11 @@ function EditableInsightSection({
   const [addValue, setAddValue] = useState("");
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [isAddingSaving, setIsAddingSaving] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const addInputRef = useRef<HTMLInputElement>(null);
 
   // Sync with prop changes
   useEffect(() => {
     setLocalItems(items);
   }, [items]);
-
-  // Focus input when editing starts
-  useEffect(() => {
-    if (editingIndex !== null && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [editingIndex]);
-
-  // Focus input when adding
-  useEffect(() => {
-    if (isAdding && addInputRef.current) {
-      addInputRef.current.focus();
-    }
-  }, [isAdding]);
 
   const handleStartEdit = (index: number) => {
     setEditingIndex(index);
@@ -164,10 +206,11 @@ function EditableInsightSection({
   }, [addValue, localItems, onSave, singularName]);
 
   const handleKeyDown = (
-    e: React.KeyboardEvent,
+    e: React.KeyboardEvent<HTMLTextAreaElement>,
     action: "edit" | "add"
   ) => {
-    if (e.key === "Enter") {
+    // Enter without Shift saves, Shift+Enter adds new line
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (action === "edit") {
         handleSaveEdit();
@@ -200,18 +243,18 @@ function EditableInsightSection({
           <li key={idx} className="group relative">
             {editingIndex === idx ? (
               // Edit mode
-              <div className="flex items-center gap-1">
-                <Input
-                  ref={inputRef}
+              <div className="flex items-start gap-1">
+                <AutoExpandTextarea
                   value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onKeyDown={(e) => handleKeyDown(e, "edit")}
                   onBlur={handleSaveEdit}
-                  className="h-7 text-xs"
                   disabled={savingIndex === idx}
+                  autoFocus
+                  className="flex-1"
                 />
                 {savingIndex === idx && (
-                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground mt-1.5" />
                 )}
               </div>
             ) : (
@@ -253,10 +296,9 @@ function EditableInsightSection({
 
         {/* Add new item */}
         {isAdding ? (
-          <li className="flex items-center gap-1">
-            <span className="text-muted-foreground text-xs">•</span>
-            <Input
-              ref={addInputRef}
+          <li className="flex items-start gap-1">
+            <span className="text-muted-foreground text-xs mt-1.5">•</span>
+            <AutoExpandTextarea
               value={addValue}
               onChange={(e) => setAddValue(e.target.value)}
               onKeyDown={(e) => handleKeyDown(e, "add")}
@@ -268,16 +310,17 @@ function EditableInsightSection({
                 }
               }}
               placeholder={`New ${singularName.toLowerCase()}...`}
-              className="h-7 text-xs flex-1"
+              className="flex-1"
               disabled={isAddingSaving}
+              autoFocus
             />
             {isAddingSaving ? (
-              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground mt-1.5" />
             ) : (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 p-0"
+                className="h-5 w-5 p-0 mt-0.5"
                 onClick={handleSaveAdd}
               >
                 <Check className="h-3 w-3 text-green-600" />

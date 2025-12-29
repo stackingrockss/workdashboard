@@ -134,8 +134,8 @@ export function calculateCbcMidpoint(
  * This is the main function to use for CBC calculation. It:
  * 1. Determines the last call date (most recent past meeting)
  * 2. Determines the next call date (earliest future meeting)
- * 3. Calculates the CBC date as the midpoint
- * 4. Sets needsNextCallScheduled flag if no future meeting exists
+ * 3. Calculates the CBC date as the midpoint (only if both dates exist)
+ * 4. Sets needsNextCallScheduled = true if no future meeting is scheduled
  *
  * @param meetings - Array of all meetings (past and future) from all sources
  * @returns Complete CBC calculation result
@@ -156,8 +156,8 @@ export function calculateCbcDates(meetings: MeetingData[]): CbcCalculation {
   // Calculate CBC using midpoint strategy
   const cbcDate = calculateCbcMidpoint(lastCall.date, nextCall.date);
 
-  // Flag as needing attention if we have a last call but no next call scheduled
-  const needsNextCallScheduled = lastCall.date !== null && nextCall.date === null;
+  // Flag as needing attention if there's no future meeting scheduled
+  const needsNextCallScheduled = nextCall.date === null;
 
   return {
     cbcDate,

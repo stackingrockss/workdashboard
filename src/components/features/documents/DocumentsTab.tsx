@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DocumentCard } from "./DocumentCard";
 import {
   FileStack,
@@ -15,6 +14,7 @@ import {
   Search,
   X,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { MutualActionPlanTab } from "@/components/features/opportunities/map";
 import { BusinessImpactProposalListTab } from "@/components/features/opportunities/bip";
@@ -179,35 +179,33 @@ export const DocumentsTab = ({
         )}
       </div>
 
-      {/* Filter tabs - show main categories */}
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="all">
-            All ({counts.all || 0})
-          </TabsTrigger>
-          <TabsTrigger value="mutual_action_plan">
-            MAPs ({counts.mutual_action_plan || 0})
-          </TabsTrigger>
-          <TabsTrigger value="pricing_proposal">
-            Pricing Proposal ({counts.pricing_proposal || 0})
-          </TabsTrigger>
-          <TabsTrigger value="executive_summary">
-            Exec Summary ({counts.executive_summary || 0})
-          </TabsTrigger>
-          <TabsTrigger value="email">
-            Email ({counts.email || 0})
-          </TabsTrigger>
-          <TabsTrigger value="notes">
-            Notes ({counts.notes || 0})
-          </TabsTrigger>
-          <TabsTrigger value="general">
-            General ({counts.general || 0})
-          </TabsTrigger>
-          <TabsTrigger value="business_impact_proposal">
-            BIPs ({counts.business_impact_proposal || 0})
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* Filter chips */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          { value: "all", label: "All" },
+          { value: "mutual_action_plan", label: "MAPs" },
+          { value: "pricing_proposal", label: "Pricing Proposal" },
+          { value: "executive_summary", label: "Exec Summary" },
+          { value: "email", label: "Email" },
+          { value: "notes", label: "Notes" },
+          { value: "general", label: "General" },
+          { value: "business_impact_proposal", label: "BIPs" },
+        ].map((item) => (
+          <button
+            key={item.value}
+            onClick={() => setFilter(item.value as FilterType)}
+            className={cn(
+              "px-4 py-2 text-sm font-medium rounded-full border transition-colors",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              filter === item.value
+                ? "bg-foreground text-background border-foreground"
+                : "bg-background text-foreground border-border hover:bg-muted"
+            )}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
       {/* Search filter */}
       <div className="flex items-center gap-3">

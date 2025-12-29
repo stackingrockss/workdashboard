@@ -81,6 +81,9 @@ export function NotesTab({
     };
   }, []);
 
+  // Track the original notes to avoid unnecessary saves
+  const originalNotesRef = useRef(opportunity.notes || "");
+
   // Handle notes change with debounce
   const handleNotesChange = useCallback(
     (content: string) => {
@@ -91,12 +94,19 @@ export function NotesTab({
         clearTimeout(saveTimeoutRef.current);
       }
 
+      // Don't save if content hasn't actually changed from original
+      if (content === originalNotesRef.current) {
+        return;
+      }
+
       // Debounce the save (1.5 seconds)
       saveTimeoutRef.current = setTimeout(async () => {
         setIsSaving(true);
         try {
           await onFieldUpdate("notes", content || null);
           setLastSaved(new Date());
+          // Update the original ref after successful save
+          originalNotesRef.current = content;
         } finally {
           setIsSaving(false);
         }

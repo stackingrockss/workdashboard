@@ -21,8 +21,13 @@ import { Calendar, CheckCircle, XCircle, Loader2, RefreshCw, Unplug, AlertCircle
 import { toast } from "sonner";
 import { CalendarConnectionStatus } from "@/types/calendar";
 import Link from "next/link";
+import { SalesforceIntegrationCard } from "./salesforce-integration-card";
 
-export function IntegrationsSettingsContent() {
+interface IntegrationsSettingsContentProps {
+  userRole?: string;
+}
+
+export function IntegrationsSettingsContent({ userRole = "REP" }: IntegrationsSettingsContentProps) {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -43,6 +48,8 @@ export function IntegrationsSettingsContent() {
       toast.success("Google services connected successfully!");
       // Reload connection status
       checkConnectionStatus();
+    } else if (status === "salesforce_connected") {
+      toast.success("Salesforce connected successfully!");
     } else if (error) {
       const errorMessages: Record<string, string> = {
         oauth_failed: "OAuth authentication failed. Please try again.",
@@ -50,8 +57,15 @@ export function IntegrationsSettingsContent() {
         config_error: "Google OAuth is not properly configured.",
         no_token: "Failed to receive access token from Google.",
         callback_failed: "OAuth callback failed. Please try again.",
+        // Salesforce errors
+        salesforce_oauth_failed: "Salesforce OAuth failed. Please try again.",
+        salesforce_invalid_callback: "Invalid Salesforce callback. Please try again.",
+        salesforce_invalid_state: "Invalid state parameter. Please try again.",
+        salesforce_unauthorized: "You are not authorized to connect Salesforce.",
+        salesforce_connection_failed: "Failed to connect to Salesforce. Please try again.",
+        salesforce_callback_failed: "Salesforce callback failed. Please try again.",
       };
-      toast.error(errorMessages[error] || "Failed to connect Google Calendar");
+      toast.error(errorMessages[error] || `Connection failed: ${error}`);
     }
   }, [searchParams]);
 
@@ -427,6 +441,9 @@ export function IntegrationsSettingsContent() {
           )}
         </CardContent>
       </Card>
+
+      {/* Salesforce Integration */}
+      <SalesforceIntegrationCard userRole={userRole} />
 
       {/* Domain Warning Dialog */}
       <AlertDialog open={showDomainWarning} onOpenChange={setShowDomainWarning}>

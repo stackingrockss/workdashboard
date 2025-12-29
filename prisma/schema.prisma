@@ -24,6 +24,11 @@ model Account {
   nextEarningsDate    DateTime?
   earningsDateSource  String?
   lastEarningsSync    DateTime?
+
+  // Salesforce sync fields
+  salesforceId              String?              @unique
+  salesforceLastSyncAt      DateTime?
+  salesforceLastModified    DateTime?
   organization        Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner               User?                    @relation("AccountOwner", fields: [ownerId], references: [id])
   calendarEvents      CalendarEvent[]
@@ -58,6 +63,10 @@ model Contact {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
   accountId     String?
+
+  // Salesforce sync fields
+  salesforceId              String?              @unique
+  salesforceLastSyncAt      DateTime?
   account       Account?         @relation(fields: [accountId], references: [id], onDelete: Cascade)
   manager       Contact?         @relation("ContactReports", fields: [managerId], references: [id])
   directReports Contact[]        @relation("ContactReports")
@@ -230,6 +239,12 @@ model Opportunity {
   createdAt                  DateTime                 @default(now())
   updatedAt                  DateTime                 @updatedAt
   accountId                  String?
+
+  // Salesforce sync fields
+  salesforceId               String?                  @unique  // Salesforce Opportunity ID (18-char)
+  salesforceLastSyncAt       DateTime?
+  salesforceLastModified     DateTime?                // SF LastModifiedDate for conflict detection
+  salesforceSyncStatus       String?                  // 'synced' | 'pending_push' | 'pending_pull' | 'conflict'
   accountName                String?
   domain                     String?                  // Domain for calendar event matching (e.g., "premera.com")
   quarter                    String?
@@ -337,6 +352,7 @@ model Organization {
   earningsTranscripts        EarningsCallTranscript[]
   gongCalls                  GongCall[]
   gongIntegration            GongIntegration?
+  salesforceIntegration      SalesforceIntegration?
   invitations                Invitation[]
   kanbanViews                KanbanView[]
   mutualActionPlans          MutualActionPlan[]
@@ -390,6 +406,36 @@ model GongIntegration {
   @@schema("opportunity_tracker")
 }
 
+model SalesforceIntegration {
+  id                   String       @id @default(cuid())
+  organizationId       String       @unique
+
+  // OAuth tokens (encrypted)
+  accessToken          String       // Encrypted Salesforce access token
+  refreshToken         String       // Encrypted Salesforce refresh token
+  instanceUrl          String       // e.g., https://yourorg.my.salesforce.com
+
+  // Sync state tracking
+  lastSyncAt           DateTime?
+  lastSyncStatus       String?      // 'success' | 'failed' | 'in_progress'
+  lastSyncError        String?
+  syncCursor           DateTime?    // For incremental sync (LastModifiedDate)
+
+  // Configuration
+  isEnabled            Boolean      @default(true)
+  syncIntervalMinutes  Int          @default(60)
+  syncDirection        String       @default("bidirectional") // 'import_only' | 'export_only' | 'bidirectional'
+
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([isEnabled])
+  @@schema("opportunity_tracker")
+}
+
 model User {
   id                         String                      @id @default(cuid())
   email                      String                      @unique
@@ -403,6 +449,10 @@ model User {
   annualQuota                Int?
   autoCreateMeetingTasks     Boolean                     @default(true)
   taskFilterPreference       String                      @default("today")
+
+  // Salesforce sync field
+  salesforceUserId           String?                     // Maps to Salesforce User.Id via email
+
   ownedAccounts              Account[]                   @relation("AccountOwner")
   calendarEvents             CalendarEvent[]
   calendarSyncStates         CalendarSyncState[]

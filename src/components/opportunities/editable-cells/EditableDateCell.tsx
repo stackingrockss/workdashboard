@@ -29,7 +29,8 @@ export function EditableDateCell({
     if (!newValue) {
       await onSave(null);
     } else {
-      await onSave(newValue.toISOString());
+      // Format as YYYY-MM-DD for API compatibility
+      await onSave(format(newValue, "yyyy-MM-dd"));
     }
     setOpen(false);
   };
