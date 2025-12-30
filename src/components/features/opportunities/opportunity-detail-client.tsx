@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, Briefcase, FileStack } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, FileStack } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/OpportunityForm";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -54,7 +54,6 @@ import { ParseGongTranscriptDialog } from "./parse-gong-transcript-dialog";
 import { GongCallInsightsDialog } from "./gong-call-insights-dialog";
 import { PersonExtracted } from "@/lib/ai/parse-gong-transcript";
 import type { RiskAssessment } from "@/types/gong-call";
-import { BusinessProposalTab } from "./business-proposal-tab";
 import { AccountIntelSummaryCard } from "./account-intel-summary-card";
 import { NotesTab } from "./notes-tab";
 import { DocumentsTab } from "../documents";
@@ -110,7 +109,7 @@ const platformTypeOptions = [
 ];
 
 // Valid tab values for the opportunity detail page
-const VALID_TABS = ["overview", "research", "activity", "account-intel", "contacts", "documents", "proposal"] as const;
+const VALID_TABS = ["overview", "research", "activity", "account-intel", "contacts", "documents"] as const;
 type TabValue = typeof VALID_TABS[number];
 
 export function OpportunityDetailClient({ opportunity, organizationId, userId, currentUser, organizationUsers }: OpportunityDetailClientProps) {
@@ -495,10 +494,6 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
           <TabsTrigger value="documents" className="flex items-center gap-2 shrink-0">
             <FileStack className="h-4 w-4" />
             <span className="hidden sm:inline">Documents</span>
-          </TabsTrigger>
-          <TabsTrigger value="proposal" className="flex items-center gap-2 shrink-0">
-            <Briefcase className="h-4 w-4" />
-            <span className="hidden sm:inline">Proposal</span>
           </TabsTrigger>
         </TabsList>
 
@@ -920,18 +915,6 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
             opportunityName={opportunity.name}
             hasAccountResearch={!!opportunity.accountResearch}
             hasConsolidatedInsights={!!(opportunity.consolidatedPainPoints || opportunity.consolidatedGoals)}
-          />
-        </TabsContent>
-
-        {/* Business Impact Proposal Tab */}
-        <TabsContent value="proposal" className="mt-4">
-          <BusinessProposalTab
-            opportunityId={opportunity.id}
-            businessProposalContent={opportunity.businessProposalContent}
-            businessProposalGeneratedAt={opportunity.businessProposalGeneratedAt}
-            businessProposalGenerationStatus={opportunity.businessProposalGenerationStatus}
-            businessCaseQuestions={opportunity.businessCaseQuestions}
-            onFieldUpdate={handleFieldUpdate}
           />
         </TabsContent>
       </Tabs>

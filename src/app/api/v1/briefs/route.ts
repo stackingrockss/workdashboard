@@ -6,6 +6,8 @@ import {
   briefCreateSchema,
   briefListQuerySchema,
 } from "@/lib/validations/brief";
+import { getTemplateBriefs } from "@/lib/briefs/template-briefs";
+import { ContentBrief } from "@/types/brief";
 
 // GET /api/v1/briefs - List briefs (company + personal based on user)
 export async function GET(req: NextRequest) {
@@ -32,7 +34,43 @@ export async function GET(req: NextRequest) {
     const { scope, category, search, page, limit } = queryParsed.data;
     const skip = (page - 1) * limit;
 
-    // Build where clause based on scope
+    // Get template briefs if requested
+    let templateBriefs: ContentBrief[] = [];
+    if (scope === "template" || scope === "all") {
+      templateBriefs = getTemplateBriefs();
+
+      // Apply category filter to templates
+      if (category) {
+        templateBriefs = templateBriefs.filter((b) => b.category === category);
+      }
+
+      // Apply search filter to templates
+      if (search) {
+        const searchLower = search.toLowerCase();
+        templateBriefs = templateBriefs.filter(
+          (b) =>
+            b.name.toLowerCase().includes(searchLower) ||
+            b.description?.toLowerCase().includes(searchLower)
+        );
+      }
+    }
+
+    // If only requesting templates, return just templates
+    if (scope === "template") {
+      // Simple pagination for templates only
+      const paginatedTemplates = templateBriefs.slice(skip, skip + limit);
+      return NextResponse.json({
+        briefs: paginatedTemplates,
+        pagination: {
+          page,
+          limit,
+          total: templateBriefs.length,
+          totalPages: Math.ceil(templateBriefs.length / limit),
+        },
+      });
+    }
+
+    // Build where clause based on scope for database briefs
     // Note: Personal briefs are filtered by createdById only (not organizationId)
     // to match the briefs page query and handle legacy data
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -135,13 +173,17 @@ export async function GET(req: NextRequest) {
       referenceContents: brief.referenceContents.map((rc) => rc.content),
     }));
 
+    // Combine templates with database briefs (templates first)
+    const allBriefs = [...templateBriefs, ...transformedBriefs];
+    const combinedTotal = templateBriefs.length + total;
+
     return NextResponse.json({
-      briefs: transformedBriefs,
+      briefs: allBriefs,
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit),
+        total: combinedTotal,
+        totalPages: Math.ceil(combinedTotal / limit),
       },
     });
   } catch (error) {

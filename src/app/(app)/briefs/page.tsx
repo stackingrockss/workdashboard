@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { BriefsPageClient } from "@/components/features/briefs/briefs-page-client";
 import { Loader2, FileText } from "lucide-react";
+import { getTemplateBriefs } from "@/lib/briefs/template-briefs";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function BriefsPage() {
   const user = await requireAuth();
 
   // Fetch briefs - both personal and company-wide
-  const briefs = await prisma.contentBrief.findMany({
+  const dbBriefs = await prisma.contentBrief.findMany({
     where: {
       OR: [
         { scope: "personal", createdById: user.id },
@@ -40,6 +41,18 @@ export default async function BriefsPage() {
     orderBy: [{ scope: "asc" }, { name: "asc" }],
   });
 
+  // Get template briefs from code
+  const templateBriefs = getTemplateBriefs();
+
+  // Combine template briefs with database briefs
+  const allBriefs = [
+    ...templateBriefs.map((b) => ({
+      ...b,
+      _count: { generatedContents: 0 },
+    })),
+    ...dbBriefs,
+  ];
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex items-center gap-3">
@@ -62,9 +75,19 @@ export default async function BriefsPage() {
         }
       >
         <BriefsPageClient
-          briefs={briefs.map(b => ({
-            ...b,
+          briefs={allBriefs.map(b => ({
+            id: b.id,
+            name: b.name,
+            description: b.description ?? null,
+            category: b.category,
+            scope: b.scope,
+            systemInstruction: b.systemInstruction,
+            outputFormat: b.outputFormat ?? null,
+            createdById: b.createdById,
+            createdAt: b.createdAt,
+            updatedAt: b.updatedAt,
             usageCount: b._count.generatedContents,
+            createdBy: b.createdBy ?? null,
           }))}
           currentUserId={user.id}
         />

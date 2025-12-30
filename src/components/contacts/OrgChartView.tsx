@@ -6,8 +6,11 @@ import ReactFlow, {
   Edge,
   Controls,
   Background,
+  MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
+  ReactFlowProvider,
   MarkerType,
   ConnectionLineType,
   Panel,
@@ -17,7 +20,7 @@ import dagre from "dagre";
 import { Contact } from "@/types/contact";
 import { OrgChartNode } from "./OrgChartNode";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard } from "lucide-react";
+import { LayoutDashboard, Maximize2 } from "lucide-react";
 
 interface OrgChartViewProps {
   contacts: Contact[];
@@ -65,11 +68,13 @@ const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
   return { nodes: layoutedNodes, edges };
 };
 
-export function OrgChartView({
+function OrgChartViewInner({
   contacts,
   onContactClick,
   onPositionChange,
 }: OrgChartViewProps) {
+  const { fitView } = useReactFlow();
+
   // Convert contacts to nodes and edges
   const { initialNodes, initialEdges } = useMemo(() => {
     // Defensive check - ensure contacts is an array
@@ -156,14 +161,6 @@ export function OrgChartView({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run once on mount, intentionally ignoring contacts and onLayout
 
-  if (contacts.length === 0) {
-    return (
-      <div className="h-[600px] flex items-center justify-center text-muted-foreground border rounded-lg">
-        Add contacts to see the organization chart
-      </div>
-    );
-  }
-
   return (
     <div className="h-[600px] border rounded-lg bg-slate-50 dark:bg-slate-950">
       <ReactFlow
@@ -187,7 +184,22 @@ export function OrgChartView({
       >
         <Background />
         <Controls />
-        <Panel position="top-right" className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-2">
+        <MiniMap
+          nodeStrokeWidth={3}
+          zoomable
+          pannable
+          className="bg-slate-100 dark:bg-slate-800 rounded-lg"
+        />
+        <Panel position="top-right" className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-2 flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => fitView({ padding: 0.2, duration: 300 })}
+            className="gap-2"
+          >
+            <Maximize2 className="h-4 w-4" />
+            Fit to View
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -200,5 +212,21 @@ export function OrgChartView({
         </Panel>
       </ReactFlow>
     </div>
+  );
+}
+
+export function OrgChartView(props: OrgChartViewProps) {
+  if (props.contacts.length === 0) {
+    return (
+      <div className="h-[600px] flex items-center justify-center text-muted-foreground border rounded-lg">
+        Add contacts to see the organization chart
+      </div>
+    );
+  }
+
+  return (
+    <ReactFlowProvider>
+      <OrgChartViewInner {...props} />
+    </ReactFlowProvider>
   );
 }

@@ -72,7 +72,8 @@ export const CreateBriefPage = ({ editBrief, returnTo }: CreateBriefPageProps) =
           name: editBrief.name,
           description: editBrief.description || "",
           category: editBrief.category,
-          scope: editBrief.scope,
+          // Templates cannot be edited - use "personal" as fallback for type safety
+          scope: editBrief.scope === "template" ? "personal" : editBrief.scope,
           systemInstruction: editBrief.systemInstruction,
           outputFormat: editBrief.outputFormat || "",
           sections: editBrief.sections || [{ title: "Content", required: true }],

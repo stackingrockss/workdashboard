@@ -32,6 +32,8 @@ import {
   Building2,
   User,
   FileText,
+  Copy,
+  LayoutTemplate,
 } from "lucide-react";
 import { BriefCategory, BRIEF_CATEGORY_LABELS } from "@/types/brief";
 import { formatDateShort } from "@/lib/format";
@@ -42,18 +44,18 @@ interface Brief {
   name: string;
   description: string | null;
   category: BriefCategory;
-  scope: "company" | "personal";
+  scope: "company" | "personal" | "template";
   systemInstruction: string;
   outputFormat: string | null;
-  createdById: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdById: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
   usageCount: number;
   createdBy: {
     id: string;
     name: string | null;
     avatarUrl: string | null;
-  };
+  } | null;
 }
 
 interface BriefsPageClientProps {
@@ -67,9 +69,10 @@ export const BriefsPageClient = ({
 }: BriefsPageClientProps) => {
   const [briefs, setBriefs] = useState(initialBriefs);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterScope, setFilterScope] = useState<"all" | "personal" | "company">("all");
+  const [filterScope, setFilterScope] = useState<"all" | "personal" | "company" | "templates">("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
 
   // Filter briefs
   const filteredBriefs = briefs.filter((b) => {
@@ -78,11 +81,13 @@ export const BriefsPageClient = ({
       b.description?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesScope =
       filterScope === "all" ||
+      (filterScope === "templates" && b.scope === "template") ||
       b.scope === filterScope;
     return matchesSearch && matchesScope;
   });
 
   // Group by scope
+  const templateBriefs = filteredBriefs.filter((b) => b.scope === "template");
   const companyBriefs = filteredBriefs.filter((b) => b.scope === "company");
   const personalBriefs = filteredBriefs.filter((b) => b.scope === "personal");
 
@@ -109,8 +114,31 @@ export const BriefsPageClient = ({
     }
   };
 
+  const handleDuplicate = async (briefId: string) => {
+    setDuplicatingId(briefId);
+    try {
+      const response = await fetch(`/api/v1/briefs/${briefId}/duplicate`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to duplicate brief");
+      }
+
+      const data = await response.json();
+      // Add the new brief to the list
+      setBriefs((prev) => [data.brief, ...prev]);
+      toast.success("Brief duplicated");
+    } catch (error) {
+      toast.error("Failed to duplicate brief");
+    } finally {
+      setDuplicatingId(null);
+    }
+  };
+
   const BriefCard = ({ brief }: { brief: Brief }) => {
     const isOwner = brief.createdById === currentUserId;
+    const isTemplate = brief.scope === "template";
 
     return (
       <Card className="group hover:border-primary/50 transition-colors">
@@ -118,7 +146,9 @@ export const BriefsPageClient = ({
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                {brief.scope === "company" ? (
+                {brief.scope === "template" ? (
+                  <LayoutTemplate className="h-4 w-4 text-muted-foreground shrink-0" />
+                ) : brief.scope === "company" ? (
                   <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
                 ) : (
                   <User className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -129,36 +159,50 @@ export const BriefsPageClient = ({
                 <Badge variant="outline" className="text-xs">
                   {BRIEF_CATEGORY_LABELS[brief.category]}
                 </Badge>
-                <span className="text-xs text-muted-foreground">
-                  {brief.usageCount} uses
-                </span>
+                {!isTemplate && (
+                  <span className="text-xs text-muted-foreground">
+                    {brief.usageCount} uses
+                  </span>
+                )}
               </div>
             </div>
-            {isOwner && (
+            {!isTemplate && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                    disabled={duplicatingId === brief.id}
                   >
                     <MoreVertical className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <Link href={`/briefs/${brief.id}/edit`}>
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Edit
-                    </Link>
-                  </DropdownMenuItem>
+                  {isOwner && (
+                    <DropdownMenuItem asChild>
+                      <Link href={`/briefs/${brief.id}/edit`}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={() => setDeleteId(brief.id)}
+                    onClick={() => handleDuplicate(brief.id)}
+                    disabled={duplicatingId === brief.id}
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
+                    <Copy className="h-4 w-4 mr-2" />
+                    {duplicatingId === brief.id ? "Duplicating..." : "Duplicate"}
                   </DropdownMenuItem>
+                  {isOwner && (
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      onClick={() => setDeleteId(brief.id)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -172,8 +216,14 @@ export const BriefsPageClient = ({
           )}
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
-              Created {formatDateShort(brief.createdAt)}
-              {brief.createdBy.name && ` by ${brief.createdBy.name}`}
+              {isTemplate ? (
+                "Built-in template"
+              ) : (
+                <>
+                  Created {formatDateShort(brief.createdAt)}
+                  {brief.createdBy?.name && ` by ${brief.createdBy.name}`}
+                </>
+              )}
             </span>
           </div>
         </CardContent>
@@ -196,7 +246,7 @@ export const BriefsPageClient = ({
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            {(["all", "personal", "company"] as const).map((scope) => (
+            {(["all", "templates", "company", "personal"] as const).map((scope) => (
               <button
                 key={scope}
                 onClick={() => setFilterScope(scope)}
@@ -242,6 +292,24 @@ export const BriefsPageClient = ({
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* Template Briefs */}
+      {templateBriefs.length > 0 && (filterScope === "all" || filterScope === "templates") && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <LayoutTemplate className="h-4 w-4 text-muted-foreground" />
+            <h2 className="font-medium">Templates</h2>
+            <Badge variant="secondary" className="text-xs">
+              {templateBriefs.length}
+            </Badge>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {templateBriefs.map((brief) => (
+              <BriefCard key={brief.id} brief={brief} />
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Company Briefs */}

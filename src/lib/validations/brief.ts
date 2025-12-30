@@ -69,8 +69,9 @@ export const contextSelectionSchema = z.object({
 });
 
 // Generate content request schema
+// briefId can be either a CUID (database brief) or template-* (template brief)
 export const generateContentSchema = z.object({
-  briefId: z.string().cuid(),
+  briefId: z.string().min(1),
   contextSelection: contextSelectionSchema,
 });
 
@@ -85,9 +86,12 @@ export const restoreVersionSchema = z.object({
   versionId: z.string().cuid(),
 });
 
+// Brief scope for queries (includes "template" and "all")
+export const briefScopeQuerySchema = z.enum(["company", "personal", "template", "all"]);
+
 // Query parameters for listing briefs
 export const briefListQuerySchema = z.object({
-  scope: z.enum(["company", "personal", "all"]).optional().default("all"),
+  scope: briefScopeQuerySchema.optional().default("all"),
   category: briefCategorySchema.optional(),
   search: z.string().max(100).optional(),
   page: z.coerce.number().int().positive().optional().default(1),

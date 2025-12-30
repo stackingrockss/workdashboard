@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { isAdmin } from "@/lib/permissions";
 import { briefUpdateSchema } from "@/lib/validations/brief";
+import { getTemplateBriefById, isTemplateBriefId } from "@/lib/briefs/template-briefs";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -11,9 +12,22 @@ interface RouteParams {
 // GET /api/v1/briefs/[id] - Get a single brief
 export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    const user = await requireAuth();
+    await requireAuth();
     const { id } = await params;
 
+    // Check if requesting a template brief
+    if (isTemplateBriefId(id)) {
+      const templateBrief = getTemplateBriefById(id);
+      if (!templateBrief) {
+        return NextResponse.json(
+          { error: "Brief not found" },
+          { status: 404 }
+        );
+      }
+      return NextResponse.json({ brief: templateBrief });
+    }
+
+    const user = await requireAuth();
     const brief = await prisma.contentBrief.findFirst({
       where: {
         id,
@@ -79,6 +93,14 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
     const { id } = await params;
+
+    // Template briefs cannot be edited
+    if (isTemplateBriefId(id)) {
+      return NextResponse.json(
+        { error: "Template briefs cannot be edited" },
+        { status: 403 }
+      );
+    }
 
     // First, find the brief to check permissions
     const existing = await prisma.contentBrief.findFirst({
@@ -256,6 +278,14 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
     const user = await requireAuth();
     const { id } = await params;
+
+    // Template briefs cannot be deleted
+    if (isTemplateBriefId(id)) {
+      return NextResponse.json(
+        { error: "Template briefs cannot be deleted" },
+        { status: 403 }
+      );
+    }
 
     // First, find the brief to check permissions
     const existing = await prisma.contentBrief.findFirst({

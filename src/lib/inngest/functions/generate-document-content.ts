@@ -7,11 +7,13 @@ import { aggregateContext } from "@/lib/ai/context-aggregator";
 import { generateBriefContent } from "@/lib/ai/brief-generator";
 import { ContextSelectionInput } from "@/lib/validations/brief";
 import { BriefSection } from "@/types/brief";
+import { getTemplateBriefById } from "@/lib/briefs/template-briefs";
 
 interface DocumentGenerateEventData {
   documentId: string;
   opportunityId: string;
-  briefId: string;
+  briefId: string | null;
+  templateBriefId?: string | null;
   contextSelection: ContextSelectionInput;
   userId: string;
   organizationId: string;
@@ -34,6 +36,7 @@ export const generateDocumentContentJob = inngest.createFunction(
       documentId,
       opportunityId,
       briefId,
+      templateBriefId,
       contextSelection,
     } = event.data as DocumentGenerateEventData;
 
@@ -45,8 +48,28 @@ export const generateDocumentContentJob = inngest.createFunction(
       });
     });
 
-    // Step 1: Fetch the brief
+    // Step 1: Fetch the brief (from database or template)
     const brief = await step.run("fetch-brief", async () => {
+      // Check if using a template brief
+      if (templateBriefId) {
+        const templateBrief = getTemplateBriefById(templateBriefId);
+        if (!templateBrief) {
+          throw new Error(`Template brief not found: ${templateBriefId}`);
+        }
+        return {
+          id: templateBrief.id,
+          name: templateBrief.name,
+          systemInstruction: templateBrief.systemInstruction,
+          outputFormat: templateBrief.outputFormat,
+          sections: templateBrief.sections,
+        };
+      }
+
+      // Otherwise fetch from database
+      if (!briefId) {
+        throw new Error("No briefId or templateBriefId provided");
+      }
+
       const b = await prisma.contentBrief.findUnique({
         where: { id: briefId },
         select: {
@@ -122,19 +145,22 @@ export const generateDocumentContentJob = inngest.createFunction(
       });
     });
 
-    // Step 6: Increment brief usage count
-    await step.run("increment-usage-count", async () => {
-      return await prisma.contentBrief.update({
-        where: { id: briefId },
-        data: { usageCount: { increment: 1 } },
+    // Step 6: Increment brief usage count (only for database briefs, not templates)
+    if (briefId) {
+      await step.run("increment-usage-count", async () => {
+        return await prisma.contentBrief.update({
+          where: { id: briefId },
+          data: { usageCount: { increment: 1 } },
+        });
       });
-    });
+    }
 
     return {
       success: true,
       documentId: updatedDocument.id,
       opportunityId,
       briefId,
+      templateBriefId,
       title: updatedDocument.title,
       version: updatedDocument.version,
       generatedAt: updatedDocument.generatedAt,

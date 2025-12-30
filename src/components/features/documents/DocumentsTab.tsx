@@ -183,7 +183,7 @@ export const DocumentsTab = ({
       <div className="flex flex-wrap gap-2">
         {[
           { value: "all", label: "All" },
-          { value: "mutual_action_plan", label: "MAPs" },
+          { value: "mutual_action_plan", label: "MAP" },
           { value: "pricing_proposal", label: "Pricing Proposal" },
           { value: "executive_summary", label: "Exec Summary" },
           { value: "email", label: "Email" },

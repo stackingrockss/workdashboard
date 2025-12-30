@@ -14,7 +14,7 @@ export type BriefCategory =
   | "other"
   | "business_impact_proposal";
 
-export type BriefScope = "company" | "personal";
+export type BriefScope = "company" | "personal" | "template";
 
 export type ContentGenerationStatus = "pending" | "generating" | "completed" | "failed";
 
@@ -49,8 +49,8 @@ export interface ContentBrief {
   outputFormat?: string | null;
   sections: BriefSection[];
   contextConfig?: ContextConfig | null;
-  createdById: string;
-  organizationId: string;
+  createdById: string | null;
+  organizationId: string | null;
   isDefault: boolean;
   usageCount: number;
   createdAt: Date | string;
@@ -59,7 +59,7 @@ export interface ContentBrief {
     id: string;
     name: string | null;
     avatarUrl: string | null;
-  };
+  } | null;
   referenceContents?: ReferenceContent[];
 }
 
@@ -132,6 +132,7 @@ export const BRIEF_CATEGORY_OPTIONS = Object.entries(BRIEF_CATEGORY_LABELS).map(
 export const BRIEF_SCOPE_LABELS: Record<BriefScope, string> = {
   company: "Company",
   personal: "Personal",
+  template: "Templates",
 };
 
 // Backwards compatibility aliases (deprecated - remove after full migration)

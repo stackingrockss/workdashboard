@@ -284,10 +284,6 @@ model Opportunity {
   businessCaseQuestions      String?                  @db.Text
   businessCaseGeneratedAt    DateTime?
   businessCaseGenerationStatus String?
-  // Business Impact Proposal fields
-  businessProposalContent         String?             @db.Text
-  businessProposalGeneratedAt     DateTime?
-  businessProposalGenerationStatus String?            // 'generating' | 'completed' | 'failed'
   cbc                        DateTime?
   cbcLastCalculated          DateTime?
   lastCallDate               DateTime?

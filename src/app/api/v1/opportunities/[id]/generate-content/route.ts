@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/auth";
 import { generateContentSchema } from "@/lib/validations/brief";
 import { inngest } from "@/lib/inngest/client";
+import { getTemplateBriefById, isTemplateBriefId } from "@/lib/briefs/template-briefs";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -42,27 +43,47 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
     const { briefId, contextSelection } = parsed.data;
 
-    // Verify brief exists and user has access
-    const brief = await prisma.contentBrief.findFirst({
-      where: {
-        id: briefId,
-        organizationId: user.organization.id,
-        OR: [
-          { scope: "company" },
-          { scope: "personal", createdById: user.id },
-        ],
-      },
-    });
+    // Check if using a template brief or database brief
+    const isTemplate = isTemplateBriefId(briefId);
+    let brief;
+    let dbBriefId: string | null = null;
 
-    if (!brief) {
-      return NextResponse.json(
-        { error: "Brief not found" },
-        { status: 404 }
-      );
+    if (isTemplate) {
+      // Get template brief from code
+      const templateBrief = getTemplateBriefById(briefId);
+      if (!templateBrief) {
+        return NextResponse.json(
+          { error: "Brief not found" },
+          { status: 404 }
+        );
+      }
+      brief = templateBrief;
+    } else {
+      // Verify database brief exists and user has access
+      const dbBrief = await prisma.contentBrief.findFirst({
+        where: {
+          id: briefId,
+          organizationId: user.organization.id,
+          OR: [
+            { scope: "company" },
+            { scope: "personal", createdById: user.id },
+          ],
+        },
+      });
+
+      if (!dbBrief) {
+        return NextResponse.json(
+          { error: "Brief not found" },
+          { status: 404 }
+        );
+      }
+      brief = dbBrief;
+      dbBriefId = dbBrief.id;
     }
 
     // Create a pending Document record (unified document system)
     // Category is set from the brief's category
+    // For template briefs, briefId is null but we store templateBriefId in contextSnapshot
     const document = await prisma.document.create({
       data: {
         opportunityId: opportunity.id,
@@ -70,9 +91,12 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         title: `${brief.name} - ${opportunity.name}`,
         category: brief.category,
         content: "", // Will be filled by the background job
-        briefId: brief.id,
+        briefId: dbBriefId, // null for template briefs
         generationStatus: "pending",
-        contextSnapshot: contextSelection as Prisma.InputJsonValue,
+        contextSnapshot: {
+          ...contextSelection,
+          ...(isTemplate ? { templateBriefId: briefId } : {}),
+        } as Prisma.InputJsonValue,
         version: 1,
         createdById: user.id,
       },
@@ -100,7 +124,8 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       data: {
         documentId: document.id,
         opportunityId: opportunity.id,
-        briefId: brief.id,
+        briefId: dbBriefId,
+        templateBriefId: isTemplate ? briefId : null,
         contextSelection: contextSelection || {},
         userId: user.id,
         organizationId: user.organization.id,
