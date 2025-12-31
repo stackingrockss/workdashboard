@@ -34,6 +34,7 @@ import {
   FileText,
   Copy,
   LayoutTemplate,
+  Eye,
 } from "lucide-react";
 import { BriefCategory, BRIEF_CATEGORY_LABELS } from "@/types/brief";
 import { formatDateShort } from "@/lib/format";
@@ -166,46 +167,52 @@ export const BriefsPageClient = ({
                 )}
               </div>
             </div>
-            {!isTemplate && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                    disabled={duplicatingId === brief.id}
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {isOwner && (
-                    <DropdownMenuItem asChild>
-                      <Link href={`/briefs/${brief.id}/edit`}>
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem
-                    onClick={() => handleDuplicate(brief.id)}
-                    disabled={duplicatingId === brief.id}
-                  >
-                    <Copy className="h-4 w-4 mr-2" />
-                    {duplicatingId === brief.id ? "Duplicating..." : "Duplicate"}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                  disabled={duplicatingId === brief.id}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {isTemplate && (
+                  <DropdownMenuItem asChild>
+                    <Link href={`/briefs/${brief.id}`}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      View
+                    </Link>
                   </DropdownMenuItem>
-                  {isOwner && (
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={() => setDeleteId(brief.id)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                )}
+                {!isTemplate && isOwner && (
+                  <DropdownMenuItem asChild>
+                    <Link href={`/briefs/${brief.id}/edit`}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  onClick={() => handleDuplicate(brief.id)}
+                  disabled={duplicatingId === brief.id}
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  {duplicatingId === brief.id ? "Duplicating..." : "Duplicate"}
+                </DropdownMenuItem>
+                {!isTemplate && isOwner && (
+                  <DropdownMenuItem
+                    className="text-destructive"
+                    onClick={() => setDeleteId(brief.id)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </CardHeader>
         <CardContent>

@@ -8,7 +8,15 @@
  */
 
 import { generateWithSystemInstruction } from "./gemini";
-import type { RiskAssessment } from "@/types/gong-call";
+import type {
+  RiskAssessment,
+  CompetitionMention,
+  DecisionProcess,
+  CallSentiment,
+  ConsolidatedCompetition,
+  ConsolidatedDecisionProcess,
+  ConsolidatedSentimentTrend,
+} from "@/types/gong-call";
 
 // ============================================================================
 // Types
@@ -20,6 +28,12 @@ export interface ConsolidatedInsights {
   riskAssessment: RiskAssessment;
   whyAndWhyNow: string[];
   quantifiableMetrics: string[];
+  // Enhanced consolidation fields
+  keyQuotes: string[];
+  objections: string[];
+  competitionSummary: ConsolidatedCompetition;
+  decisionProcessSummary: ConsolidatedDecisionProcess;
+  sentimentTrend: ConsolidatedSentimentTrend;
 }
 
 export interface ConsolidationResult {
@@ -90,7 +104,33 @@ Return ONLY valid JSON matching this exact structure:
     "Consolidated ROI metric 1 (preserve exact numbers)",
     "Consolidated ROI metric 2",
     ...
-  ]
+  ],
+  "keyQuotes": [
+    "Best/most impactful customer quote 1",
+    "Best/most impactful customer quote 2",
+    ...
+  ],
+  "objections": [
+    "Consolidated objection 1 (note if resolved)",
+    "Consolidated objection 2",
+    ...
+  ],
+  "competitionSummary": {
+    "competitors": ["List of all competitors/alternatives mentioned"],
+    "primaryThreat": "Most serious competitor or null if none stand out",
+    "customerSentiment": "Overall summary of customer's view toward competition/alternatives"
+  },
+  "decisionProcessSummary": {
+    "timeline": "Most recent/accurate timeline mentioned or null",
+    "keyStakeholders": ["Consolidated list of decision makers/influencers"],
+    "budgetStatus": "Latest budget context or null",
+    "remainingSteps": ["What still needs to happen to close"]
+  },
+  "sentimentTrend": {
+    "trajectory": "improving" | "stable" | "declining",
+    "currentState": "positive" | "neutral" | "negative",
+    "summary": "1-2 sentence narrative of how sentiment has evolved across calls"
+  }
 }
 
 **RISK CONSOLIDATION RULES:**
@@ -113,11 +153,44 @@ Return ONLY valid JSON matching this exact structure:
 - Include frequency context if same metric mentioned multiple times
 - Combine related metrics only if they're truly duplicates
 
+**KEY QUOTES CONSOLIDATION RULES:**
+- Select the most impactful, memorable quotes from across all calls
+- Prioritize quotes that best capture pain, value proposition, or urgency
+- Limit to 5-7 best quotes to keep it actionable
+- Preserve exact wording when possible
+
+**OBJECTIONS CONSOLIDATION RULES:**
+- Deduplicate similar objections across calls
+- Note if an objection from an earlier call was resolved in a later call
+- Order by severity/impact on deal
+- Combine related concerns into clearer statements
+
+**COMPETITION CONSOLIDATION RULES:**
+- List all unique competitors/alternatives mentioned
+- Identify the primary threat based on frequency and customer sentiment
+- Summarize overall competitive landscape from customer's perspective
+- Include "status quo", "build in-house" if mentioned as alternatives
+
+**DECISION PROCESS CONSOLIDATION RULES:**
+- Use the most recent/accurate timeline information
+- Consolidate all stakeholders mentioned across calls
+- Use latest budget context (it may evolve)
+- List remaining steps based on most recent call information
+
+**SENTIMENT TREND RULES:**
+- Compare sentiment across calls chronologically
+- "improving" = later calls more positive than earlier ones
+- "declining" = later calls more negative than earlier ones
+- "stable" = consistent sentiment throughout
+- Provide brief narrative of the evolution
+
 **IMPORTANT RULES:**
 - If all calls have empty painPoints, return empty painPoints array
 - If all calls have empty goals, return empty goals array
 - If all calls have empty whyAndWhyNow, return empty whyAndWhyNow array
 - If all calls have empty quantifiableMetrics, return empty quantifiableMetrics array
+- If all calls have empty keyQuotes, return empty keyQuotes array
+- If all calls have empty objections, return empty objections array
 - Focus on PATTERNS and THEMES across multiple calls
 - Preserve temporal context (e.g., "Initially concerned about X, but later calls showed progress")
 - Do NOT add commentary outside the JSON structure
@@ -141,6 +214,11 @@ export async function consolidateCallInsights(
     riskAssessment: RiskAssessment | null;
     whyAndWhyNow: string[];
     quantifiableMetrics: string[];
+    keyQuotes: string[];
+    objections: string[];
+    competitionMentions: CompetitionMention[];
+    decisionProcess: DecisionProcess | null;
+    callSentiment: CallSentiment | null;
   }>
 ): Promise<ConsolidationResult> {
   try {
@@ -187,6 +265,32 @@ ${call.whyAndWhyNow.length > 0 ? call.whyAndWhyNow.map((w) => `- ${w}`).join("\n
 
 **Quantifiable Metrics:**
 ${call.quantifiableMetrics.length > 0 ? call.quantifiableMetrics.map((m) => `- ${m}`).join("\n") : "- None identified"}
+
+**Key Quotes:**
+${call.keyQuotes.length > 0 ? call.keyQuotes.map((q) => `- "${q}"`).join("\n") : "- None captured"}
+
+**Objections:**
+${call.objections.length > 0 ? call.objections.map((o) => `- ${o}`).join("\n") : "- None raised"}
+
+**Competition Mentions:**
+${call.competitionMentions.length > 0 ? call.competitionMentions.map((c) => `- ${c.competitor} (${c.sentiment}): ${c.context}`).join("\n") : "- None mentioned"}
+
+**Decision Process:**
+${
+  call.decisionProcess
+    ? `- Timeline: ${call.decisionProcess.timeline || "Not specified"}
+- Stakeholders: ${call.decisionProcess.stakeholders.length > 0 ? call.decisionProcess.stakeholders.join(", ") : "Not identified"}
+- Budget: ${call.decisionProcess.budgetContext || "Not discussed"}
+- Approval Steps: ${call.decisionProcess.approvalSteps.length > 0 ? call.decisionProcess.approvalSteps.join(", ") : "Not specified"}`
+    : "- Not available"
+}
+
+**Call Sentiment:**
+${
+  call.callSentiment
+    ? `- Overall: ${call.callSentiment.overall}, Momentum: ${call.callSentiment.momentum}, Enthusiasm: ${call.callSentiment.enthusiasm}`
+    : "- Not assessed"
+}
 
 **Risk Assessment:**
 ${
@@ -260,6 +364,76 @@ Return your consolidated analysis as JSON only.`;
     }
     if (!Array.isArray(parsedData.quantifiableMetrics)) {
       parsedData.quantifiableMetrics = [];
+    }
+    if (!Array.isArray(parsedData.keyQuotes)) {
+      parsedData.keyQuotes = [];
+    }
+    if (!Array.isArray(parsedData.objections)) {
+      parsedData.objections = [];
+    }
+
+    // Normalize competitionSummary
+    if (!parsedData.competitionSummary || typeof parsedData.competitionSummary !== "object") {
+      parsedData.competitionSummary = {
+        competitors: [],
+        primaryThreat: null,
+        customerSentiment: "No competition information available",
+      };
+    } else {
+      if (!Array.isArray(parsedData.competitionSummary.competitors)) {
+        parsedData.competitionSummary.competitors = [];
+      }
+      if (parsedData.competitionSummary.primaryThreat === undefined) {
+        parsedData.competitionSummary.primaryThreat = null;
+      }
+      if (!parsedData.competitionSummary.customerSentiment) {
+        parsedData.competitionSummary.customerSentiment = "No competition information available";
+      }
+    }
+
+    // Normalize decisionProcessSummary
+    if (!parsedData.decisionProcessSummary || typeof parsedData.decisionProcessSummary !== "object") {
+      parsedData.decisionProcessSummary = {
+        timeline: null,
+        keyStakeholders: [],
+        budgetStatus: null,
+        remainingSteps: [],
+      };
+    } else {
+      if (parsedData.decisionProcessSummary.timeline === undefined) {
+        parsedData.decisionProcessSummary.timeline = null;
+      }
+      if (!Array.isArray(parsedData.decisionProcessSummary.keyStakeholders)) {
+        parsedData.decisionProcessSummary.keyStakeholders = [];
+      }
+      if (parsedData.decisionProcessSummary.budgetStatus === undefined) {
+        parsedData.decisionProcessSummary.budgetStatus = null;
+      }
+      if (!Array.isArray(parsedData.decisionProcessSummary.remainingSteps)) {
+        parsedData.decisionProcessSummary.remainingSteps = [];
+      }
+    }
+
+    // Normalize sentimentTrend
+    if (!parsedData.sentimentTrend || typeof parsedData.sentimentTrend !== "object") {
+      parsedData.sentimentTrend = {
+        trajectory: "stable",
+        currentState: "neutral",
+        summary: "Insufficient data to assess sentiment trend",
+      };
+    } else {
+      const validTrajectory = ["improving", "stable", "declining"];
+      const validState = ["positive", "neutral", "negative"];
+
+      if (!validTrajectory.includes(parsedData.sentimentTrend.trajectory)) {
+        parsedData.sentimentTrend.trajectory = "stable";
+      }
+      if (!validState.includes(parsedData.sentimentTrend.currentState)) {
+        parsedData.sentimentTrend.currentState = "neutral";
+      }
+      if (!parsedData.sentimentTrend.summary) {
+        parsedData.sentimentTrend.summary = "Insufficient data to assess sentiment trend";
+      }
     }
 
     if (!parsedData.riskAssessment) {

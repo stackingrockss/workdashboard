@@ -50,7 +50,7 @@ export const BriefCard = ({
             {BRIEF_CATEGORY_LABELS[brief.category]}
           </Badge>
           <div className="flex items-center gap-1 text-muted-foreground">
-            {showEditButton && (
+            {showEditButton && brief.scope !== "template" && (
               <Button
                 variant="ghost"
                 size="icon"

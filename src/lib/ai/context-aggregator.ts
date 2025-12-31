@@ -8,6 +8,14 @@
 import { prisma } from "@/lib/db";
 import { ContextSelectionInput } from "@/lib/validations/framework";
 import { formatDateShort } from "@/lib/format";
+import type {
+  CompetitionMention,
+  DecisionProcess,
+  CallSentiment,
+  ConsolidatedCompetition,
+  ConsolidatedDecisionProcess,
+  ConsolidatedSentimentTrend,
+} from "@/lib/validations/gong-call";
 
 // Types for aggregated context
 export interface AggregatedContact {
@@ -29,6 +37,12 @@ export interface AggregatedMeeting {
   whyAndWhyNow?: string[];
   quantifiableMetrics?: string[];
   transcriptSummary?: string;
+  // Enhanced extraction fields
+  keyQuotes?: string[];
+  objections?: string[];
+  competitionMentions?: CompetitionMention[];
+  decisionProcess?: DecisionProcess | null;
+  callSentiment?: CallSentiment | null;
 }
 
 export interface RiskAssessment {
@@ -46,6 +60,12 @@ export interface ConsolidatedInsights {
   whyAndWhyNow: string[];
   quantifiableMetrics: string[];
   riskAssessment?: RiskAssessment | null;
+  // Enhanced consolidated fields
+  keyQuotes?: string[];
+  objections?: string[];
+  competitionSummary?: ConsolidatedCompetition | null;
+  decisionProcessSummary?: ConsolidatedDecisionProcess | null;
+  sentimentTrend?: ConsolidatedSentimentTrend | null;
 }
 
 export interface AggregatedReferenceDocument {
@@ -144,6 +164,12 @@ export async function aggregateContext(
       whyAndWhyNow: (opportunity.consolidatedWhyAndWhyNow as string[]) || [],
       quantifiableMetrics: (opportunity.consolidatedMetrics as string[]) || [],
       riskAssessment: opportunity.consolidatedRiskAssessment as RiskAssessment | null,
+      // Enhanced consolidated fields
+      keyQuotes: (opportunity.consolidatedKeyQuotes as string[]) || [],
+      objections: (opportunity.consolidatedObjections as string[]) || [],
+      competitionSummary: opportunity.consolidatedCompetition as ConsolidatedCompetition | null,
+      decisionProcessSummary: opportunity.consolidatedDecisionProcess as ConsolidatedDecisionProcess | null,
+      sentimentTrend: opportunity.consolidatedSentimentTrend as ConsolidatedSentimentTrend | null,
     };
   }
 
@@ -173,9 +199,17 @@ export async function aggregateContext(
         nextSteps: (call.nextSteps as string[]) || undefined,
         whyAndWhyNow: (call.whyAndWhyNow as string[]) || undefined,
         quantifiableMetrics: (call.quantifiableMetrics as string[]) || undefined,
-        transcriptSummary: call.transcriptText
-          ? truncateText(call.transcriptText, 5000)
-          : undefined,
+        // Only include full transcript if explicitly requested
+        transcriptSummary:
+          selection.includeMeetingTranscripts && call.transcriptText
+            ? truncateText(call.transcriptText, 115000)
+            : undefined,
+        // Enhanced extraction fields
+        keyQuotes: (call.keyQuotes as string[]) || undefined,
+        objections: (call.objections as string[]) || undefined,
+        competitionMentions: (call.competitionMentions as CompetitionMention[]) || undefined,
+        decisionProcess: (call.decisionProcess as DecisionProcess) || null,
+        callSentiment: (call.callSentiment as CallSentiment) || null,
       });
     }
   }
@@ -201,9 +235,17 @@ export async function aggregateContext(
         nextSteps: (note.nextSteps as string[]) || undefined,
         whyAndWhyNow: (note.whyAndWhyNow as string[]) || undefined,
         quantifiableMetrics: (note.quantifiableMetrics as string[]) || undefined,
-        transcriptSummary: note.transcriptText
-          ? truncateText(note.transcriptText, 5000)
-          : undefined,
+        // Only include full transcript if explicitly requested
+        transcriptSummary:
+          selection.includeMeetingTranscripts && note.transcriptText
+            ? truncateText(note.transcriptText, 115000)
+            : undefined,
+        // Enhanced extraction fields
+        keyQuotes: (note.keyQuotes as string[]) || undefined,
+        objections: (note.objections as string[]) || undefined,
+        competitionMentions: (note.competitionMentions as CompetitionMention[]) || undefined,
+        decisionProcess: (note.decisionProcess as DecisionProcess) || null,
+        callSentiment: (note.callSentiment as CallSentiment) || null,
       });
     }
   }
@@ -373,6 +415,52 @@ ${context.account.ticker ? `- **Ticker:** ${context.account.ticker}` : ""}`);
     if (insights.quantifiableMetrics.length > 0) {
       insightParts.push(`### Quantifiable Metrics\n${insights.quantifiableMetrics.map((m) => `- ${m}`).join("\n")}`);
     }
+    // Enhanced consolidated fields
+    if (insights.keyQuotes && insights.keyQuotes.length > 0) {
+      insightParts.push(`### Key Customer Quotes\n${insights.keyQuotes.map((q) => `- "${q}"`).join("\n")}`);
+    }
+    if (insights.objections && insights.objections.length > 0) {
+      insightParts.push(`### Objections & Concerns\n${insights.objections.map((o) => `- ${o}`).join("\n")}`);
+    }
+    if (insights.competitionSummary) {
+      const comp = insights.competitionSummary;
+      const compParts = [];
+      if (comp.competitors.length > 0) {
+        compParts.push(`- **Competitors:** ${comp.competitors.join(", ")}`);
+      }
+      if (comp.primaryThreat) {
+        compParts.push(`- **Primary Threat:** ${comp.primaryThreat}`);
+      }
+      if (comp.customerSentiment) {
+        compParts.push(`- **Customer Sentiment:** ${comp.customerSentiment}`);
+      }
+      if (compParts.length > 0) {
+        insightParts.push(`### Competitive Landscape\n${compParts.join("\n")}`);
+      }
+    }
+    if (insights.decisionProcessSummary) {
+      const dec = insights.decisionProcessSummary;
+      const decParts = [];
+      if (dec.timeline) {
+        decParts.push(`- **Timeline:** ${dec.timeline}`);
+      }
+      if (dec.keyStakeholders.length > 0) {
+        decParts.push(`- **Key Stakeholders:** ${dec.keyStakeholders.join(", ")}`);
+      }
+      if (dec.budgetStatus) {
+        decParts.push(`- **Budget Status:** ${dec.budgetStatus}`);
+      }
+      if (dec.remainingSteps.length > 0) {
+        decParts.push(`- **Remaining Steps:** ${dec.remainingSteps.join("; ")}`);
+      }
+      if (decParts.length > 0) {
+        insightParts.push(`### Decision Process\n${decParts.join("\n")}`);
+      }
+    }
+    if (insights.sentimentTrend) {
+      const sent = insights.sentimentTrend;
+      insightParts.push(`### Sentiment Trend\n- **Trajectory:** ${sent.trajectory}\n- **Current State:** ${sent.currentState}\n- **Summary:** ${sent.summary}`);
+    }
 
     if (insightParts.length > 0) {
       sections.push(`## Consolidated Call Insights\n${insightParts.join("\n\n")}`);
@@ -392,6 +480,32 @@ ${context.account.ticker ? `- **Ticker:** ${context.account.ticker}` : ""}`);
       }
       if (m.nextSteps && m.nextSteps.length > 0) {
         parts.push(`**Next Steps:** ${m.nextSteps.join("; ")}`);
+      }
+      // Enhanced extraction fields
+      if (m.keyQuotes && m.keyQuotes.length > 0) {
+        parts.push(`**Key Quotes:** ${m.keyQuotes.map((q) => `"${q}"`).join("; ")}`);
+      }
+      if (m.objections && m.objections.length > 0) {
+        parts.push(`**Objections:** ${m.objections.join("; ")}`);
+      }
+      if (m.competitionMentions && m.competitionMentions.length > 0) {
+        const compStr = m.competitionMentions
+          .map((c) => `${c.competitor} (${c.sentiment}): ${c.context}`)
+          .join("; ");
+        parts.push(`**Competition Mentions:** ${compStr}`);
+      }
+      if (m.decisionProcess) {
+        const dec = m.decisionProcess;
+        const decParts = [];
+        if (dec.timeline) decParts.push(`Timeline: ${dec.timeline}`);
+        if (dec.stakeholders.length > 0) decParts.push(`Stakeholders: ${dec.stakeholders.join(", ")}`);
+        if (dec.budgetContext) decParts.push(`Budget: ${dec.budgetContext}`);
+        if (decParts.length > 0) {
+          parts.push(`**Decision Process:** ${decParts.join("; ")}`);
+        }
+      }
+      if (m.callSentiment) {
+        parts.push(`**Sentiment:** ${m.callSentiment.overall} (Momentum: ${m.callSentiment.momentum}, Enthusiasm: ${m.callSentiment.enthusiasm})`);
       }
       if (m.transcriptSummary) {
         parts.push(`**Transcript Summary:** ${m.transcriptSummary}`);

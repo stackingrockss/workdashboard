@@ -63,6 +63,8 @@ export const contextSelectionSchema = z.object({
   additionalContext: z.string().max(5000).optional(),
   referenceDocumentIds: z.array(z.string()).optional().default([]),
   referenceContentIds: z.array(z.string()).optional().default([]),
+  // Include full meeting transcripts (defaults to OFF - uses extracted insights only)
+  includeMeetingTranscripts: z.boolean().optional().default(false),
 });
 
 // Generate content request schema

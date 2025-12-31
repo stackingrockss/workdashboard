@@ -23,6 +23,10 @@ import {
   DEFAULT_MODEL,
   type MeetingTokenEstimate,
 } from "@/lib/ai/token-estimator";
+import {
+  isTemplateBriefId,
+  getTemplateBriefById,
+} from "@/lib/briefs/template-briefs";
 
 // Query schema for GET request
 const querySchema = z.object({
@@ -32,6 +36,7 @@ const querySchema = z.object({
   googleNoteIds: z.string().optional(), // Comma-separated
   includeConsolidatedInsights: z.enum(["true", "false"]).optional(),
   includeAccountResearch: z.enum(["true", "false"]).optional(),
+  includeMeetingTranscripts: z.enum(["true", "false"]).optional(),
   additionalContextLength: z.string().optional(), // Character count
 });
 
@@ -78,6 +83,8 @@ export async function GET(
         searchParams.get("includeConsolidatedInsights") || undefined,
       includeAccountResearch:
         searchParams.get("includeAccountResearch") || undefined,
+      includeMeetingTranscripts:
+        searchParams.get("includeMeetingTranscripts") || undefined,
       additionalContextLength:
         searchParams.get("additionalContextLength") || undefined,
     });
@@ -95,6 +102,7 @@ export async function GET(
     const includeConsolidatedInsights =
       parsed.includeConsolidatedInsights === "true";
     const includeAccountResearch = parsed.includeAccountResearch === "true";
+    const includeMeetingTranscripts = parsed.includeMeetingTranscripts === "true";
     const additionalContextLength = parseInt(
       parsed.additionalContextLength || "0",
       10
@@ -128,27 +136,43 @@ export async function GET(
     };
 
     if (parsed.briefId) {
-      const brief = await prisma.contentBrief.findFirst({
-        where: {
-          id: parsed.briefId,
-          organizationId,
-        },
-        select: {
-          systemInstruction: true,
-          outputFormat: true,
-          sections: true,
-        },
-      });
-
-      if (brief) {
-        briefTokens = estimateBriefTokens({
-          systemInstruction: brief.systemInstruction,
-          outputFormat: brief.outputFormat,
-          sections: brief.sections as Array<{
-            title: string;
-            description?: string;
-          }>,
+      // Check if it's a template brief first
+      if (isTemplateBriefId(parsed.briefId)) {
+        const templateBrief = getTemplateBriefById(parsed.briefId);
+        if (templateBrief) {
+          briefTokens = estimateBriefTokens({
+            systemInstruction: templateBrief.systemInstruction,
+            outputFormat: templateBrief.outputFormat,
+            sections: templateBrief.sections as Array<{
+              title: string;
+              description?: string;
+            }>,
+          });
+        }
+      } else {
+        // Fetch from database
+        const brief = await prisma.contentBrief.findFirst({
+          where: {
+            id: parsed.briefId,
+            organizationId,
+          },
+          select: {
+            systemInstruction: true,
+            outputFormat: true,
+            sections: true,
+          },
         });
+
+        if (brief) {
+          briefTokens = estimateBriefTokens({
+            systemInstruction: brief.systemInstruction,
+            outputFormat: brief.outputFormat,
+            sections: brief.sections as Array<{
+              title: string;
+              description?: string;
+            }>,
+          });
+        }
       }
     }
 
@@ -209,7 +233,7 @@ export async function GET(
     // Estimate meetings tokens
     const meetingEstimates: MeetingTokenEstimate[] = [];
 
-    // Fetch Gong calls with transcript info
+    // Fetch Gong calls with transcript info and enhanced fields
     if (gongCallIds.length > 0) {
       const gongCalls = await prisma.gongCall.findMany({
         where: {
@@ -226,26 +250,40 @@ export async function GET(
           nextSteps: true,
           whyAndWhyNow: true,
           quantifiableMetrics: true,
+          // Enhanced extraction fields
+          keyQuotes: true,
+          objections: true,
+          competitionMentions: true,
+          decisionProcess: true,
+          callSentiment: true,
         },
       });
 
       for (const call of gongCalls) {
-        const estimate = estimateMeetingTokens({
-          title: call.title,
-          date: call.meetingDate,
-          type: "gong",
-          transcriptText: call.transcriptText,
-          painPoints: call.painPoints as unknown[] | null,
-          goals: call.goals as unknown[] | null,
-          nextSteps: call.nextSteps as unknown[] | null,
-          whyAndWhyNow: call.whyAndWhyNow as unknown[] | null,
-          quantifiableMetrics: call.quantifiableMetrics as unknown[] | null,
-        });
+        const estimate = estimateMeetingTokens(
+          {
+            title: call.title,
+            date: call.meetingDate,
+            type: "gong",
+            transcriptText: call.transcriptText,
+            painPoints: call.painPoints as unknown[] | null,
+            goals: call.goals as unknown[] | null,
+            nextSteps: call.nextSteps as unknown[] | null,
+            whyAndWhyNow: call.whyAndWhyNow as unknown[] | null,
+            quantifiableMetrics: call.quantifiableMetrics as unknown[] | null,
+            keyQuotes: call.keyQuotes as unknown[] | null,
+            objections: call.objections as unknown[] | null,
+            competitionMentions: call.competitionMentions as unknown[] | null,
+            decisionProcess: call.decisionProcess,
+            callSentiment: call.callSentiment,
+          },
+          { includeTranscript: includeMeetingTranscripts }
+        );
         meetingEstimates.push({ ...estimate, id: call.id });
       }
     }
 
-    // Fetch Granola notes with transcript info
+    // Fetch Granola notes with transcript info and enhanced fields
     if (granolaNoteIds.length > 0) {
       const granolaNotes = await prisma.granolaNote.findMany({
         where: {
@@ -262,21 +300,35 @@ export async function GET(
           nextSteps: true,
           whyAndWhyNow: true,
           quantifiableMetrics: true,
+          // Enhanced extraction fields
+          keyQuotes: true,
+          objections: true,
+          competitionMentions: true,
+          decisionProcess: true,
+          callSentiment: true,
         },
       });
 
       for (const note of granolaNotes) {
-        const estimate = estimateMeetingTokens({
-          title: note.title,
-          date: note.meetingDate,
-          type: "granola",
-          transcriptText: note.transcriptText,
-          painPoints: note.painPoints as unknown[] | null,
-          goals: note.goals as unknown[] | null,
-          nextSteps: note.nextSteps as unknown[] | null,
-          whyAndWhyNow: note.whyAndWhyNow as unknown[] | null,
-          quantifiableMetrics: note.quantifiableMetrics as unknown[] | null,
-        });
+        const estimate = estimateMeetingTokens(
+          {
+            title: note.title,
+            date: note.meetingDate,
+            type: "granola",
+            transcriptText: note.transcriptText,
+            painPoints: note.painPoints as unknown[] | null,
+            goals: note.goals as unknown[] | null,
+            nextSteps: note.nextSteps as unknown[] | null,
+            whyAndWhyNow: note.whyAndWhyNow as unknown[] | null,
+            quantifiableMetrics: note.quantifiableMetrics as unknown[] | null,
+            keyQuotes: note.keyQuotes as unknown[] | null,
+            objections: note.objections as unknown[] | null,
+            competitionMentions: note.competitionMentions as unknown[] | null,
+            decisionProcess: note.decisionProcess,
+            callSentiment: note.callSentiment,
+          },
+          { includeTranscript: includeMeetingTranscripts }
+        );
         meetingEstimates.push({ ...estimate, id: note.id });
       }
     }

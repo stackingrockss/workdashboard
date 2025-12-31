@@ -4,7 +4,13 @@ import type {
   RiskCategory,
   RiskSeverity,
   RiskFactor,
-  RiskAssessment
+  RiskAssessment,
+  CompetitionMention,
+  DecisionProcess,
+  CallSentiment,
+  ConsolidatedCompetition,
+  ConsolidatedDecisionProcess,
+  ConsolidatedSentimentTrend,
 } from "@/lib/validations/gong-call";
 
 // Re-export risk assessment types from validation schemas (single source of truth)
@@ -13,7 +19,15 @@ export type {
   RiskCategory,
   RiskSeverity,
   RiskFactor,
-  RiskAssessment
+  RiskAssessment,
+  // Enhanced parsing types
+  CompetitionMention,
+  DecisionProcess,
+  CallSentiment,
+  // Consolidated insight types
+  ConsolidatedCompetition,
+  ConsolidatedDecisionProcess,
+  ConsolidatedSentimentTrend,
 };
 
 export type NoteType = "customer" | "internal" | "prospect";
@@ -39,6 +53,11 @@ export interface GongCall {
   riskAssessment?: RiskAssessment | null;
   whyAndWhyNow?: string[] | null; // Business driver/urgency reasons
   quantifiableMetrics?: string[] | null; // ROI/measurable outcomes
+  keyQuotes?: string[] | null; // Verbatim customer statements
+  objections?: string[] | null; // Concerns/pushback raised
+  competitionMentions?: CompetitionMention[] | null; // Competitors and alternatives
+  decisionProcess?: DecisionProcess | null; // Timeline, stakeholders, budget, steps
+  callSentiment?: CallSentiment | null; // Overall tone and trajectory
   parsedAt?: string | null; // ISO date string when transcript was parsed
   // Background processing status
   parsingStatus?: ParsingStatus | null;

@@ -435,6 +435,37 @@ export const ContextSelectionPanel = ({
               )}
             </Label>
           </div>
+
+          {/* Full transcripts toggle */}
+          {selectedMeetingsCount > 0 && (
+            <div className="pt-2 mt-2 border-t">
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="includeMeetingTranscripts"
+                  checked={value.includeMeetingTranscripts || false}
+                  onCheckedChange={(checked) =>
+                    onChange({
+                      ...value,
+                      includeMeetingTranscripts: checked === true,
+                    })
+                  }
+                />
+                <div className="space-y-0.5">
+                  <Label
+                    htmlFor="includeMeetingTranscripts"
+                    className="text-sm cursor-pointer"
+                  >
+                    Include full transcripts
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {value.includeMeetingTranscripts
+                      ? "Full transcripts included (higher token usage)"
+                      : "Using extracted insights only"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </CollapsibleContent>
       </Collapsible>
 

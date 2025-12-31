@@ -107,6 +107,12 @@ export function useTokenEstimate({
       String(contextSelection.includeAccountResearch)
     );
 
+    // Include meeting transcripts toggle (defaults to false)
+    params.set(
+      "includeMeetingTranscripts",
+      String(contextSelection.includeMeetingTranscripts ?? false)
+    );
+
     if (contextSelection.additionalContext) {
       params.set(
         "additionalContextLength",

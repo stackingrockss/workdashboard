@@ -6,6 +6,11 @@
  * - Goals / future state
  * - People (participants + mentioned individuals)
  * - Next steps / action items
+ * - Key quotes / verbatim statements
+ * - Objections / concerns raised
+ * - Competition mentions
+ * - Decision process details
+ * - Call sentiment
  */
 
 import { generateWithSystemInstruction } from "./gemini";
@@ -13,6 +18,11 @@ import {
   classifyContactRole,
   type ContactRole,
 } from "./classify-contact-role";
+import type {
+  CompetitionMention,
+  DecisionProcess,
+  CallSentiment,
+} from "@/lib/validations/gong-call";
 
 // ============================================================================
 // Types
@@ -32,6 +42,12 @@ export interface GranolaTranscriptParsed {
   nextSteps: string[];
   whyAndWhyNow: string[];
   quantifiableMetrics: string[];
+  // Enhanced extraction fields
+  keyQuotes: string[];
+  objections: string[];
+  competitionMentions: CompetitionMention[];
+  decisionProcess: DecisionProcess;
+  callSentiment: CallSentiment;
 }
 
 export interface GranolaParseResult {
@@ -46,7 +62,7 @@ export interface GranolaParseResult {
 
 const SYSTEM_INSTRUCTION = `You are a sales call analyzer specializing in extracting actionable insights from Granola meeting transcripts.
 
-Your task is to extract 6 key areas from the transcript:
+Your task is to extract 11 key areas from the transcript:
 
 1. **PAIN POINTS** - Current problems, frustrations, challenges the prospect is facing
    - Look for complaints about current vendor/solution
@@ -98,6 +114,45 @@ Your task is to extract 6 key areas from the transcript:
    - Only include metrics with actual numbers or percentages
    Examples: "$2M in annual savings expected", "30% faster processing time", "Reduce headcount by 4 FTEs", "Handle 10x more transaction volume", "Currently spending $500K/year"
 
+7. **KEY QUOTES** - Verbatim customer statements that capture pain, value, or important context
+   - Direct quotes that could be used in proposals or case studies
+   - Statements that reveal true priorities or concerns
+   - Memorable phrases that capture the essence of their situation
+   - Include speaker attribution if clear (e.g., "John: 'We need this done by Q1'")
+   Examples: "We're spending $2M a year on this manual process", "If we don't solve this by Q1, heads will roll", "Our CEO is personally invested in this initiative"
+
+8. **OBJECTIONS** - Concerns, pushback, or hesitations raised by the prospect
+   - Pricing concerns (too expensive, budget constraints, ROI questions)
+   - Timing concerns (not the right time, other priorities, resource constraints)
+   - Technical concerns (integration complexity, security, scalability)
+   - Process concerns (too complex, change management, training)
+   - Competitive concerns (considering alternatives, incumbent relationship)
+   - Status quo concerns (current solution is "good enough", risk of change)
+   Examples: "We're not sure we can justify the cost", "Our IT team is stretched thin", "We've been burned by vendors before", "The board wants us to wait until next fiscal year"
+
+9. **COMPETITION MENTIONS** - Any mention of competitors or alternative solutions
+   For each mention extract:
+   - competitor: Named vendor OR alternatives like "status quo", "manual process", "do nothing", "build in-house", "current vendor"
+   - context: What was said about them
+   - sentiment: "positive", "negative", or "neutral" (from customer's perspective toward the competitor)
+   Examples:
+   - {"competitor": "Acme Corp", "context": "We're also talking to them but their pricing is confusing", "sentiment": "negative"}
+   - {"competitor": "status quo", "context": "Our current process works but it's slow and error-prone", "sentiment": "negative"}
+   - {"competitor": "build in-house", "context": "Engineering wants to build this themselves", "sentiment": "positive"}
+
+10. **DECISION PROCESS** - Information about how and when they'll make a decision
+    Extract:
+    - timeline: When they need to decide or go live (e.g., "Q1 2025", "by end of year", "within 90 days"). Use null if not mentioned.
+    - stakeholders: Array of people/roles who will be involved in the decision (e.g., ["CFO", "VP Engineering", "Legal"])
+    - budgetContext: Budget status, range mentioned, or approval situation as a simple string (e.g., "Budget approved for $200K", "Waiting on Q1 budget cycle", "Need to get CFO approval"). Use null if not mentioned.
+    - approvalSteps: Array of steps needed to get to yes (e.g., ["Security review", "Legal sign-off", "Board approval", "Pilot program"])
+
+11. **CALL SENTIMENT** - Overall tone and trajectory of the conversation
+    Extract:
+    - overall: "positive", "neutral", or "negative" - How did the call feel overall?
+    - momentum: "accelerating", "steady", or "stalling" - Is the deal moving forward, maintaining pace, or slowing down?
+    - enthusiasm: "high", "medium", or "low" - How engaged and interested was the prospect?
+
 IMPORTANT RULES:
 - Return ONLY valid JSON matching this exact structure:
 {
@@ -109,14 +164,36 @@ IMPORTANT RULES:
   ],
   "nextSteps": ["string", ...],
   "whyAndWhyNow": ["string", ...],
-  "quantifiableMetrics": ["string", ...]
+  "quantifiableMetrics": ["string", ...],
+  "keyQuotes": ["string", ...],
+  "objections": ["string", ...],
+  "competitionMentions": [
+    { "competitor": "string", "context": "string", "sentiment": "positive|negative|neutral" },
+    ...
+  ],
+  "decisionProcess": {
+    "timeline": "string or null",
+    "stakeholders": ["string", ...],
+    "budgetContext": "string or null",
+    "approvalSteps": ["string", ...]
+  },
+  "callSentiment": {
+    "overall": "positive|neutral|negative",
+    "momentum": "accelerating|steady|stalling",
+    "enthusiasm": "high|medium|low"
+  }
 }
 - Be specific and concise in your extractions
-- If a category has no clear information, return empty array
+- If a category has no clear information, return empty array (or null for optional string fields)
 - For people, include everyone mentioned who is relevant to the deal
 - For people fields: If organization or role is unclear from context, use "Unknown" instead of leaving empty
 - For next steps, preserve dates/times mentioned
 - For quantifiableMetrics, only include items with actual numbers or percentages mentioned
+- For keyQuotes, use the customer's actual words as closely as possible
+- For objections, be specific about the nature of the concern
+- For competitionMentions, include "status quo" and "build in-house" as valid competitors
+- For decisionProcess, capture the buying process details even if incomplete
+- For callSentiment, assess based on overall tone, engagement level, and deal momentum signals
 - Focus on business-relevant information only (skip small talk unless it reveals relationship insights)
 - Do NOT add commentary or explanations outside the JSON structure`;
 
@@ -242,6 +319,65 @@ Return your analysis as JSON only.`;
     }
     if (!Array.isArray(parsedData.quantifiableMetrics)) {
       parsedData.quantifiableMetrics = [];
+    }
+
+    // Normalize enhanced extraction fields
+    if (!Array.isArray(parsedData.keyQuotes)) {
+      parsedData.keyQuotes = [];
+    }
+    if (!Array.isArray(parsedData.objections)) {
+      parsedData.objections = [];
+    }
+    if (!Array.isArray(parsedData.competitionMentions)) {
+      parsedData.competitionMentions = [];
+    }
+
+    // Normalize decisionProcess
+    if (!parsedData.decisionProcess || typeof parsedData.decisionProcess !== "object") {
+      parsedData.decisionProcess = {
+        timeline: null,
+        stakeholders: [],
+        budgetContext: null,
+        approvalSteps: [],
+      };
+    } else {
+      // Ensure all fields exist
+      if (parsedData.decisionProcess.timeline === undefined) {
+        parsedData.decisionProcess.timeline = null;
+      }
+      if (!Array.isArray(parsedData.decisionProcess.stakeholders)) {
+        parsedData.decisionProcess.stakeholders = [];
+      }
+      if (parsedData.decisionProcess.budgetContext === undefined) {
+        parsedData.decisionProcess.budgetContext = null;
+      }
+      if (!Array.isArray(parsedData.decisionProcess.approvalSteps)) {
+        parsedData.decisionProcess.approvalSteps = [];
+      }
+    }
+
+    // Normalize callSentiment
+    if (!parsedData.callSentiment || typeof parsedData.callSentiment !== "object") {
+      parsedData.callSentiment = {
+        overall: "neutral",
+        momentum: "steady",
+        enthusiasm: "medium",
+      };
+    } else {
+      // Validate enum values with defaults
+      const validOverall = ["positive", "neutral", "negative"];
+      const validMomentum = ["accelerating", "steady", "stalling"];
+      const validEnthusiasm = ["high", "medium", "low"];
+
+      if (!validOverall.includes(parsedData.callSentiment.overall)) {
+        parsedData.callSentiment.overall = "neutral";
+      }
+      if (!validMomentum.includes(parsedData.callSentiment.momentum)) {
+        parsedData.callSentiment.momentum = "steady";
+      }
+      if (!validEnthusiasm.includes(parsedData.callSentiment.enthusiasm)) {
+        parsedData.callSentiment.enthusiasm = "medium";
+      }
     }
 
     // Validate and normalize people objects

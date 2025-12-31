@@ -630,6 +630,37 @@ export const ContextSelectionStep = ({
                   )}
                 </Label>
               </div>
+
+              {/* Full transcripts toggle */}
+              {selectedCount > 0 && (
+                <div className="pt-3 mt-3 border-t">
+                  <div className="flex items-start gap-3">
+                    <Checkbox
+                      id="includeMeetingTranscripts"
+                      checked={contextSelection.includeMeetingTranscripts || false}
+                      onCheckedChange={(checked) =>
+                        onContextChange({
+                          ...contextSelection,
+                          includeMeetingTranscripts: checked === true,
+                        })
+                      }
+                    />
+                    <div className="space-y-1">
+                      <Label
+                        htmlFor="includeMeetingTranscripts"
+                        className="cursor-pointer"
+                      >
+                        Include full transcripts
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        {contextSelection.includeMeetingTranscripts
+                          ? "Full meeting transcripts will be sent to AI (higher token usage)"
+                          : "Only extracted insights (pain points, goals, quotes, etc.) will be used"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

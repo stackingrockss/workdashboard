@@ -100,6 +100,11 @@ model GongCall {
   riskAssessment             Json?
   whyAndWhyNow               Json?                       // Array of business driver/urgency reasons: string[]
   quantifiableMetrics        Json?                       // Array of ROI/measurable outcomes: string[]
+  keyQuotes                  Json?                       // Array of verbatim customer statements: string[]
+  objections                 Json?                       // Array of concerns/pushback raised: string[]
+  competitionMentions        Json?                       // Array of {competitor, context, sentiment}
+  decisionProcess            Json?                       // {timeline, stakeholders[], budgetContext, approvalSteps[]}
+  callSentiment              Json?                       // {overall, momentum, enthusiasm}
   calendarEventId            String?
 
   // Gong API sync fields
@@ -163,6 +168,11 @@ model GranolaNote {
   riskAssessment             Json?
   whyAndWhyNow               Json?                       // Array of business driver/urgency reasons: string[]
   quantifiableMetrics        Json?                       // Array of ROI/measurable outcomes: string[]
+  keyQuotes                  Json?                       // Array of verbatim customer statements: string[]
+  objections                 Json?                       // Array of concerns/pushback raised: string[]
+  competitionMentions        Json?                       // Array of {competitor, context, sentiment}
+  decisionProcess            Json?                       // {timeline, stakeholders[], budgetContext, approvalSteps[]}
+  callSentiment              Json?                       // {overall, momentum, enthusiasm}
   calendarEvent                CalendarEvent?              @relation(fields: [calendarEventId], references: [id], onDelete: SetNull)
   contactsReadyNotifications   ContactsReadyNotification[]
   parsingCompleteNotifications ParsingCompleteNotification[] @relation("GranolaParsingCompleteNotifications")
@@ -275,8 +285,15 @@ model Opportunity {
   riskAssessmentHistory      String?
   whyAndWhyNowHistory        String?                      // Per-call history (append-only, date-prefixed)
   quantifiableMetricsHistory String?                      // Per-call history (append-only, date-prefixed)
+  keyQuotesHistory           String?                      // Per-call history (append-only, date-prefixed)
+  objectionsHistory          String?                      // Per-call history (append-only, date-prefixed)
   consolidatedWhyAndWhyNow   Json?                        // Consolidated array of business drivers: string[]
   consolidatedMetrics        Json?                        // Consolidated array of ROI metrics: string[]
+  consolidatedKeyQuotes      Json?                        // Consolidated array of key customer quotes: string[]
+  consolidatedObjections     Json?                        // Consolidated array of objections: string[]
+  consolidatedCompetition    Json?                        // Consolidated competition summary
+  consolidatedDecisionProcess Json?                       // Consolidated decision process summary
+  consolidatedSentimentTrend Json?                        // Overall sentiment trend across calls
   consolidationCallCount     Int?
   lastConsolidatedAt         DateTime?
   consolidationStatus        ConsolidationStatus?     @default(idle)

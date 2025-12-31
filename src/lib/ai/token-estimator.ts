@@ -228,23 +228,35 @@ export function estimateConsolidatedInsightsTokens(insights: {
 /**
  * Estimates tokens for a single meeting
  */
-export function estimateMeetingTokens(meeting: {
-  title: string;
-  date?: Date | string;
-  type: "gong" | "granola" | "google";
-  transcriptText?: string | null;
-  painPoints?: unknown[] | null;
-  goals?: unknown[] | null;
-  nextSteps?: unknown[] | null;
-  whyAndWhyNow?: unknown[] | null;
-  quantifiableMetrics?: unknown[] | null;
-}): MeetingTokenEstimate & { id: string } {
+export function estimateMeetingTokens(
+  meeting: {
+    title: string;
+    date?: Date | string;
+    type: "gong" | "granola" | "google";
+    transcriptText?: string | null;
+    painPoints?: unknown[] | null;
+    goals?: unknown[] | null;
+    nextSteps?: unknown[] | null;
+    whyAndWhyNow?: unknown[] | null;
+    quantifiableMetrics?: unknown[] | null;
+    // Enhanced extraction fields for token estimation
+    keyQuotes?: unknown[] | null;
+    objections?: unknown[] | null;
+    competitionMentions?: unknown[] | null;
+    decisionProcess?: unknown | null;
+    callSentiment?: unknown | null;
+  },
+  options?: {
+    includeTranscript?: boolean;
+  }
+): MeetingTokenEstimate & { id: string } {
+  const includeTranscript = options?.includeTranscript ?? false;
   let chars = 0;
 
   // Header
   chars += (`### ${meeting.title} (date) - ${meeting.type.toUpperCase()}\n`).length;
 
-  // Insights
+  // Basic insights
   const painPoints = (meeting.painPoints as string[]) || [];
   const goals = (meeting.goals as string[]) || [];
   const nextSteps = (meeting.nextSteps as string[]) || [];
@@ -259,16 +271,41 @@ export function estimateMeetingTokens(meeting: {
     chars += (`**Next Steps:** ${nextSteps.join("; ")}\n`).length;
   }
 
-  // Transcript (truncated to MAX_TRANSCRIPT_LENGTH)
+  // Enhanced extraction fields (always included when available)
+  const keyQuotes = (meeting.keyQuotes as string[]) || [];
+  const objections = (meeting.objections as string[]) || [];
+  const competitionMentions = (meeting.competitionMentions as Array<{ competitor: string; context: string }>) || [];
+
+  if (keyQuotes.length > 0) {
+    chars += (`**Key Quotes:** ${keyQuotes.map(q => `"${q}"`).join("; ")}\n`).length;
+  }
+  if (objections.length > 0) {
+    chars += (`**Objections:** ${objections.join("; ")}\n`).length;
+  }
+  if (competitionMentions.length > 0) {
+    chars += (`**Competition Mentions:** ${competitionMentions.map(c => c.competitor).join(", ")}\n`).length;
+  }
+  if (meeting.decisionProcess) {
+    chars += 100; // Approximate for decision process object
+  }
+  if (meeting.callSentiment) {
+    chars += 50; // Approximate for sentiment object
+  }
+
+  // Transcript (only if explicitly requested)
   const hasTranscript = !!meeting.transcriptText;
   const transcriptLength = meeting.transcriptText
     ? Math.min(meeting.transcriptText.length, MAX_TRANSCRIPT_LENGTH)
     : 0;
 
-  if (transcriptLength > 0) {
+  // Only count transcript tokens if includeTranscript is true
+  if (includeTranscript && transcriptLength > 0) {
     chars += ("**Transcript Summary:** ").length;
     chars += transcriptLength;
   }
+
+  const insightsCount = painPoints.length + goals.length + nextSteps.length +
+    keyQuotes.length + objections.length + competitionMentions.length;
 
   return {
     id: "",
@@ -276,8 +313,8 @@ export function estimateMeetingTokens(meeting: {
     type: meeting.type,
     estimatedTokens: estimateTokensFromChars(chars),
     hasTranscript,
-    transcriptLength,
-    insightsCount: painPoints.length + goals.length + nextSteps.length,
+    transcriptLength: includeTranscript ? transcriptLength : 0,
+    insightsCount,
   };
 }
 

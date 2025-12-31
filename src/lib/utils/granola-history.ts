@@ -53,7 +53,7 @@ function updateHistoryForDate(
 
 /**
  * Main function to append Granola note insights to opportunity history
- * Updates painPointsHistory, goalsHistory, and nextStepsHistory fields
+ * Updates painPointsHistory, goalsHistory, nextStepsHistory, keyQuotesHistory, and objectionsHistory fields
  * Tracks parsed notes to prevent duplicate entries
  */
 export async function appendToGranolaHistory({
@@ -65,6 +65,8 @@ export async function appendToGranolaHistory({
   nextSteps = [],
   whyAndWhyNow = [],
   quantifiableMetrics = [],
+  keyQuotes = [],
+  objections = [],
 }: {
   opportunityId: string;
   granolaId: string;
@@ -74,6 +76,8 @@ export async function appendToGranolaHistory({
   nextSteps?: string[];
   whyAndWhyNow?: string[];
   quantifiableMetrics?: string[];
+  keyQuotes?: string[];
+  objections?: string[];
 }) {
   // Format meeting date to US format
   const formattedDate = formatDateUS(meetingDate);
@@ -87,6 +91,8 @@ export async function appendToGranolaHistory({
       nextStepsHistory: true,
       whyAndWhyNowHistory: true,
       quantifiableMetricsHistory: true,
+      keyQuotesHistory: true,
+      objectionsHistory: true,
       parsedGranolaIds: true,
     },
   });
@@ -132,6 +138,18 @@ export async function appendToGranolaHistory({
     quantifiableMetrics
   );
 
+  const updatedKeyQuotesHistory = updateHistoryForDate(
+    opportunity.keyQuotesHistory,
+    formattedDate,
+    keyQuotes
+  );
+
+  const updatedObjectionsHistory = updateHistoryForDate(
+    opportunity.objectionsHistory,
+    formattedDate,
+    objections
+  );
+
   // Save to database and track this parsed note
   const updatedOpportunity = await prisma.opportunity.update({
     where: { id: opportunityId },
@@ -141,6 +159,8 @@ export async function appendToGranolaHistory({
       nextStepsHistory: updatedNextStepsHistory,
       whyAndWhyNowHistory: updatedWhyAndWhyNowHistory,
       quantifiableMetricsHistory: updatedQuantifiableMetricsHistory,
+      keyQuotesHistory: updatedKeyQuotesHistory,
+      objectionsHistory: updatedObjectionsHistory,
       parsedGranolaIds: {
         push: granolaId, // Add this note ID to the tracking array
       },

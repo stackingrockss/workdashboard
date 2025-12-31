@@ -59,6 +59,10 @@ export interface ContextSelection {
   includeAccountResearch: boolean;
   includeConsolidatedInsights: boolean;
   additionalContext?: string;
+  referenceDocumentIds?: string[];
+  referenceContentIds?: string[];
+  // Include full meeting transcripts (defaults to false - uses extracted insights only)
+  includeMeetingTranscripts?: boolean;
 }
 
 export interface GeneratedContent {

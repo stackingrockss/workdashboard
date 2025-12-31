@@ -241,7 +241,7 @@ export const BriefSelectionStep = ({
                       ? "Brief Preview"
                       : "Select an Option"}
                 </CardTitle>
-                {selectedBrief && (
+                {selectedBrief && selectedBrief.scope !== "template" && (
                   <Button
                     variant="ghost"
                     size="sm"

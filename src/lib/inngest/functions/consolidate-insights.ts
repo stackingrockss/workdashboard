@@ -5,7 +5,12 @@ import { inngest } from "@/lib/inngest/client";
 import { consolidateCallInsights } from "@/lib/ai/consolidate-call-insights";
 import { prisma } from "@/lib/db";
 import { ParsingStatus } from "@prisma/client";
-import type { RiskAssessment } from "@/types/gong-call";
+import type {
+  RiskAssessment,
+  CompetitionMention,
+  DecisionProcess,
+  CallSentiment,
+} from "@/types/gong-call";
 import {
   deduplicateMeetings,
   logDeduplicationStats,
@@ -62,6 +67,11 @@ export const consolidateInsightsJob = inngest.createFunction(
               riskAssessment: true,
               whyAndWhyNow: true,
               quantifiableMetrics: true,
+              keyQuotes: true,
+              objections: true,
+              competitionMentions: true,
+              decisionProcess: true,
+              callSentiment: true,
             },
           }),
           // Fetch Granola notes
@@ -80,6 +90,11 @@ export const consolidateInsightsJob = inngest.createFunction(
               riskAssessment: true,
               whyAndWhyNow: true,
               quantifiableMetrics: true,
+              keyQuotes: true,
+              objections: true,
+              competitionMentions: true,
+              decisionProcess: true,
+              callSentiment: true,
             },
           }),
         ]);
@@ -151,10 +166,15 @@ export const consolidateInsightsJob = inngest.createFunction(
       // Convert meetingDate to ISO string
       const meetingDate = new Date(meeting.meetingDate).toISOString();
 
-      // Type assertion for the meeting with new fields
-      const meetingWithNewFields = meeting as typeof meeting & {
+      // Type assertion for the meeting with all fields
+      const meetingWithAllFields = meeting as typeof meeting & {
         whyAndWhyNow?: unknown;
         quantifiableMetrics?: unknown;
+        keyQuotes?: unknown;
+        objections?: unknown;
+        competitionMentions?: unknown;
+        decisionProcess?: unknown;
+        callSentiment?: unknown;
       };
 
       return {
@@ -169,12 +189,27 @@ export const consolidateInsightsJob = inngest.createFunction(
         riskAssessment: meeting.riskAssessment
           ? (meeting.riskAssessment as unknown as RiskAssessment)
           : null,
-        whyAndWhyNow: Array.isArray(meetingWithNewFields.whyAndWhyNow)
-          ? (meetingWithNewFields.whyAndWhyNow as string[])
+        whyAndWhyNow: Array.isArray(meetingWithAllFields.whyAndWhyNow)
+          ? (meetingWithAllFields.whyAndWhyNow as string[])
           : [],
-        quantifiableMetrics: Array.isArray(meetingWithNewFields.quantifiableMetrics)
-          ? (meetingWithNewFields.quantifiableMetrics as string[])
+        quantifiableMetrics: Array.isArray(meetingWithAllFields.quantifiableMetrics)
+          ? (meetingWithAllFields.quantifiableMetrics as string[])
           : [],
+        keyQuotes: Array.isArray(meetingWithAllFields.keyQuotes)
+          ? (meetingWithAllFields.keyQuotes as string[])
+          : [],
+        objections: Array.isArray(meetingWithAllFields.objections)
+          ? (meetingWithAllFields.objections as string[])
+          : [],
+        competitionMentions: Array.isArray(meetingWithAllFields.competitionMentions)
+          ? (meetingWithAllFields.competitionMentions as CompetitionMention[])
+          : [],
+        decisionProcess: meetingWithAllFields.decisionProcess
+          ? (meetingWithAllFields.decisionProcess as DecisionProcess)
+          : null,
+        callSentiment: meetingWithAllFields.callSentiment
+          ? (meetingWithAllFields.callSentiment as CallSentiment)
+          : null,
       };
     });
 
@@ -231,6 +266,22 @@ export const consolidateInsightsJob = inngest.createFunction(
             consolidatedMetrics: JSON.parse(
               JSON.stringify(consolidationResult.data!.quantifiableMetrics)
             ),
+            // Enhanced consolidated fields
+            consolidatedKeyQuotes: JSON.parse(
+              JSON.stringify(consolidationResult.data!.keyQuotes)
+            ),
+            consolidatedObjections: JSON.parse(
+              JSON.stringify(consolidationResult.data!.objections)
+            ),
+            consolidatedCompetition: JSON.parse(
+              JSON.stringify(consolidationResult.data!.competitionSummary)
+            ),
+            consolidatedDecisionProcess: JSON.parse(
+              JSON.stringify(consolidationResult.data!.decisionProcessSummary)
+            ),
+            consolidatedSentimentTrend: JSON.parse(
+              JSON.stringify(consolidationResult.data!.sentimentTrend)
+            ),
             lastConsolidatedAt: new Date(),
             consolidationCallCount: uniqueMeetings.length, // Count unique meetings (after deduplication)
             consolidationStatus: "completed",
@@ -242,6 +293,11 @@ export const consolidateInsightsJob = inngest.createFunction(
             consolidatedRiskAssessment: true,
             consolidatedWhyAndWhyNow: true,
             consolidatedMetrics: true,
+            consolidatedKeyQuotes: true,
+            consolidatedObjections: true,
+            consolidatedCompetition: true,
+            consolidatedDecisionProcess: true,
+            consolidatedSentimentTrend: true,
             lastConsolidatedAt: true,
             consolidationCallCount: true,
             consolidationStatus: true,
@@ -302,6 +358,10 @@ export const consolidateInsightsJob = inngest.createFunction(
       goalsCount: consolidationResult.data.goals.length,
       whyAndWhyNowCount: consolidationResult.data.whyAndWhyNow.length,
       quantifiableMetricsCount: consolidationResult.data.quantifiableMetrics.length,
+      keyQuotesCount: consolidationResult.data.keyQuotes.length,
+      objectionsCount: consolidationResult.data.objections.length,
+      competitorsCount: consolidationResult.data.competitionSummary.competitors.length,
+      sentimentTrajectory: consolidationResult.data.sentimentTrend.trajectory,
       riskLevel: consolidationResult.data.riskAssessment.riskLevel,
       lastConsolidatedAt: updatedOpportunity.lastConsolidatedAt,
       autoMerged: autoMergeResult.autoMerged,

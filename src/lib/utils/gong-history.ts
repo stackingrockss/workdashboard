@@ -176,7 +176,7 @@ function updateHistoryForDate(
 
 /**
  * Main function to append Gong call insights to opportunity history
- * Updates painPointsHistory, goalsHistory, and nextStepsHistory fields
+ * Updates painPointsHistory, goalsHistory, nextStepsHistory, keyQuotesHistory, and objectionsHistory fields
  * Tracks parsed calls to prevent duplicate entries
  */
 export async function appendToOpportunityHistory({
@@ -188,6 +188,8 @@ export async function appendToOpportunityHistory({
   nextSteps = [],
   whyAndWhyNow = [],
   quantifiableMetrics = [],
+  keyQuotes = [],
+  objections = [],
 }: {
   opportunityId: string;
   gongCallId: string;
@@ -197,6 +199,8 @@ export async function appendToOpportunityHistory({
   nextSteps?: string[];
   whyAndWhyNow?: string[];
   quantifiableMetrics?: string[];
+  keyQuotes?: string[];
+  objections?: string[];
 }) {
   // Format meeting date to US format
   const formattedDate = formatDateUS(meetingDate);
@@ -210,6 +214,8 @@ export async function appendToOpportunityHistory({
       nextStepsHistory: true,
       whyAndWhyNowHistory: true,
       quantifiableMetricsHistory: true,
+      keyQuotesHistory: true,
+      objectionsHistory: true,
       parsedGongCallIds: true,
     },
   });
@@ -255,6 +261,18 @@ export async function appendToOpportunityHistory({
     quantifiableMetrics
   );
 
+  const updatedKeyQuotesHistory = updateHistoryForDate(
+    opportunity.keyQuotesHistory,
+    formattedDate,
+    keyQuotes
+  );
+
+  const updatedObjectionsHistory = updateHistoryForDate(
+    opportunity.objectionsHistory,
+    formattedDate,
+    objections
+  );
+
   // Save to database and track this parsed call
   const updatedOpportunity = await prisma.opportunity.update({
     where: { id: opportunityId },
@@ -264,6 +282,8 @@ export async function appendToOpportunityHistory({
       nextStepsHistory: updatedNextStepsHistory,
       whyAndWhyNowHistory: updatedWhyAndWhyNowHistory,
       quantifiableMetricsHistory: updatedQuantifiableMetricsHistory,
+      keyQuotesHistory: updatedKeyQuotesHistory,
+      objectionsHistory: updatedObjectionsHistory,
       parsedGongCallIds: {
         push: gongCallId, // Add this call ID to the tracking array
       },

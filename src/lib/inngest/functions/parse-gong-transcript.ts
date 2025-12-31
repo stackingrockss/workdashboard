@@ -85,6 +85,12 @@ export const parseGongTranscriptJob = inngest.createFunction(
           nextSteps: JSON.parse(JSON.stringify(parseResult.data!.nextSteps)),
           whyAndWhyNow: JSON.parse(JSON.stringify(parseResult.data!.whyAndWhyNow)),
           quantifiableMetrics: JSON.parse(JSON.stringify(parseResult.data!.quantifiableMetrics)),
+          // Enhanced extraction fields
+          keyQuotes: JSON.parse(JSON.stringify(parseResult.data!.keyQuotes)),
+          objections: JSON.parse(JSON.stringify(parseResult.data!.objections)),
+          competitionMentions: JSON.parse(JSON.stringify(parseResult.data!.competitionMentions)),
+          decisionProcess: JSON.parse(JSON.stringify(parseResult.data!.decisionProcess)),
+          callSentiment: JSON.parse(JSON.stringify(parseResult.data!.callSentiment)),
           parsedAt: new Date(),
           parsingStatus: ParsingStatus.completed,
           parsingError: null,
@@ -225,6 +231,8 @@ export const parseGongTranscriptJob = inngest.createFunction(
           nextSteps: parseResult.data!.nextSteps,
           whyAndWhyNow: parseResult.data!.whyAndWhyNow,
           quantifiableMetrics: parseResult.data!.quantifiableMetrics,
+          keyQuotes: parseResult.data!.keyQuotes,
+          objections: parseResult.data!.objections,
         });
         return { historyUpdated: true };
       } catch (error) {
@@ -261,6 +269,9 @@ export const parseGongTranscriptJob = inngest.createFunction(
       peopleCount: parseResult.data.people.length,
       whyAndWhyNowCount: parseResult.data.whyAndWhyNow.length,
       quantifiableMetricsCount: parseResult.data.quantifiableMetrics.length,
+      keyQuotesCount: parseResult.data.keyQuotes.length,
+      objectionsCount: parseResult.data.objections.length,
+      competitionMentionsCount: parseResult.data.competitionMentions.length,
     };
   }
 );
