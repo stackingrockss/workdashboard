@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, FileStack } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, LayoutDashboard, FileText, Users, ExternalLink, AlertCircle, Target, ListChecks, Clock, ChevronDown, FileStack, Settings2 } from "lucide-react";
 import { Opportunity, getStageLabel, OpportunityStage, getDefaultConfidenceLevel, getDefaultForecastCategory, ReviewStatus, PlatformType, getReviewStatusLabel, getPlatformTypeLabel } from "@/types/opportunity";
 import { OpportunityForm } from "@/components/forms/OpportunityForm";
 import { updateOpportunity, deleteOpportunity, updateOpportunityField } from "@/lib/api/opportunities";
@@ -58,6 +58,18 @@ import { AccountIntelSummaryCard } from "./account-intel-summary-card";
 import { NotesTab } from "./notes-tab";
 import { DocumentsTab } from "../documents";
 import { CreateFollowUpTaskDialog } from "@/components/tasks/CreateFollowUpTaskDialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface OpportunityDetailClientProps {
   opportunity: Opportunity;
@@ -128,6 +140,13 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
   const [selectedGongCallForParsing, setSelectedGongCallForParsing] = useState<GongCall | null>(null);
   const [selectedGongCallForViewing, setSelectedGongCallForViewing] = useState<GongCall | null>(null);
   const [isFollowUpTaskDialogOpen, setIsFollowUpTaskDialogOpen] = useState(false);
+  const [accountResearchBriefs, setAccountResearchBriefs] = useState<Array<{
+    id: string;
+    name: string;
+    isDefault: boolean;
+    scope: string;
+  }>>([]);
+  const [selectedResearchBriefId, setSelectedResearchBriefId] = useState<string | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { setEntityContext, openSidebarWithSelection } = useCommentSidebar();
@@ -239,6 +258,29 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
     loadContacts();
   }, [opportunity.id]);
 
+  // Load account research briefs
+  useEffect(() => {
+    const loadAccountResearchBriefs = async () => {
+      try {
+        const response = await fetch("/api/v1/briefs?category=account_research&scope=all");
+        if (response.ok) {
+          const data = await response.json();
+          const briefs = data.briefs || [];
+          setAccountResearchBriefs(briefs);
+          // Set default brief if no selection and we have briefs
+          if (briefs.length > 0 && !selectedResearchBriefId) {
+            // Find default brief or use first one
+            const defaultBrief = briefs.find((b: { isDefault: boolean }) => b.isDefault) || briefs[0];
+            setSelectedResearchBriefId(defaultBrief.id);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load account research briefs:", error);
+      }
+    };
+    loadAccountResearchBriefs();
+  }, []);
+
   // Load external calendar events for this opportunity
   useEffect(() => {
     const loadCalendarEvents = async () => {
@@ -346,29 +388,28 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
     }
 
     setIsGeneratingResearch(true);
+    setResearchStatus("generating");
     try {
-      const response = await fetch("/api/v1/ai/meeting-notes", {
+      // Use new endpoint that triggers Inngest job with brief system
+      const response = await fetch(`/api/v1/opportunities/${opportunity.id}/generate-research`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          accountName,
-          stage: opportunity.stage,
-          opportunityValue: opportunity.amountArr > 0 ? opportunity.amountArr : undefined,
-          opportunityId: opportunity.id, // Save to database
+          briefId: selectedResearchBriefId || undefined,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok || !data.success) {
+        setResearchStatus("failed");
         throw new Error(data.error || "Failed to generate account research");
       }
 
-      // API now handles saving to database automatically
-      toast.success("Account research generated successfully!");
-      router.refresh();
+      // Show toast - the polling will handle the completion notification
+      toast.info("Generating account research... This may take 10-30 seconds.");
     } catch (error) {
       console.error("Error generating research:", error);
 
@@ -796,14 +837,52 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                   <div className="space-y-4">
                     <Collapsible defaultOpen={true}>
                       <Card id="account-research" className="border-l-4 border-l-blue-500">
-                        <CollapsibleTrigger className="w-full group">
-                          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
-                            <CardTitle className="flex items-center justify-between text-base">
+                        <CardHeader className="py-4">
+                          <CardTitle className="flex items-center justify-between text-base">
+                            <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors group">
                               <span className="font-semibold">Account Research</span>
                               <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                            </CardTitle>
-                          </CardHeader>
-                        </CollapsibleTrigger>
+                            </CollapsibleTrigger>
+                            {accountResearchBriefs.length > 0 && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground hover:text-foreground">
+                                    <Settings2 className="h-4 w-4" />
+                                    <span className="text-xs hidden sm:inline">Brief</span>
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-64" align="end">
+                                  <div className="space-y-2">
+                                    <h4 className="font-medium text-sm">Research Brief</h4>
+                                    <p className="text-xs text-muted-foreground">
+                                      Select which brief to use for generating account research.
+                                    </p>
+                                    <Select
+                                      value={selectedResearchBriefId || ""}
+                                      onValueChange={setSelectedResearchBriefId}
+                                    >
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select a brief" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {accountResearchBriefs.map((brief) => (
+                                          <SelectItem key={brief.id} value={brief.id}>
+                                            <div className="flex items-center gap-2">
+                                              <span>{brief.name}</span>
+                                              {brief.isDefault && (
+                                                <Badge variant="secondary" className="text-[10px] px-1 py-0">Default</Badge>
+                                              )}
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </CardTitle>
+                        </CardHeader>
                         <CollapsibleContent>
                           <CardContent className="pt-0">
                             <InlineMarkdownWithAI
@@ -854,14 +933,52 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
                 /* Private Company: Single-column full-width layout */
                 <Collapsible defaultOpen={true}>
                   <Card id="account-research" className="border-l-4 border-l-blue-500">
-                    <CollapsibleTrigger className="w-full group">
-                      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4">
-                        <CardTitle className="flex items-center justify-between text-base">
+                    <CardHeader className="py-4">
+                      <CardTitle className="flex items-center justify-between text-base">
+                        <CollapsibleTrigger className="flex items-center gap-2 cursor-pointer hover:text-primary transition-colors group">
                           <span className="font-semibold">Account Research</span>
                           <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                        </CardTitle>
-                      </CardHeader>
-                    </CollapsibleTrigger>
+                        </CollapsibleTrigger>
+                        {accountResearchBriefs.length > 0 && (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 gap-1.5 text-muted-foreground hover:text-foreground">
+                                <Settings2 className="h-4 w-4" />
+                                <span className="text-xs hidden sm:inline">Brief</span>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64" align="end">
+                              <div className="space-y-2">
+                                <h4 className="font-medium text-sm">Research Brief</h4>
+                                <p className="text-xs text-muted-foreground">
+                                  Select which brief to use for generating account research.
+                                </p>
+                                <Select
+                                  value={selectedResearchBriefId || ""}
+                                  onValueChange={setSelectedResearchBriefId}
+                                >
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select a brief" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {accountResearchBriefs.map((brief) => (
+                                      <SelectItem key={brief.id} value={brief.id}>
+                                        <div className="flex items-center gap-2">
+                                          <span>{brief.name}</span>
+                                          {brief.isDefault && (
+                                            <Badge variant="secondary" className="text-[10px] px-1 py-0">Default</Badge>
+                                          )}
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
                     <CollapsibleContent>
                       <CardContent className="pt-0">
                         <InlineMarkdownWithAI

@@ -84,6 +84,8 @@ const baseOpportunitySchema = z.object({
   // Business case generation fields
   businessCaseContent: z.string().max(100000).optional().nullable().transform(val => val === "" ? null : val),
   businessCaseQuestions: z.string().max(50000).optional().nullable().transform(val => val === "" ? null : val),
+  // Account research brief ID - optional override for default research brief
+  accountResearchBriefId: z.string().optional().nullable().transform(val => val === "" ? null : val),
 });
 
 export const opportunityCreateSchema = baseOpportunitySchema

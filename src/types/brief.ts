@@ -12,7 +12,8 @@ export type BriefCategory =
   | "notes"
   | "general"
   | "other"
-  | "business_impact_proposal";
+  | "business_impact_proposal"
+  | "account_research";
 
 export type BriefScope = "company" | "personal" | "template";
 
@@ -125,6 +126,7 @@ export const BRIEF_CATEGORY_LABELS: Record<BriefCategory, string> = {
   general: "General",
   other: "Other",
   business_impact_proposal: "Business Impact Proposal",
+  account_research: "Account Research",
 };
 
 export const BRIEF_CATEGORY_OPTIONS = Object.entries(BRIEF_CATEGORY_LABELS).map(

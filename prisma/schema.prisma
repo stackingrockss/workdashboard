@@ -67,6 +67,17 @@ model Contact {
   // Salesforce sync fields
   salesforceId              String?              @unique
   salesforceLastSyncAt      DateTime?
+
+  // Enrichment fields (from Hunter.io, People Data Labs, etc.)
+  linkedinUrl      String?
+  bio              String?           @db.Text
+  avatarUrl        String?
+  seniority        String?           // "executive", "director", "manager", "senior", "entry"
+  company          String?           // Current company from enrichment
+  enrichedAt       DateTime?
+  enrichmentSource String?           // "hunter", "pdl", "manual"
+  enrichmentStatus EnrichmentStatus  @default(none)
+
   account       Account?         @relation(fields: [accountId], references: [id], onDelete: Cascade)
   manager       Contact?         @relation("ContactReports", fields: [managerId], references: [id])
   directReports Contact[]        @relation("ContactReports")
@@ -76,6 +87,8 @@ model Contact {
   @@index([accountId])
   @@index([opportunityId, role])
   @@index([accountId, role])
+  @@index([email])
+  @@index([enrichmentStatus])
   @@schema("opportunity_tracker")
 }
 
@@ -274,6 +287,7 @@ model Opportunity {
   pinnedToWhiteboard         Boolean                  @default(false)
   accountResearchStatus      AccountResearchStatus?
   accountResearchGeneratedAt DateTime?
+  accountResearchBriefId     String?                  // Optional: override default research brief for this opportunity
   goalsHistory               String?
   nextStepsHistory           String?
   painPointsHistory          String?
@@ -326,6 +340,7 @@ model Opportunity {
   granolaNotes               GranolaNote[]
   mutualActionPlan           MutualActionPlan?
   account                    Account?                 @relation(fields: [accountId], references: [id])
+  accountResearchBrief       ContentBrief?            @relation("OpportunityResearchBrief", fields: [accountResearchBriefId], references: [id])
   organization               Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner                      User                     @relation(fields: [ownerId], references: [id])
   tasks                      Task[]
@@ -373,6 +388,7 @@ model Organization {
   settings                   OrganizationSettings?
   secFilings                 SecFiling[]
   users                      User[]
+  enrichmentLogs             EnrichmentLog[]
 
   @@schema("opportunity_tracker")
 }
@@ -881,6 +897,27 @@ model AccountResearchNotification {
   @@schema("opportunity_tracker")
 }
 
+model EnrichmentLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  contactId      String?      // Null if contact creation failed
+  email          String
+  provider       String       // "hunter", "pdl"
+  status         String       // "success", "not_found", "error"
+  creditsUsed    Int          @default(1)
+  responseData   Json?        // Cache full response for debugging
+  errorMessage   String?
+  createdAt      DateTime     @default(now())
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+  @@index([organizationId, createdAt])
+  @@index([provider, status])
+  @@schema("opportunity_tracker")
+}
+
 enum ContactRole {
   decision_maker
   influencer
@@ -1033,6 +1070,16 @@ enum CalendarEventSource {
   @@schema("opportunity_tracker")
 }
 
+enum EnrichmentStatus {
+  none       // Never enriched
+  pending    // Queued for enrichment
+  enriched   // Successfully enriched
+  not_found  // No data found for this email
+  failed     // API error
+
+  @@schema("opportunity_tracker")
+}
+
 model SecCompanyCache {
   id        String   @id @default(cuid())
   cik       String   @unique
@@ -1161,6 +1208,7 @@ enum BriefCategory {
   general
   other
   business_impact_proposal
+  account_research
 
   @@map("FrameworkCategory")
   @@schema("opportunity_tracker")
@@ -1215,6 +1263,7 @@ model ContentBrief {
   documents          Document[]
   generatedContents  GeneratedContent[]
   referenceContents  BriefReferenceContent[]
+  opportunitiesUsingForResearch Opportunity[] @relation("OpportunityResearchBrief")
 
   @@unique([organizationId, name, scope])
   @@index([organizationId])

@@ -35,6 +35,7 @@ import {
   Copy,
   LayoutTemplate,
   Eye,
+  Star,
 } from "lucide-react";
 import { BriefCategory, BRIEF_CATEGORY_LABELS } from "@/types/brief";
 import { formatDateShort } from "@/lib/format";
@@ -52,6 +53,7 @@ interface Brief {
   createdAt: Date | string;
   updatedAt: Date | string;
   usageCount: number;
+  isDefault: boolean;
   createdBy: {
     id: string;
     name: string | null;
@@ -74,6 +76,7 @@ export const BriefsPageClient = ({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null);
+  const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null);
 
   // Filter briefs
   const filteredBriefs = briefs.filter((b) => {
@@ -137,6 +140,47 @@ export const BriefsPageClient = ({
     }
   };
 
+  const handleSetDefault = async (briefId: string, isCurrentlyDefault: boolean) => {
+    setSettingDefaultId(briefId);
+    try {
+      const response = await fetch(`/api/v1/briefs/${briefId}/set-default`, {
+        method: isCurrentlyDefault ? "DELETE" : "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update default status");
+      }
+
+      const data = await response.json();
+      const updatedBrief = data.brief;
+      const category = updatedBrief.category as BriefCategory;
+
+      // Update local state: toggle default for this brief, unset default for others in same category
+      setBriefs((prev) =>
+        prev.map((b) => {
+          if (b.id === briefId) {
+            return { ...b, isDefault: updatedBrief.isDefault };
+          }
+          // If setting a new default, unset others in the same category
+          if (!isCurrentlyDefault && b.category === category && b.isDefault) {
+            return { ...b, isDefault: false };
+          }
+          return b;
+        })
+      );
+
+      toast.success(
+        isCurrentlyDefault
+          ? "Removed as default"
+          : `Set as default for ${BRIEF_CATEGORY_LABELS[category]}`
+      );
+    } catch (error) {
+      toast.error("Failed to update default status");
+    } finally {
+      setSettingDefaultId(null);
+    }
+  };
+
   const BriefCard = ({ brief }: { brief: Brief }) => {
     const isOwner = brief.createdById === currentUserId;
     const isTemplate = brief.scope === "template";
@@ -160,6 +204,12 @@ export const BriefsPageClient = ({
                 <Badge variant="outline" className="text-xs">
                   {BRIEF_CATEGORY_LABELS[brief.category]}
                 </Badge>
+                {brief.isDefault && (
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    <Star className="h-3 w-3 fill-current" />
+                    Default
+                  </Badge>
+                )}
                 {!isTemplate && (
                   <span className="text-xs text-muted-foreground">
                     {brief.usageCount} uses
@@ -202,6 +252,19 @@ export const BriefsPageClient = ({
                   <Copy className="h-4 w-4 mr-2" />
                   {duplicatingId === brief.id ? "Duplicating..." : "Duplicate"}
                 </DropdownMenuItem>
+                {!isTemplate && (
+                  <DropdownMenuItem
+                    onClick={() => handleSetDefault(brief.id, brief.isDefault)}
+                    disabled={settingDefaultId === brief.id}
+                  >
+                    <Star className={cn("h-4 w-4 mr-2", brief.isDefault && "fill-current")} />
+                    {settingDefaultId === brief.id
+                      ? "Updating..."
+                      : brief.isDefault
+                        ? "Remove as Default"
+                        : "Set as Default"}
+                  </DropdownMenuItem>
+                )}
                 {!isTemplate && isOwner && (
                   <DropdownMenuItem
                     className="text-destructive"

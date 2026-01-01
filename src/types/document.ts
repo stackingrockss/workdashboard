@@ -24,6 +24,7 @@ export const BRIEF_CATEGORY_LABELS: Record<BriefCategory, string> = {
   general: "General",
   other: "Other",
   business_impact_proposal: "Business Impact Proposal",
+  account_research: "Account Research",
 };
 
 export const BRIEF_CATEGORY_OPTIONS = Object.entries(BRIEF_CATEGORY_LABELS).map(

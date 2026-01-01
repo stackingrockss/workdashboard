@@ -24,6 +24,7 @@ import { generateBIPDocumentJob } from "@/lib/inngest/functions/generate-bip-doc
 import { syncGongCallsCron, syncGongCallsForOrg } from "@/lib/inngest/functions/sync-gong-calls";
 import { syncDatabaseBackupJob, fullDatabaseSyncJob } from "@/lib/inngest/functions/sync-database-backup";
 import { syncSalesforceCron, syncSalesforceForOrg } from "@/lib/inngest/functions/sync-salesforce";
+import { enrichContactsJob } from "@/lib/inngest/functions/enrich-contacts";
 
 // Increase timeout for long-running AI jobs
 // Vercel Pro: 300s (5 min), Hobby: 60s max
@@ -61,6 +62,7 @@ export const { GET, POST, PUT } = serve({
     fullDatabaseSyncJob, // Full database sync (manual trigger via event)
     syncSalesforceCron, // Salesforce sync (hourly cron)
     syncSalesforceForOrg, // Salesforce sync for single org (manual or scheduled)
+    enrichContactsJob, // Contact enrichment from calendar event attendees
   ],
   signingKey: process.env.INNGEST_SIGNING_KEY,
 });

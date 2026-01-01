@@ -234,6 +234,7 @@ export async function POST(req: NextRequest) {
       businessCaseStatus: data.businessCaseStatus ?? "not_started",
       ownerId: finalOwnerId,
       organizationId: user.organization.id, // Always set to user's organization
+      accountResearchBriefId: data.accountResearchBriefId ?? undefined,
       ...(accountId ? { accountId } : {}),
     };
 
@@ -255,6 +256,7 @@ export async function POST(req: NextRequest) {
         companyWebsite: data.accountWebsite,
         stage: data.stage,
         opportunityValue: data.amountArr,
+        briefId: data.accountResearchBriefId ?? undefined,
       }).catch((err) => {
         // Log but don't fail the opportunity creation
         console.error("[Inngest] Failed to trigger account research:", err);

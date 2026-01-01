@@ -29,6 +29,7 @@ export const briefCategorySchema = z.enum([
   "general",
   "other",
   "business_impact_proposal",
+  "account_research",
 ]);
 
 // Brief scope enum

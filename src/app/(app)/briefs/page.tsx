@@ -87,6 +87,7 @@ export default async function BriefsPage() {
             createdAt: b.createdAt,
             updatedAt: b.updatedAt,
             usageCount: b._count.generatedContents,
+            isDefault: b.isDefault ?? false,
             createdBy: b.createdBy ?? null,
           }))}
           currentUserId={user.id}

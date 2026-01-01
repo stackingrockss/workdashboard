@@ -222,6 +222,50 @@ Write in a clear, authoritative tone. Be specific with data points. Make recomme
       accountResearch: false,
     },
   },
+  {
+    name: "Account Research",
+    description: "Pre-meeting intelligence and company research for enterprise sales calls",
+    category: "account_research",
+    systemInstruction: `You are a sales intelligence assistant generating comprehensive pre-meeting research for enterprise B2B sales calls.
+
+Your goal is to generate actionable intelligence that helps sales reps have informed, consultative conversations. Focus on:
+1. Understanding the prospect's business model and strategic priorities
+2. Identifying pain points and challenges relevant to your solution
+3. Researching recent news, events, and changes that create opportunity
+4. Mapping the decision-making landscape
+5. Preparing discovery questions and conversation starters
+
+OUTPUT FORMAT:
+Use clean, readable formatting:
+- Use simple headers (## only, no ###) to separate major sections
+- Use bullet points (-) for lists instead of bold text for every item
+- Avoid excessive bold (**) formatting - use it ONLY for critical numbers, company names on first mention, or key takeaways
+- Use natural paragraph formatting for narrative sections
+- Keep it concise but thorough - aim for a 2-3 minute read
+- Focus on facts over speculation, but do highlight likely pain points based on industry knowledge`,
+    outputFormat: `Generate a comprehensive research document with the following sections:
+- Each section should use ## headers
+- Use bullet points for lists
+- Bold only key numbers and critical insights
+- Keep formatting clean and scannable`,
+    sections: [
+      { title: "Business Overview", description: "Revenue model, financials, strategic goals, company size", required: true },
+      { title: "Industry & Market Context", description: "Industry position, target customers, market trends", required: true },
+      { title: "Recent News & Events", description: "M&A, leadership changes, strategic announcements (last 12 months)", required: true },
+      { title: "Pain Points & Challenges", description: "Industry-specific challenges, operational issues, technology needs", required: true },
+      { title: "Tech Stack & Vendors", description: "Current systems, technology investments, integration landscape", required: false },
+      { title: "Competitive Position", description: "Market position, differentiation, growth trajectory", required: false },
+      { title: "Decision-Making Context", description: "Buying committee structure, key stakeholder roles, budget cycles", required: true },
+      { title: "Solution Fit", description: "How your solution addresses their challenges, estimated value/ROI", required: true },
+      { title: "Discovery Questions", description: "5-7 tailored questions based on research", required: true },
+      { title: "Conversation Starters", description: "Opening lines, relevant trends, social proof examples", required: true },
+    ],
+    contextConfig: {
+      meetings: false,
+      notes: false,
+      accountResearch: false,
+    },
+  },
 ];
 
 /**
@@ -237,6 +281,73 @@ export function getDefaultBriefByName(name: string): DefaultBrief | undefined {
 export function getDefaultBriefsByCategory(category: BriefCategory): DefaultBrief[] {
   return DEFAULT_BRIEFS.filter((b) => b.category === category);
 }
+
+/**
+ * Verifiable-specific Account Research Brief
+ * This is a company-specific brief for Verifiable's sales team.
+ * It should be seeded as a company brief (not a template) for Verifiable's organization.
+ */
+export const VERIFIABLE_ACCOUNT_RESEARCH_BRIEF: DefaultBrief = {
+  name: "Verifiable Account Research",
+  description: "Pre-meeting intelligence for Verifiable's healthcare credentialing sales",
+  category: "account_research",
+  systemInstruction: `You are a sales intelligence assistant for Verifiable (www.verifiable.com), a healthcare technology company.
+
+ABOUT VERIFIABLE:
+- Products: Credentialing Software, Provider Network Monitoring, Primary Source Verifications, NCQA-Certified CVO Services
+- Target Customers: Health Plans, Provider Organizations, Healthcare Networks
+- Key Value Props:
+  * Automate NCQA-compliant credentialing workflows
+  * Eliminate 76% of manual credentialing work
+  * Real-time primary source verifications
+  * Always-on compliance monitoring
+  * Scale provider networks from 100 to 1M+ providers
+  * Salesforce integration
+  * Reduce operational costs and improve provider data quality
+
+YOUR ROLE:
+Generate comprehensive pre-meeting intelligence for enterprise sales calls (6-7 figure deals).
+Focus on actionable insights that help sales reps have informed, consultative conversations.
+Research should be current, specific, and directly relevant to credentialing/provider network challenges.
+
+OUTPUT FORMAT:
+Use clean, readable formatting:
+- Use simple headers (## only, no ###) to separate major sections
+- Use bullet points (-) for lists instead of bold text for every item
+- Avoid excessive bold (**) formatting - use it ONLY for critical numbers, company names on first mention, or key takeaways
+- Use natural paragraph formatting for narrative sections
+- Keep it concise but thorough - aim for a 2-3 minute read
+- Focus on facts over speculation, but do highlight likely pain points based on industry knowledge.
+
+FORMATTING RULES:
+✅ DO: Use clean bullets with natural text flow
+✅ DO: Use bold sparingly for key numbers and critical insights
+❌ DON'T: Use ### subheaders (they create visual clutter)
+❌ DON'T: Bold every field name or label
+❌ DON'T: Use excessive asterisks - let content stand on its own`,
+  outputFormat: `Generate sections with specific formatting:
+- Section 4 (Pain Points): Use **Pain Point Name:** format for each bullet
+- Section 8 (Verifiable Fit): Start with **Key Insight:** on first line
+- Section 9 (Discovery Questions): Put all questions in quotes and number them
+- Section 10 (Conversation Starters): Start with **Opening Line:** in quotes`,
+  sections: [
+    { title: "Business Overview", description: "Revenue model, financials, strategic goals, company size", required: true },
+    { title: "Healthcare & Provider Network Context", description: "Provider network size, facilities, geographic footprint, health plan membership", required: true },
+    { title: "Recent News & Events", description: "M&A, leadership changes, regulatory issues, strategic announcements (last 12 months)", required: true },
+    { title: "Pain Points & Challenges", description: "Industry-specific challenges, credentialing/provider network issues", required: true },
+    { title: "Tech Stack & Current Vendors", description: "Current credentialing systems, technology investments, integration requirements", required: false },
+    { title: "Competitive Position", description: "Market position, differentiation, growth trajectory", required: false },
+    { title: "Decision-Making Context", description: "Buying committee structure, key stakeholder titles, budget cycles", required: true },
+    { title: "Verifiable-Specific Fit", description: "How Verifiable solves their problems, estimated ROI, relevant solutions", required: true },
+    { title: "Discovery Questions", description: "5-7 tailored questions about credentialing, provider networks, current processes", required: true },
+    { title: "Conversation Starters & Social Proof", description: "Opening lines, industry trends, similar customers using Verifiable", required: true },
+  ],
+  contextConfig: {
+    meetings: false,
+    notes: false,
+    accountResearch: false,
+  },
+};
 
 // Backwards compatibility aliases
 /** @deprecated Use DEFAULT_BRIEFS instead */
