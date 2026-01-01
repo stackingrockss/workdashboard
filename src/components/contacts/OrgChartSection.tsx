@@ -268,6 +268,8 @@ export function OrgChartSection({
           contacts={contacts}
           onEdit={handleEditClick}
           onDelete={handleDeleteClick}
+          opportunityId={opportunityId}
+          onContactsUpdated={loadContacts}
         />
       ) : (
         <OrgChartView
