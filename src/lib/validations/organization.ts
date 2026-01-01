@@ -26,6 +26,7 @@ export const organizationSettingsUpdateSchema = z.object({
   defaultKanbanTemplateId: z.string().nullable().optional(),
   allowSelfSignup: z.boolean().optional(),
   allowDomainAutoJoin: z.boolean().optional(),
+  autoEnrichContacts: z.boolean().optional(),
 });
 
 export type OrganizationSettingsUpdateInput = z.infer<typeof organizationSettingsUpdateSchema>;

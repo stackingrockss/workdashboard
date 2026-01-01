@@ -400,6 +400,7 @@ model OrganizationSettings {
   defaultKanbanTemplateId String?
   allowSelfSignup         Boolean      @default(false)
   allowDomainAutoJoin     Boolean      @default(false)
+  autoEnrichContacts      Boolean      @default(false)  // Auto-enrich contacts from meeting attendees
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
   organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)

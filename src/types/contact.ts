@@ -12,6 +12,13 @@ export type ContactSentiment =
   | "negative"
   | "unknown";
 
+export type EnrichmentStatus =
+  | "none"
+  | "pending"
+  | "enriched"
+  | "not_found"
+  | "failed";
+
 export interface Contact {
   id: string;
   firstName: string;
@@ -31,6 +38,16 @@ export interface Contact {
   notes?: string | null;
   createdAt: string; // ISO date string
   updatedAt: string; // ISO date string
+
+  // Enrichment fields (from Hunter.io, People Data Labs, etc.)
+  linkedinUrl?: string | null;
+  bio?: string | null;
+  avatarUrl?: string | null;
+  seniority?: string | null;
+  company?: string | null;
+  enrichedAt?: string | null;
+  enrichmentSource?: string | null;
+  enrichmentStatus?: EnrichmentStatus;
 }
 
 export interface ContactWithRelations extends Contact {
@@ -77,4 +94,21 @@ export const CONTACT_SENTIMENT_COLORS: Record<ContactSentiment, string> = {
   neutral: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
   negative: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
   unknown: "bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-200",
+};
+
+// Seniority display labels
+export const SENIORITY_LABELS: Record<string, string> = {
+  executive: "Executive",
+  director: "Director",
+  manager: "Manager",
+  senior: "Senior",
+  entry: "Entry Level",
+};
+
+export const SENIORITY_COLORS: Record<string, string> = {
+  executive: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+  director: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+  manager: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  senior: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+  entry: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200",
 };

@@ -18,6 +18,15 @@ export const contactSentimentSchema = z.enum([
   "unknown",
 ]);
 
+// Enrichment status enum
+export const enrichmentStatusSchema = z.enum([
+  "none",
+  "pending",
+  "enriched",
+  "not_found",
+  "failed",
+]);
+
 // Base contact schema for creation
 export const contactCreateSchema = z.object({
   firstName: z.string().min(1, "First name is required").max(100),
@@ -31,6 +40,12 @@ export const contactCreateSchema = z.object({
   positionX: z.number().optional().nullable(),
   positionY: z.number().optional().nullable(),
   notes: z.string().max(2000).optional().nullable(),
+  // Enrichment fields (typically set by the enrichment service, not user)
+  linkedinUrl: z.string().url("Invalid LinkedIn URL").optional().nullable().or(z.literal("")),
+  bio: z.string().max(5000).optional().nullable(),
+  avatarUrl: z.string().url("Invalid avatar URL").optional().nullable().or(z.literal("")),
+  seniority: z.string().max(50).optional().nullable(),
+  company: z.string().max(200).optional().nullable(),
 });
 
 // Schema for updating a contact
@@ -88,3 +103,4 @@ export type ContactBulkImportInput = z.infer<typeof contactBulkImportSchema>;
 export type ContactBatchDuplicateCheckItem = z.infer<typeof contactBatchDuplicateCheckItemSchema>;
 export type ContactBatchDuplicateCheckInput = z.infer<typeof contactBatchDuplicateCheckSchema>;
 export type FieldsToMerge = z.infer<typeof fieldsToMergeSchema>;
+export type EnrichmentStatus = z.infer<typeof enrichmentStatusSchema>;

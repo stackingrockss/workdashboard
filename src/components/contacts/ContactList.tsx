@@ -11,16 +11,22 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
+import { Sparkles, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface ContactListProps {
   contacts: Contact[];
   onEdit: (contact: Contact) => void;
   onDelete: (contact: Contact) => void;
+  opportunityId?: string;
+  onContactsUpdated?: () => void;
 }
 
-export function ContactList({ contacts, onEdit, onDelete }: ContactListProps) {
+export function ContactList({ contacts, onEdit, onDelete, opportunityId, onContactsUpdated }: ContactListProps) {
   const [roleFilter, setRoleFilter] = useState<ContactRole | "all">("all");
   const [sentimentFilter, setSentimentFilter] = useState<ContactSentiment | "all">("all");
+  const [enrichingContactId, setEnrichingContactId] = useState<string | null>(null);
+  const [isBulkEnriching, setIsBulkEnriching] = useState(false);
 
   // Defensive check - ensure contacts is an array
   const safeContacts = Array.isArray(contacts) ? contacts : [];
@@ -46,6 +52,74 @@ export function ContactList({ contacts, onEdit, onDelete }: ContactListProps) {
   );
 
   const hasFilters = roleFilter !== "all" || sentimentFilter !== "all";
+
+  // Count unenriched contacts with emails
+  const unenrichedCount = safeContacts.filter(
+    (c) => c.email && (!c.enrichmentStatus || c.enrichmentStatus === "none" || c.enrichmentStatus === "failed")
+  ).length;
+
+  // Handle single contact enrichment
+  const handleEnrichContact = async (contact: Contact) => {
+    if (!opportunityId || !contact.email) return;
+
+    setEnrichingContactId(contact.id);
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/contacts/${contact.id}/enrich`,
+        { method: "POST" }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.enriched) {
+        toast.success(`Enriched ${contact.fullName}`);
+        onContactsUpdated?.();
+      } else if (data.error === "Person not found") {
+        toast.info(`No data found for ${contact.email}`);
+        onContactsUpdated?.();
+      } else {
+        toast.error(data.error || "Failed to enrich contact");
+      }
+    } catch (error) {
+      console.error("Failed to enrich contact:", error);
+      toast.error("Failed to enrich contact");
+    } finally {
+      setEnrichingContactId(null);
+    }
+  };
+
+  // Handle bulk enrichment
+  const handleBulkEnrich = async () => {
+    if (!opportunityId) return;
+
+    setIsBulkEnriching(true);
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/contacts/enrich`,
+        { method: "POST" }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        if (data.enriched > 0) {
+          toast.success(`Enriched ${data.enriched} contacts`);
+        } else if (data.processed === 0) {
+          toast.info("No contacts to enrich");
+        } else {
+          toast.info(`Processed ${data.processed} contacts, ${data.skipped} not found`);
+        }
+        onContactsUpdated?.();
+      } else {
+        toast.error(data.error || "Failed to enrich contacts");
+      }
+    } catch (error) {
+      console.error("Failed to bulk enrich contacts:", error);
+      toast.error("Failed to enrich contacts");
+    } finally {
+      setIsBulkEnriching(false);
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -108,8 +182,27 @@ export function ContactList({ contacts, onEdit, onDelete }: ContactListProps) {
           )}
         </div>
 
-        <div className="text-sm text-muted-foreground">
-          Showing {filteredContacts.length} of {contacts.length} contacts
+        <div className="flex items-center gap-3">
+          {/* Bulk Enrich Button */}
+          {opportunityId && unenrichedCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleBulkEnrich}
+              disabled={isBulkEnriching}
+              className="text-purple-600 border-purple-200 hover:bg-purple-50"
+            >
+              {isBulkEnriching ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
+              )}
+              Enrich {unenrichedCount} contact{unenrichedCount !== 1 ? "s" : ""}
+            </Button>
+          )}
+          <div className="text-sm text-muted-foreground">
+            Showing {filteredContacts.length} of {contacts.length} contacts
+          </div>
         </div>
       </div>
 
@@ -136,6 +229,8 @@ export function ContactList({ contacts, onEdit, onDelete }: ContactListProps) {
                     contact={contact}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    onEnrich={opportunityId ? handleEnrichContact : undefined}
+                    isEnriching={enrichingContactId === contact.id}
                   />
                 ))}
               </div>

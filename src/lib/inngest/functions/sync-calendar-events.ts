@@ -11,6 +11,7 @@ import {
 } from "@/lib/integrations/google-calendar";
 import { GoogleTasksClient } from "@/lib/integrations/google-tasks";
 import { getValidAccessToken } from "@/lib/integrations/oauth-helpers";
+import { EnrichmentStatus } from "@prisma/client";
 
 /**
  * Recalculates the isExternal flag for all calendar events for a given organization
@@ -1050,6 +1051,76 @@ async function syncUserCalendar(userId: string): Promise<{
       });
     } catch (error) {
       console.error(`[Calendar Sync] Failed to create prep task for event ${event.id}:`, error);
+    }
+  }
+
+  // Trigger contact enrichment for events linked to opportunities
+  // Only enriches events where attendees haven't been enriched yet
+  // Requires: Hunter API key configured AND organization has auto-enrich enabled
+  if (process.env.HUNTER_API_KEY) {
+    // Check if the user's organization has auto-enrich enabled
+    const orgSettings = await prisma.organizationSettings.findUnique({
+      where: { organizationId: user.organizationId! },
+      select: { autoEnrichContacts: true },
+    });
+
+    if (orgSettings?.autoEnrichContacts) {
+      // Find events linked to opportunities with external attendees that may need enrichment
+      const eventsForEnrichment = await prisma.calendarEvent.findMany({
+        where: {
+          userId,
+          isExternal: true,
+          opportunityId: { not: null },
+          // Only events synced in this batch (recently updated)
+          updatedAt: { gte: new Date(Date.now() - 60 * 1000) }, // Last 60 seconds
+        },
+        select: {
+          id: true,
+          opportunityId: true,
+          attendees: true,
+          opportunity: {
+            select: {
+              organizationId: true,
+              contacts: {
+                where: { enrichmentStatus: EnrichmentStatus.none },
+                select: { email: true },
+              },
+            },
+          },
+        },
+      });
+
+      // Trigger enrichment for each event that has potential new attendees
+      for (const event of eventsForEnrichment) {
+        if (!event.opportunityId || !event.opportunity) continue;
+
+        // Check if there are external attendees that aren't already contacts
+        const existingContactEmails = new Set(
+          event.opportunity.contacts.map(c => c.email?.toLowerCase()).filter(Boolean)
+        );
+        const newAttendees = event.attendees.filter(
+          email => !existingContactEmails.has(email.toLowerCase())
+        );
+
+        if (newAttendees.length > 0) {
+          try {
+            await inngest.send({
+              name: "contacts/enrich.request",
+              data: {
+                calendarEventId: event.id,
+                opportunityId: event.opportunityId,
+                organizationId: event.opportunity.organizationId,
+                userId,
+              },
+            });
+            console.log(`[Calendar Sync] Triggered enrichment for event ${event.id} with ${newAttendees.length} new attendees`);
+          } catch (error) {
+            console.error(`[Calendar Sync] Failed to trigger enrichment for event ${event.id}:`, error);
+          }
+        }
+      }
+    } else {
+      console.log(`[Calendar Sync] Auto-enrich contacts disabled for organization, skipping enrichment`);
     }
   }
 

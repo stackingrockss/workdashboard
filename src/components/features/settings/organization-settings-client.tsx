@@ -25,7 +25,7 @@ import {
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Sparkles } from "lucide-react";
 import { GongIntegrationCard } from "./gong-integration-card";
 
 const organizationSchema = z.object({
@@ -55,8 +55,13 @@ const settingsSchema = z.object({
   allowDomainAutoJoin: z.boolean(),
 });
 
+const automationSchema = z.object({
+  autoEnrichContacts: z.boolean(),
+});
+
 type OrganizationFormData = z.infer<typeof organizationSchema>;
 type SettingsFormData = z.infer<typeof settingsSchema>;
+type AutomationFormData = z.infer<typeof automationSchema>;
 
 interface Organization {
   id: string;
@@ -71,6 +76,7 @@ interface Organization {
 interface Settings {
   allowSelfSignup: boolean;
   allowDomainAutoJoin: boolean;
+  autoEnrichContacts: boolean;
 }
 
 const months = [
@@ -102,6 +108,10 @@ export function OrganizationSettingsClient() {
     resolver: zodResolver(settingsSchema),
   });
 
+  const automationForm = useForm<AutomationFormData>({
+    resolver: zodResolver(automationSchema),
+  });
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -127,8 +137,11 @@ export function OrganizationSettingsClient() {
         allowSelfSignup: settings.allowSelfSignup,
         allowDomainAutoJoin: settings.allowDomainAutoJoin,
       });
+      automationForm.reset({
+        autoEnrichContacts: settings.autoEnrichContacts,
+      });
     }
-  }, [settings, settingsForm]);
+  }, [settings, settingsForm, automationForm]);
 
   async function fetchData() {
     try {
@@ -214,6 +227,33 @@ export function OrganizationSettingsClient() {
       console.error("Error updating settings:", error);
       toast.error(
         error instanceof Error ? error.message : "Failed to update settings"
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onSubmitAutomation(data: AutomationFormData) {
+    try {
+      setSaving(true);
+
+      const res = await fetch("/api/v1/organization/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to update automation settings");
+      }
+
+      toast.success("Automation settings updated!");
+      fetchData();
+    } catch (error) {
+      console.error("Error updating automation settings:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update automation settings"
       );
     } finally {
       setSaving(false);
@@ -415,6 +455,47 @@ export function OrganizationSettingsClient() {
 
             <Button type="submit" disabled={saving}>
               {saving ? "Saving..." : "Save Settings"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {/* Automation Settings */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-purple-500" />
+            <CardTitle>Automation</CardTitle>
+          </div>
+          <CardDescription>
+            Configure automatic data processing and enrichment
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={automationForm.handleSubmit(onSubmitAutomation)}
+            className="space-y-6"
+          >
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5 flex-1">
+                <Label htmlFor="autoEnrichContacts">Auto-enrich Contacts</Label>
+                <p className="text-sm text-muted-foreground">
+                  Automatically enrich contact data (LinkedIn, title, bio) when new
+                  meeting attendees are detected. Uses Hunter.io API credits.
+                </p>
+              </div>
+              <Switch
+                id="autoEnrichContacts"
+                checked={automationForm.watch("autoEnrichContacts")}
+                onCheckedChange={(checked: boolean) =>
+                  automationForm.setValue("autoEnrichContacts", checked)
+                }
+                disabled={saving}
+              />
+            </div>
+
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving..." : "Save Automation Settings"}
             </Button>
           </form>
         </CardContent>

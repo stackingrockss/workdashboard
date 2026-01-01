@@ -7,6 +7,8 @@ import {
   CONTACT_ROLE_LABELS,
   CONTACT_ROLE_COLORS,
   CONTACT_SENTIMENT_COLORS,
+  SENIORITY_LABELS,
+  SENIORITY_COLORS,
 } from "@/types/contact";
 import { Badge } from "@/components/ui/badge";
 
@@ -22,6 +24,14 @@ function OrgChartNodeComponent({ data }: OrgChartNodeProps) {
   const roleColor = CONTACT_ROLE_COLORS[contact.role];
   const sentimentColor = CONTACT_SENTIMENT_COLORS[contact.sentiment];
   const roleLabel = CONTACT_ROLE_LABELS[contact.role];
+  const seniorityLabel = contact.seniority
+    ? SENIORITY_LABELS[contact.seniority] || contact.seniority
+    : null;
+  const seniorityColor = contact.seniority
+    ? SENIORITY_COLORS[contact.seniority] || "bg-gray-100 text-gray-800"
+    : null;
+
+  const initials = `${contact.firstName.charAt(0)}${contact.lastName.charAt(0)}`;
 
   return (
     <div
@@ -36,11 +46,23 @@ function OrgChartNodeComponent({ data }: OrgChartNodeProps) {
       />
 
       <div className="p-4">
-        {/* Avatar and Name */}
+        {/* Avatar and Name - with image support */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm">
-            {contact.firstName.charAt(0)}
-            {contact.lastName.charAt(0)}
+          {contact.avatarUrl ? (
+            <img
+              src={contact.avatarUrl}
+              alt={contact.fullName}
+              className="flex-shrink-0 w-12 h-12 rounded-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+                e.currentTarget.nextElementSibling?.classList.remove("hidden");
+              }}
+            />
+          ) : null}
+          <div
+            className={`flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm ${contact.avatarUrl ? "hidden" : ""}`}
+          >
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
             <div className="font-semibold text-sm truncate">{contact.fullName}</div>
@@ -49,10 +71,15 @@ function OrgChartNodeComponent({ data }: OrgChartNodeProps) {
                 {contact.title}
               </div>
             )}
+            {contact.company && (
+              <div className="text-xs text-muted-foreground truncate">
+                {contact.company}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Role Badge */}
+        {/* Role, Sentiment, and Seniority Badges */}
         <div className="flex flex-wrap gap-1.5">
           <Badge variant="outline" className="text-xs">
             {roleLabel}
@@ -60,6 +87,11 @@ function OrgChartNodeComponent({ data }: OrgChartNodeProps) {
           <Badge className={`text-xs ${sentimentColor}`}>
             {contact.sentiment.charAt(0).toUpperCase() + contact.sentiment.slice(1)}
           </Badge>
+          {seniorityLabel && seniorityColor && (
+            <Badge className={`text-xs ${seniorityColor}`}>
+              {seniorityLabel}
+            </Badge>
+          )}
         </div>
 
         {/* Contact Info */}

@@ -24,6 +24,11 @@ export interface AggregatedContact {
   title?: string | null;
   role: string;
   sentiment: string;
+  // Enrichment fields
+  linkedinUrl?: string | null;
+  bio?: string | null;
+  seniority?: string | null;
+  company?: string | null;
 }
 
 export interface AggregatedMeeting {
@@ -152,6 +157,11 @@ export async function aggregateContext(
       title: c.title,
       role: c.role,
       sentiment: c.sentiment,
+      // Enrichment fields
+      linkedinUrl: c.linkedinUrl,
+      bio: c.bio,
+      seniority: c.seniority,
+      company: c.company,
     })),
     meetings: [],
   };
@@ -390,10 +400,17 @@ ${context.account.ticker ? `- **Ticker:** ${context.account.ticker}` : ""}`);
   // Contacts
   if (context.contacts.length > 0) {
     const contactList = context.contacts
-      .map(
-        (c) =>
-          `- ${c.firstName} ${c.lastName}${c.title ? ` (${c.title})` : ""} - ${c.role}, Sentiment: ${c.sentiment}`
-      )
+      .map((c) => {
+        const parts = [`- **${c.firstName} ${c.lastName}**`];
+        if (c.title) parts.push(`(${c.title})`);
+        parts.push(`- ${c.role}, Sentiment: ${c.sentiment}`);
+        // Include enrichment data if available
+        if (c.seniority) parts.push(`Seniority: ${c.seniority}`);
+        if (c.company) parts.push(`Company: ${c.company}`);
+        if (c.bio) parts.push(`\n  Bio: ${c.bio}`);
+        if (c.linkedinUrl) parts.push(`\n  LinkedIn: ${c.linkedinUrl}`);
+        return parts.join(" ");
+      })
       .join("\n");
     sections.push(`## Key Contacts\n${contactList}`);
   }
