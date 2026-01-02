@@ -12,11 +12,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { AddManualMeetingDialog } from "@/components/calendar/AddManualMeetingDialog";
-import { RefreshCw, Search, Lightbulb, Link2, X } from "lucide-react";
+import { RefreshCw, Search, Lightbulb, Link2, X, UserPlus, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { ActivityFilters } from "@/types/activity";
 import type { TimelineDateRange } from "@/types/timeline";
+
+interface ImportableAttendee {
+  email: string;
+  alreadyExists: boolean;
+}
+
+interface ImportPreview {
+  attendees: ImportableAttendee[];
+  newCount: number;
+  existingCount: number;
+  canEnrich: boolean;
+}
 
 interface ActivityToolbarProps {
   filters: ActivityFilters;
@@ -26,6 +49,7 @@ interface ActivityToolbarProps {
   isLoading: boolean;
   totalCount: number;
   filteredCount: number;
+  onContactsImported?: () => void;
 }
 
 export function ActivityToolbar({
@@ -36,8 +60,16 @@ export function ActivityToolbar({
   isLoading,
   totalCount,
   filteredCount,
+  onContactsImported,
 }: ActivityToolbarProps) {
   const [searchInput, setSearchInput] = useState(filters.searchQuery);
+
+  // Import dialog state
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [enrichOnImport, setEnrichOnImport] = useState(false);
 
   // Debounce search input
   useEffect(() => {
@@ -78,6 +110,77 @@ export function ActivityToolbar({
     setSearchInput("");
     onFiltersChange({ ...filters, searchQuery: "" });
   }, [filters, onFiltersChange]);
+
+  // Load import preview when dialog opens
+  const loadImportPreview = useCallback(async () => {
+    setLoadingPreview(true);
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/contacts/import-from-calendar`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to load preview");
+      }
+      const data = await response.json();
+      setImportPreview(data);
+    } catch (err) {
+      console.error("Failed to load import preview:", err);
+      toast.error("Failed to load attendee preview");
+      setIsImportDialogOpen(false);
+    } finally {
+      setLoadingPreview(false);
+    }
+  }, [opportunityId]);
+
+  const handleOpenImportDialog = useCallback(() => {
+    setIsImportDialogOpen(true);
+    setEnrichOnImport(false);
+    setImportPreview(null);
+    loadImportPreview();
+  }, [loadImportPreview]);
+
+  const handleImport = useCallback(async () => {
+    setImporting(true);
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/contacts/import-from-calendar`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enrich: enrichOnImport }),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to import contacts");
+      }
+
+      const result = await response.json();
+
+      if (result.imported > 0) {
+        if (result.enriched > 0) {
+          toast.success(
+            `Imported ${result.imported} contact${result.imported !== 1 ? "s" : ""} (${result.enriched} enriched)`
+          );
+        } else {
+          toast.success(
+            `Imported ${result.imported} contact${result.imported !== 1 ? "s" : ""}`
+          );
+        }
+        onContactsImported?.();
+      } else {
+        toast.info("No new contacts to import");
+      }
+
+      setIsImportDialogOpen(false);
+    } catch (err) {
+      console.error("Failed to import contacts:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to import contacts");
+    } finally {
+      setImporting(false);
+    }
+  }, [opportunityId, enrichOnImport, onContactsImported]);
 
   const hasActiveFilters =
     filters.hasInsights !== null ||
@@ -159,6 +262,19 @@ export function ActivityToolbar({
           <span className="sr-only">Refresh</span>
         </Button>
 
+        {/* Import Attendees button - only show when there are events */}
+        {totalCount > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOpenImportDialog}
+            className="h-8"
+          >
+            <UserPlus className="h-4 w-4 mr-1.5" />
+            Import Attendees
+          </Button>
+        )}
+
         {/* Add Meeting */}
         <AddManualMeetingDialog
           opportunityId={opportunityId}
@@ -210,6 +326,121 @@ export function ActivityToolbar({
           </p>
         )}
       </div>
+
+      {/* Import Attendees Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Import Meeting Attendees</DialogTitle>
+            <DialogDescription>
+              Import external attendees from calendar events as contacts.
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingPreview ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : importPreview ? (
+            <div className="space-y-4">
+              {importPreview.attendees.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No external attendees found in calendar events.
+                </p>
+              ) : (
+                <>
+                  <div className="max-h-60 overflow-y-auto space-y-2 border rounded-md p-3">
+                    {importPreview.attendees.map((attendee) => (
+                      <div
+                        key={attendee.email}
+                        className={`flex items-center gap-2 text-sm ${
+                          attendee.alreadyExists ? "text-muted-foreground" : ""
+                        }`}
+                      >
+                        {attendee.alreadyExists ? (
+                          <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border-2 flex-shrink-0" />
+                        )}
+                        <span className="truncate">{attendee.email}</span>
+                        {attendee.alreadyExists && (
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            (exists)
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    {importPreview.newCount > 0 ? (
+                      <>
+                        <strong>{importPreview.newCount}</strong> new contact
+                        {importPreview.newCount !== 1 ? "s" : ""} will be imported
+                        {importPreview.existingCount > 0 && (
+                          <> ({importPreview.existingCount} already exist)</>
+                        )}
+                      </>
+                    ) : (
+                      "All attendees already exist as contacts."
+                    )}
+                  </p>
+
+                  {importPreview.newCount > 0 && importPreview.canEnrich && (
+                    <div className="flex items-center space-x-2 pt-2 border-t">
+                      <Checkbox
+                        id="enrichOnImport"
+                        checked={enrichOnImport}
+                        onCheckedChange={(checked) =>
+                          setEnrichOnImport(checked === true)
+                        }
+                        disabled={importing}
+                      />
+                      <Label
+                        htmlFor="enrichOnImport"
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        Also enrich contacts (LinkedIn, title, bio)
+                      </Label>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsImportDialogOpen(false)}
+              disabled={importing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleImport}
+              disabled={
+                importing ||
+                loadingPreview ||
+                !importPreview ||
+                importPreview.newCount === 0
+              }
+            >
+              {importing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  Import {importPreview?.newCount || 0} Contact
+                  {importPreview?.newCount !== 1 ? "s" : ""}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

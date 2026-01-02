@@ -40,7 +40,6 @@ import { InlineMarkdownWithAI } from "@/components/ui/inline-markdown";
 import { DecisionMakerSection } from "@/components/opportunities/DecisionMakerSection";
 import { Contact } from "@/types/contact";
 import { ActivitySection } from "./activity/activity-section";
-import { RelatedEventsSection } from "@/components/calendar/RelatedEventsSection";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 import { SecFilingsSection } from "./sec-filings-section";
 import { EarningsTranscriptsSection } from "./earnings-transcripts-section";
@@ -801,11 +800,7 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
           <ActivitySection
             opportunityId={opportunity.id}
             onViewInsights={handleViewGongCallInsightsById}
-          />
-          <RelatedEventsSection
-            opportunityId={opportunity.id}
-            accountId={opportunity.account?.id}
-            onContactsImported={() => loadContacts()}
+            onContactsImported={loadContacts}
           />
         </TabsContent>
 

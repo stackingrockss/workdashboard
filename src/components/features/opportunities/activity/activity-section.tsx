@@ -23,6 +23,7 @@ import type {
 interface ActivitySectionProps {
   opportunityId: string;
   onViewInsights?: (callId: string) => void;
+  onContactsImported?: () => void;
 }
 
 interface TimelineResponse {
@@ -45,6 +46,7 @@ interface TimelineResponse {
 
 export function ActivitySection({
   opportunityId,
+  onContactsImported,
 }: ActivitySectionProps) {
   // Data state
   const [events, setEvents] = useState<TimelineEvent[]>([]);
@@ -161,6 +163,7 @@ export function ActivitySection({
         isLoading={isLoading}
         totalCount={events.length}
         filteredCount={filteredEvents.length}
+        onContactsImported={onContactsImported}
       />
 
       {/* Split View: Timeline + Detail Panel */}
