@@ -40,6 +40,7 @@ import { InlineMarkdownWithAI } from "@/components/ui/inline-markdown";
 import { DecisionMakerSection } from "@/components/opportunities/DecisionMakerSection";
 import { Contact } from "@/types/contact";
 import { ActivitySection } from "./activity/activity-section";
+import { RelatedEventsSection } from "@/components/calendar/RelatedEventsSection";
 import { ChatWidget } from "@/components/chat/ChatWidget";
 import { SecFilingsSection } from "./sec-filings-section";
 import { EarningsTranscriptsSection } from "./earnings-transcripts-section";
@@ -241,21 +242,23 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
   }, [researchStatus, opportunity.id, router]);
 
   // Load contacts for decision maker section
-  useEffect(() => {
-    const loadContacts = async () => {
-      try {
-        const response = await fetch(`/api/v1/opportunities/${opportunity.id}/contacts`);
-        if (response.ok) {
-          const data = await response.json();
-          // API returns { contacts: [...] } - extract the array, with fallback for safety
-          const contactsArray = Array.isArray(data) ? data : (Array.isArray(data?.contacts) ? data.contacts : []);
-          setContacts(contactsArray);
-        }
-      } catch (error) {
-        console.error("Failed to load contacts:", error);
+  const loadContacts = async () => {
+    try {
+      const response = await fetch(`/api/v1/opportunities/${opportunity.id}/contacts`);
+      if (response.ok) {
+        const data = await response.json();
+        // API returns { contacts: [...] } - extract the array, with fallback for safety
+        const contactsArray = Array.isArray(data) ? data : (Array.isArray(data?.contacts) ? data.contacts : []);
+        setContacts(contactsArray);
       }
-    };
+    } catch (error) {
+      console.error("Failed to load contacts:", error);
+    }
+  };
+
+  useEffect(() => {
     loadContacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opportunity.id]);
 
   // Load account research briefs
@@ -794,10 +797,15 @@ export function OpportunityDetailClient({ opportunity, organizationId, userId, c
         </TabsContent>
 
         {/* Activity Tab - Horizontal Timeline */}
-        <TabsContent value="activity" className="mt-4">
+        <TabsContent value="activity" className="mt-4 space-y-6">
           <ActivitySection
             opportunityId={opportunity.id}
             onViewInsights={handleViewGongCallInsightsById}
+          />
+          <RelatedEventsSection
+            opportunityId={opportunity.id}
+            accountId={opportunity.account?.id}
+            onContactsImported={() => loadContacts()}
           />
         </TabsContent>
 
