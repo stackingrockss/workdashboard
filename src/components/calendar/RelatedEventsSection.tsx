@@ -1,17 +1,41 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, AlertCircle } from "lucide-react";
+import { Calendar, AlertCircle, UserPlus, Check, Loader2 } from "lucide-react";
 import { CalendarEvent } from "@/types/calendar";
 import { CalendarEventCard } from "./CalendarEventCard";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+
+interface ImportableAttendee {
+  email: string;
+  alreadyExists: boolean;
+}
+
+interface ImportPreview {
+  attendees: ImportableAttendee[];
+  newCount: number;
+  existingCount: number;
+  canEnrich: boolean;
+}
 
 interface RelatedEventsSectionProps {
   opportunityId: string;
   accountId?: string;
+  onContactsImported?: () => void;
 }
 
 /**
@@ -25,11 +49,19 @@ interface RelatedEventsSectionProps {
 export function RelatedEventsSection({
   opportunityId,
   accountId,
+  onContactsImported,
 }: RelatedEventsSectionProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [notConnected, setNotConnected] = useState(false);
+
+  // Import dialog state
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [enrichOnImport, setEnrichOnImport] = useState(false);
 
   useEffect(() => {
     loadRelatedEvents();
@@ -78,6 +110,76 @@ export function RelatedEventsSection({
       setError("Failed to load meetings");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Load import preview when dialog opens
+  const loadImportPreview = useCallback(async () => {
+    setLoadingPreview(true);
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/contacts/import-from-calendar`
+      );
+      if (!response.ok) {
+        throw new Error("Failed to load preview");
+      }
+      const data = await response.json();
+      setImportPreview(data);
+    } catch (err) {
+      console.error("Failed to load import preview:", err);
+      toast.error("Failed to load attendee preview");
+      setIsImportDialogOpen(false);
+    } finally {
+      setLoadingPreview(false);
+    }
+  }, [opportunityId]);
+
+  const handleOpenImportDialog = () => {
+    setIsImportDialogOpen(true);
+    setEnrichOnImport(false);
+    loadImportPreview();
+  };
+
+  const handleImport = async () => {
+    setImporting(true);
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/contacts/import-from-calendar`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enrich: enrichOnImport }),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to import contacts");
+      }
+
+      const result = await response.json();
+
+      if (result.imported > 0) {
+        if (result.enriched > 0) {
+          toast.success(
+            `Imported ${result.imported} contact${result.imported !== 1 ? "s" : ""} (${result.enriched} enriched)`
+          );
+        } else {
+          toast.success(
+            `Imported ${result.imported} contact${result.imported !== 1 ? "s" : ""}`
+          );
+        }
+        onContactsImported?.();
+      } else {
+        toast.info("No new contacts to import");
+      }
+
+      setIsImportDialogOpen(false);
+    } catch (err) {
+      console.error("Failed to import contacts:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to import contacts");
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -162,15 +264,30 @@ export function RelatedEventsSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Calendar className="h-5 w-5" />
-          Related Calendar Events
-        </CardTitle>
-        <CardDescription>
-          {events.length > 0
-            ? `${pastEvents.length} past, ${upcomingEvents.length} upcoming meeting${upcomingEvents.length !== 1 ? "s" : ""}`
-            : "No meetings found for this opportunity"}
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Related Calendar Events
+            </CardTitle>
+            <CardDescription>
+              {events.length > 0
+                ? `${pastEvents.length} past, ${upcomingEvents.length} upcoming meeting${upcomingEvents.length !== 1 ? "s" : ""}`
+                : "No meetings found for this opportunity"}
+            </CardDescription>
+          </div>
+          {events.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenImportDialog}
+              className="flex-shrink-0"
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Import Attendees
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {events.length === 0 ? (
@@ -223,6 +340,121 @@ export function RelatedEventsSection({
             </>
           )}
       </CardContent>
+
+      {/* Import Attendees Dialog */}
+      <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Import Meeting Attendees</DialogTitle>
+            <DialogDescription>
+              Import external attendees from calendar events as contacts.
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingPreview ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : importPreview ? (
+            <div className="space-y-4">
+              {importPreview.attendees.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No external attendees found in calendar events.
+                </p>
+              ) : (
+                <>
+                  <div className="max-h-60 overflow-y-auto space-y-2 border rounded-md p-3">
+                    {importPreview.attendees.map((attendee) => (
+                      <div
+                        key={attendee.email}
+                        className={`flex items-center gap-2 text-sm ${
+                          attendee.alreadyExists ? "text-muted-foreground" : ""
+                        }`}
+                      >
+                        {attendee.alreadyExists ? (
+                          <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border-2 flex-shrink-0" />
+                        )}
+                        <span className="truncate">{attendee.email}</span>
+                        {attendee.alreadyExists && (
+                          <span className="text-xs text-muted-foreground flex-shrink-0">
+                            (exists)
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    {importPreview.newCount > 0 ? (
+                      <>
+                        <strong>{importPreview.newCount}</strong> new contact
+                        {importPreview.newCount !== 1 ? "s" : ""} will be imported
+                        {importPreview.existingCount > 0 && (
+                          <> ({importPreview.existingCount} already exist)</>
+                        )}
+                      </>
+                    ) : (
+                      "All attendees already exist as contacts."
+                    )}
+                  </p>
+
+                  {importPreview.newCount > 0 && importPreview.canEnrich && (
+                    <div className="flex items-center space-x-2 pt-2 border-t">
+                      <Checkbox
+                        id="enrichOnImport"
+                        checked={enrichOnImport}
+                        onCheckedChange={(checked) =>
+                          setEnrichOnImport(checked === true)
+                        }
+                        disabled={importing}
+                      />
+                      <Label
+                        htmlFor="enrichOnImport"
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        Also enrich contacts (LinkedIn, title, bio)
+                      </Label>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsImportDialogOpen(false)}
+              disabled={importing}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleImport}
+              disabled={
+                importing ||
+                loadingPreview ||
+                !importPreview ||
+                importPreview.newCount === 0
+              }
+            >
+              {importing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  Import {importPreview?.newCount || 0} Contact
+                  {importPreview?.newCount !== 1 ? "s" : ""}
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

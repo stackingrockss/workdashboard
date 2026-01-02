@@ -659,3 +659,262 @@ export async function getEnrichmentStats(
     totalCreditsUsed: logs.reduce((sum, l) => sum + l.creditsUsed, 0),
   };
 }
+
+/**
+ * Result type for importable attendees preview
+ */
+export interface ImportableAttendeesResult {
+  attendees: Array<{
+    email: string;
+    alreadyExists: boolean;
+  }>;
+  newCount: number;
+  existingCount: number;
+  canEnrich: boolean;
+}
+
+/**
+ * Get a preview of attendees that can be imported from calendar events
+ * Used to show the user what will be imported before they confirm
+ */
+export async function getImportableAttendees(
+  opportunityId: string,
+  organizationId: string
+): Promise<ImportableAttendeesResult> {
+  // Get organization domain
+  const organization = await prisma.organization.findUnique({
+    where: { id: organizationId },
+    select: { domain: true },
+  });
+
+  if (!organization?.domain) {
+    return {
+      attendees: [],
+      newCount: 0,
+      existingCount: 0,
+      canEnrich: false,
+    };
+  }
+
+  // Get all calendar events linked to this opportunity
+  const calendarEvents = await prisma.calendarEvent.findMany({
+    where: { opportunityId },
+    select: { attendees: true },
+  });
+
+  if (calendarEvents.length === 0) {
+    return {
+      attendees: [],
+      newCount: 0,
+      existingCount: 0,
+      canEnrich: !!process.env.HUNTER_API_KEY,
+    };
+  }
+
+  // Extract all unique external attendees
+  const normalizedOrgDomain = organization.domain.toLowerCase().replace(/^www\./, "");
+  const allAttendees = new Set<string>();
+
+  for (const event of calendarEvents) {
+    for (const email of event.attendees) {
+      const emailDomain = email.split("@")[1]?.toLowerCase().replace(/^www\./, "");
+      if (!emailDomain) continue;
+
+      // Exclude internal emails
+      if (emailDomain === normalizedOrgDomain || emailDomain.endsWith(`.${normalizedOrgDomain}`)) {
+        continue;
+      }
+
+      allAttendees.add(email.toLowerCase());
+    }
+  }
+
+  if (allAttendees.size === 0) {
+    return {
+      attendees: [],
+      newCount: 0,
+      existingCount: 0,
+      canEnrich: !!process.env.HUNTER_API_KEY,
+    };
+  }
+
+  // Check which already exist as contacts
+  const existingContacts = await findExistingContactsByEmail(
+    Array.from(allAttendees),
+    opportunityId
+  );
+
+  const attendees: ImportableAttendeesResult["attendees"] = [];
+  let newCount = 0;
+  let existingCount = 0;
+
+  for (const email of allAttendees) {
+    const exists = existingContacts.has(email);
+    attendees.push({ email, alreadyExists: exists });
+    if (exists) {
+      existingCount++;
+    } else {
+      newCount++;
+    }
+  }
+
+  // Sort: new contacts first, then existing
+  attendees.sort((a, b) => {
+    if (a.alreadyExists === b.alreadyExists) {
+      return a.email.localeCompare(b.email);
+    }
+    return a.alreadyExists ? 1 : -1;
+  });
+
+  return {
+    attendees,
+    newCount,
+    existingCount,
+    canEnrich: !!process.env.HUNTER_API_KEY,
+  };
+}
+
+/**
+ * Result type for importing contacts from calendar events
+ */
+export interface ImportContactsFromCalendarResult {
+  imported: number;
+  enriched: number;
+  skipped: number;
+  failed: number;
+  errors: string[];
+  contacts: Array<{
+    email: string;
+    status: "imported" | "enriched" | "skipped" | "failed";
+    contactId?: string;
+    error?: string;
+  }>;
+}
+
+/**
+ * Import contacts from calendar events linked to an opportunity
+ * Creates contacts for external attendees that don't already exist
+ * Optionally enriches them with Hunter.io data
+ */
+export async function importContactsFromCalendarEvents(
+  opportunityId: string,
+  organizationId: string,
+  options?: {
+    enrich?: boolean;
+    provider?: EnrichmentProviderType;
+  }
+): Promise<ImportContactsFromCalendarResult> {
+  const result: ImportContactsFromCalendarResult = {
+    imported: 0,
+    enriched: 0,
+    skipped: 0,
+    failed: 0,
+    errors: [],
+    contacts: [],
+  };
+
+  // Verify opportunity belongs to organization
+  const opportunity = await prisma.opportunity.findFirst({
+    where: {
+      id: opportunityId,
+      organizationId,
+    },
+    select: { id: true },
+  });
+
+  if (!opportunity) {
+    result.errors.push("Opportunity not found or access denied");
+    return result;
+  }
+
+  // Get importable attendees
+  const preview = await getImportableAttendees(opportunityId, organizationId);
+
+  if (preview.newCount === 0) {
+    return result;
+  }
+
+  // Import each new attendee
+  for (const attendee of preview.attendees) {
+    if (attendee.alreadyExists) {
+      result.skipped++;
+      result.contacts.push({
+        email: attendee.email,
+        status: "skipped",
+      });
+      continue;
+    }
+
+    try {
+      // Parse name from email (best effort)
+      const emailPrefix = attendee.email.split("@")[0];
+      const nameParts = emailPrefix.replace(/[._]/g, " ").split(" ").filter(Boolean);
+      const firstName = nameParts[0] ? capitalizeFirst(nameParts[0]) : emailPrefix;
+      const lastName = nameParts.length > 1 ? capitalizeFirst(nameParts.slice(1).join(" ")) : "";
+
+      // Create the contact
+      const newContact = await prisma.contact.create({
+        data: {
+          firstName,
+          lastName,
+          email: attendee.email,
+          opportunityId,
+          role: "end_user",
+          sentiment: "unknown",
+          enrichmentStatus: "none",
+          notes: "Imported from calendar event attendees",
+        },
+      });
+
+      result.imported++;
+
+      // Optionally enrich
+      if (options?.enrich && preview.canEnrich) {
+        const enrichResult = await enrichSingleContact(
+          newContact.id,
+          organizationId,
+          { provider: options.provider }
+        );
+
+        if (enrichResult.success) {
+          result.enriched++;
+          result.contacts.push({
+            email: attendee.email,
+            status: "enriched",
+            contactId: newContact.id,
+          });
+        } else {
+          result.contacts.push({
+            email: attendee.email,
+            status: "imported",
+            contactId: newContact.id,
+          });
+        }
+      } else {
+        result.contacts.push({
+          email: attendee.email,
+          status: "imported",
+          contactId: newContact.id,
+        });
+      }
+    } catch (error) {
+      console.error(`[Import] Error importing ${attendee.email}:`, error);
+      result.failed++;
+      result.errors.push(`${attendee.email}: ${error instanceof Error ? error.message : "Unknown error"}`);
+      result.contacts.push({
+        email: attendee.email,
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Helper to capitalize the first letter of a string
+ */
+function capitalizeFirst(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
