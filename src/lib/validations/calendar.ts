@@ -3,8 +3,8 @@ import { z } from 'zod';
 export const calendarEventFilterSchema = z.object({
   startDate: z.string().datetime().optional(),
   endDate: z.string().datetime().optional(),
-  accountId: z.string().cuid().optional(),
-  opportunityId: z.string().cuid().optional(),
+  accountId: z.string().optional(),
+  opportunityId: z.string().optional(),
   externalOnly: z
     .string()
     .transform((val) => val === 'true')

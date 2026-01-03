@@ -216,6 +216,7 @@ export class HunterClient implements EnrichmentProvider {
       seniority: person.seniority ? seniorityMap[person.seniority] || person.seniority : undefined,
       linkedinUrl: person.linkedin_url || undefined,
       twitterUrl: person.twitter ? `https://twitter.com/${person.twitter}` : undefined,
+      phone: person.phone_number || undefined,
       // Hunter doesn't provide bio or avatar, these would come from other providers
       bio: undefined,
       avatarUrl: undefined,

@@ -13,6 +13,7 @@
 import { prisma } from "@/lib/db";
 import { EnrichmentProvider, EnrichedContactData, EnrichmentProviderType } from "./types";
 import { createHunterClient } from "@/lib/integrations/hunter";
+import { createPDLClient } from "@/lib/integrations/pdl";
 import { classifyContactRole } from "@/lib/ai/classify-contact-role";
 
 export interface EnrichContactsFromMeetingResult {
@@ -32,18 +33,52 @@ export interface EnrichContactsFromMeetingResult {
 
 /**
  * Get the configured enrichment provider
- * Currently supports Hunter.io, with abstraction for future providers
+ * Supports Hunter.io and People Data Labs
  */
 function getEnrichmentProvider(providerType: EnrichmentProviderType = "hunter"): EnrichmentProvider {
   switch (providerType) {
     case "hunter":
       return createHunterClient();
     case "pdl":
-      // Future: return createPeopleDataLabsClient();
-      throw new Error("People Data Labs provider not yet implemented");
+      return createPDLClient();
     default:
       throw new Error(`Unknown enrichment provider: ${providerType}`);
   }
+}
+
+/**
+ * Get all available enrichment providers in order of preference
+ * Returns providers that are configured (have API keys)
+ */
+function getAvailableProviders(): EnrichmentProvider[] {
+  const providers: EnrichmentProvider[] = [];
+
+  // Try Hunter first (cheaper)
+  if (process.env.HUNTER_API_KEY) {
+    try {
+      providers.push(createHunterClient());
+    } catch {
+      // Hunter not configured
+    }
+  }
+
+  // Then try PDL as fallback
+  if (process.env.PDL_API_KEY) {
+    try {
+      providers.push(createPDLClient());
+    } catch {
+      // PDL not configured
+    }
+  }
+
+  return providers;
+}
+
+/**
+ * Check if any enrichment provider is available
+ */
+export function hasEnrichmentProvider(): boolean {
+  return !!(process.env.HUNTER_API_KEY || process.env.PDL_API_KEY);
 }
 
 /**
@@ -310,6 +345,7 @@ async function buildContactData(
   avatarUrl?: string;
   seniority?: string;
   company?: string;
+  phone?: string;
   enrichedAt: Date;
   enrichmentSource: string;
   enrichmentStatus: "enriched";
@@ -355,6 +391,7 @@ async function buildContactData(
     avatarUrl: enrichedData.avatarUrl || undefined,
     seniority: enrichedData.seniority || undefined,
     company: enrichedData.company || undefined,
+    phone: enrichedData.phone || undefined,
     enrichedAt: new Date(),
     enrichmentSource: providerName,
     enrichmentStatus: "enriched",
@@ -365,6 +402,7 @@ async function buildContactData(
 /**
  * Enrich a single contact by email
  * Used for manual enrichment of individual contacts
+ * Supports fallback: tries Hunter first, then PDL if Hunter returns "not found"
  */
 export async function enrichSingleContact(
   contactId: string,
@@ -372,6 +410,7 @@ export async function enrichSingleContact(
   options?: {
     provider?: EnrichmentProviderType;
     forceRefresh?: boolean;
+    useFallback?: boolean; // If true, try multiple providers
   }
 ): Promise<{
   success: boolean;
@@ -381,6 +420,7 @@ export async function enrichSingleContact(
     lastName: string;
     email: string | null;
     title?: string | null;
+    phone?: string | null;
     linkedinUrl?: string | null;
     bio?: string | null;
     avatarUrl?: string | null;
@@ -389,6 +429,7 @@ export async function enrichSingleContact(
     enrichmentStatus: string;
   };
   error?: string;
+  provider?: string; // Which provider succeeded
 }> {
   // Get the contact
   const contact = await prisma.contact.findUnique({
@@ -429,8 +470,24 @@ export async function enrichSingleContact(
     return { success: false, error: "Contact already enriched" };
   }
 
-  // Get enrichment provider
-  const provider = getEnrichmentProvider(options?.provider || "hunter");
+  // Get providers to try
+  const useFallback = options?.useFallback !== false; // Default to true
+  let providers: EnrichmentProvider[];
+
+  if (options?.provider) {
+    // Specific provider requested
+    providers = [getEnrichmentProvider(options.provider)];
+  } else if (useFallback) {
+    // Try all available providers in order
+    providers = getAvailableProviders();
+  } else {
+    // Just use Hunter as default
+    providers = process.env.HUNTER_API_KEY ? [getEnrichmentProvider("hunter")] : getAvailableProviders();
+  }
+
+  if (providers.length === 0) {
+    return { success: false, error: "No enrichment providers configured" };
+  }
 
   try {
     // Mark as pending
@@ -439,70 +496,87 @@ export async function enrichSingleContact(
       data: { enrichmentStatus: "pending" },
     });
 
-    // Call enrichment API
-    const enrichResult = await provider.enrichPerson(contact.email);
+    let lastError: string | undefined;
+    let lastProviderName: string = providers[0].name;
 
-    // Log the API call
-    await prisma.enrichmentLog.create({
-      data: {
-        organizationId,
-        contactId,
-        email: contact.email,
-        provider: provider.name,
-        status: enrichResult.success ? "success" : enrichResult.error === "Person not found" ? "not_found" : "error",
-        creditsUsed: enrichResult.creditsUsed,
-        responseData: enrichResult.data as object || null,
-        errorMessage: enrichResult.error || null,
-      },
-    });
+    // Try each provider in order
+    for (const provider of providers) {
+      lastProviderName = provider.name;
 
-    if (!enrichResult.success) {
-      const status = enrichResult.error === "Person not found" ? "not_found" : "failed";
-      const updatedContact = await prisma.contact.update({
-        where: { id: contactId },
+      // Call enrichment API
+      const enrichResult = await provider.enrichPerson(contact.email);
+
+      // Log the API call
+      await prisma.enrichmentLog.create({
         data: {
-          enrichmentStatus: status,
-          enrichmentSource: provider.name,
-        },
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          title: true,
-          linkedinUrl: true,
-          bio: true,
-          avatarUrl: true,
-          seniority: true,
-          company: true,
-          enrichmentStatus: true,
+          organizationId,
+          contactId,
+          email: contact.email,
+          provider: provider.name,
+          status: enrichResult.success ? "success" : enrichResult.error === "Person not found" ? "not_found" : "error",
+          creditsUsed: enrichResult.creditsUsed,
+          responseData: enrichResult.data as object || null,
+          errorMessage: enrichResult.error || null,
         },
       });
 
-      return {
-        success: false,
-        contact: updatedContact,
-        error: enrichResult.error,
-      };
+      if (enrichResult.success && enrichResult.data) {
+        // Success! Build update data from enriched results
+        const updateData = await buildContactData(enrichResult.data, provider.name);
+
+        // Update the contact
+        const updatedContact = await prisma.contact.update({
+          where: { id: contactId },
+          data: {
+            title: updateData.title || undefined,
+            linkedinUrl: updateData.linkedinUrl || undefined,
+            bio: updateData.bio || undefined,
+            avatarUrl: updateData.avatarUrl || undefined,
+            seniority: updateData.seniority || undefined,
+            company: updateData.company || undefined,
+            phone: updateData.phone || undefined,
+            enrichedAt: updateData.enrichedAt,
+            enrichmentSource: updateData.enrichmentSource,
+            enrichmentStatus: updateData.enrichmentStatus,
+          },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            title: true,
+            phone: true,
+            linkedinUrl: true,
+            bio: true,
+            avatarUrl: true,
+            seniority: true,
+            company: true,
+            enrichmentStatus: true,
+          },
+        });
+
+        return { success: true, contact: updatedContact, provider: provider.name };
+      }
+
+      // Store error and continue to next provider if "not found"
+      lastError = enrichResult.error;
+
+      // Only try next provider if this one returned "not found"
+      // Other errors (rate limit, auth, etc.) should stop the chain
+      if (enrichResult.error !== "Person not found") {
+        break;
+      }
+
+      console.log(`[Enrichment] ${provider.name} returned "not found" for ${contact.email}, trying next provider...`);
     }
 
-    // Build update data from enriched results
-    const enrichedData = enrichResult.data!;
-    const updateData = await buildContactData(enrichedData, provider.name);
-
-    // Update the contact (only update fields we got from enrichment, don't overwrite existing name)
+    // All providers failed or returned "not found"
+    const status = lastError === "Person not found" ? "not_found" : "failed";
     const updatedContact = await prisma.contact.update({
       where: { id: contactId },
       data: {
-        title: updateData.title || undefined,
-        linkedinUrl: updateData.linkedinUrl || undefined,
-        bio: updateData.bio || undefined,
-        avatarUrl: updateData.avatarUrl || undefined,
-        seniority: updateData.seniority || undefined,
-        company: updateData.company || undefined,
-        enrichedAt: updateData.enrichedAt,
-        enrichmentSource: updateData.enrichmentSource,
-        enrichmentStatus: updateData.enrichmentStatus,
+        enrichmentStatus: status,
+        enrichmentSource: lastProviderName,
       },
       select: {
         id: true,
@@ -510,6 +584,7 @@ export async function enrichSingleContact(
         lastName: true,
         email: true,
         title: true,
+        phone: true,
         linkedinUrl: true,
         bio: true,
         avatarUrl: true,
@@ -519,7 +594,12 @@ export async function enrichSingleContact(
       },
     });
 
-    return { success: true, contact: updatedContact };
+    return {
+      success: false,
+      contact: updatedContact,
+      error: lastError,
+      provider: lastProviderName,
+    };
   } catch (error) {
     console.error(`[Enrichment] Error enriching contact ${contactId}:`, error);
 
@@ -528,7 +608,6 @@ export async function enrichSingleContact(
       where: { id: contactId },
       data: {
         enrichmentStatus: "failed",
-        enrichmentSource: provider.name,
       },
     });
 
@@ -712,7 +791,7 @@ export async function getImportableAttendees(
       newCount: 0,
       existingCount: 0,
       dismissedCount: 0,
-      canEnrich: !!process.env.HUNTER_API_KEY,
+      canEnrich: hasEnrichmentProvider(),
     };
   }
 
@@ -744,7 +823,7 @@ export async function getImportableAttendees(
       newCount: 0,
       existingCount: 0,
       dismissedCount: 0,
-      canEnrich: !!process.env.HUNTER_API_KEY,
+      canEnrich: hasEnrichmentProvider(),
     };
   }
 
@@ -834,7 +913,7 @@ export async function getImportableAttendees(
     newCount,
     existingCount,
     dismissedCount,
-    canEnrich: !!process.env.HUNTER_API_KEY,
+    canEnrich: hasEnrichmentProvider(),
   };
 }
 

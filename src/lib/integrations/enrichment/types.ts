@@ -16,6 +16,7 @@ export interface EnrichedContactData {
   linkedinUrl?: string;
   bio?: string;
   avatarUrl?: string;
+  phone?: string;
   location?: {
     city?: string;
     state?: string;

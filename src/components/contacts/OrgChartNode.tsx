@@ -11,6 +11,7 @@ import {
   SENIORITY_COLORS,
 } from "@/types/contact";
 import { Badge } from "@/components/ui/badge";
+import { Linkedin } from "lucide-react";
 
 interface OrgChartNodeProps {
   data: {
@@ -65,7 +66,21 @@ function OrgChartNodeComponent({ data }: OrgChartNodeProps) {
             {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm truncate">{contact.fullName}</div>
+            <div className="flex items-center gap-1.5">
+              <div className="font-semibold text-sm truncate">{contact.fullName}</div>
+              {contact.linkedinUrl && (
+                <a
+                  href={contact.linkedinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 flex-shrink-0"
+                  title="View LinkedIn Profile"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Linkedin className="h-3.5 w-3.5" />
+                </a>
+              )}
+            </div>
             {contact.title && (
               <div className="text-xs text-muted-foreground truncate">
                 {contact.title}
@@ -108,6 +123,13 @@ function OrgChartNodeComponent({ data }: OrgChartNodeProps) {
               </div>
             )}
           </div>
+        )}
+
+        {/* Bio from enrichment */}
+        {contact.bio && (
+          <p className="mt-2 text-xs text-muted-foreground line-clamp-2 italic">
+            {contact.bio}
+          </p>
         )}
       </div>
 

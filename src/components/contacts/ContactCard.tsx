@@ -2,6 +2,7 @@
 
 import {
   Contact,
+  ContactRole,
   CONTACT_ROLE_LABELS,
   CONTACT_SENTIMENT_COLORS,
   SENIORITY_LABELS,
@@ -10,6 +11,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Mail,
   Phone,
@@ -20,6 +27,7 @@ import {
   Building2,
   Sparkles,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 
 interface ContactCardProps {
@@ -27,10 +35,19 @@ interface ContactCardProps {
   onEdit: (contact: Contact) => void;
   onDelete: (contact: Contact) => void;
   onEnrich?: (contact: Contact) => void;
+  onUpdateRole?: (contact: Contact, role: ContactRole) => void;
   isEnriching?: boolean;
 }
 
-export function ContactCard({ contact, onEdit, onDelete, onEnrich, isEnriching }: ContactCardProps) {
+const ROLE_OPTIONS: ContactRole[] = [
+  "decision_maker",
+  "influencer",
+  "champion",
+  "blocker",
+  "end_user",
+];
+
+export function ContactCard({ contact, onEdit, onDelete, onEnrich, onUpdateRole, isEnriching }: ContactCardProps) {
   const sentimentColorClass = CONTACT_SENTIMENT_COLORS[contact.sentiment];
   const roleLabel = CONTACT_ROLE_LABELS[contact.role];
   const seniorityLabel = contact.seniority
@@ -103,9 +120,34 @@ export function ContactCard({ contact, onEdit, onDelete, onEnrich, isEnriching }
 
             {/* Role, Sentiment, and Seniority Badges */}
             <div className="flex flex-wrap gap-2 mt-2">
-              <Badge variant="outline" className="text-xs">
-                {roleLabel}
-              </Badge>
+              {onUpdateRole ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className="text-xs cursor-pointer hover:bg-accent flex items-center gap-1"
+                    >
+                      {roleLabel}
+                      <ChevronDown className="h-3 w-3" />
+                    </Badge>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {ROLE_OPTIONS.map((role) => (
+                      <DropdownMenuItem
+                        key={role}
+                        onClick={() => onUpdateRole(contact, role)}
+                        className={contact.role === role ? "bg-accent" : ""}
+                      >
+                        {CONTACT_ROLE_LABELS[role]}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Badge variant="outline" className="text-xs">
+                  {roleLabel}
+                </Badge>
+              )}
               {contact.sentiment !== "unknown" && (
                 <Badge className={`text-xs ${sentimentColorClass}`}>
                   {contact.sentiment.charAt(0).toUpperCase() +
@@ -161,10 +203,11 @@ export function ContactCard({ contact, onEdit, onDelete, onEnrich, isEnriching }
               </p>
             )}
 
-            {/* Notes - strip Gong import metadata */}
+            {/* Notes - strip import metadata */}
             {(() => {
               const cleanedNotes = contact.notes
-                ?.replace(/^Imported from Gong transcript\. Organization: .+$/, "")
+                ?.replace(/^Imported from Gong transcript\. Organization: .+$/m, "")
+                .replace(/^Imported from calendar event attendees$/m, "")
                 .trim();
               return cleanedNotes ? (
                 <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
