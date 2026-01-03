@@ -332,6 +332,7 @@ model Opportunity {
   contactsReadyNotifications     ContactsReadyNotification[]
   parsingCompleteNotifications   ParsingCompleteNotification[]   @relation("OpportunityParsingCompleteNotifications")
   accountResearchNotification    AccountResearchNotification?    @relation("OpportunityAccountResearchNotification")
+  dismissedAttendees             DismissedAttendee[]
   earningsTranscripts            EarningsCallTranscript[]
   documents                      Document[]
   generatedContents              GeneratedContent[]
@@ -375,6 +376,7 @@ model Organization {
   accountResearchNotifications   AccountResearchNotification[]
   contents                       Content[]
   contentBriefs                  ContentBrief[]
+  dismissedAttendees             DismissedAttendee[]
   documents                      Document[]
   generatedContents              GeneratedContent[]
   earningsTranscripts        EarningsCallTranscript[]
@@ -490,6 +492,7 @@ model User {
   authoredComments           Comment[]                   @relation("AuthoredComments")
   createdContents            Content[]                   @relation("ContentCreatedBy")
   createdDocuments           Document[]                  @relation("DocumentCreatedBy")
+  dismissedAttendees         DismissedAttendee[]
   editedDocuments            Document[]                  @relation("DocumentLastEditedBy")
   createdBriefs              ContentBrief[]              @relation("BriefCreatedBy")
   generatedContents          GeneratedContent[]          @relation("GeneratedContentCreatedBy")
@@ -916,6 +919,28 @@ model EnrichmentLog {
   @@index([email])
   @@index([organizationId, createdAt])
   @@index([provider, status])
+  @@schema("opportunity_tracker")
+}
+
+// Tracks dismissed attendees per opportunity for import flow
+// Dismissed attendees will resurface if they appear in a new calendar invite
+model DismissedAttendee {
+  id                    String       @id @default(cuid())
+  opportunityId         String
+  attendeeEmail         String
+  sourceCalendarEventId String?      // Calendar event ID when dismissed (for resurface logic)
+  dismissedBy           String
+  dismissedAt           DateTime     @default(now())
+  organizationId        String
+  createdAt             DateTime     @default(now())
+
+  opportunity           Opportunity  @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  dismisser             User         @relation(fields: [dismissedBy], references: [id])
+  organization          Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([opportunityId, attendeeEmail])
+  @@index([organizationId])
+  @@index([opportunityId])
   @@schema("opportunity_tracker")
 }
 

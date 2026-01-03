@@ -667,15 +667,18 @@ export interface ImportableAttendeesResult {
   attendees: Array<{
     email: string;
     alreadyExists: boolean;
+    sourceEventIds: string[]; // Calendar event IDs where this attendee appeared
   }>;
   newCount: number;
   existingCount: number;
+  dismissedCount: number;
   canEnrich: boolean;
 }
 
 /**
  * Get a preview of attendees that can be imported from calendar events
  * Used to show the user what will be imported before they confirm
+ * Filters out dismissed attendees (unless they appear in a new calendar event)
  */
 export async function getImportableAttendees(
   opportunityId: string,
@@ -692,6 +695,7 @@ export async function getImportableAttendees(
       attendees: [],
       newCount: 0,
       existingCount: 0,
+      dismissedCount: 0,
       canEnrich: false,
     };
   }
@@ -699,7 +703,7 @@ export async function getImportableAttendees(
   // Get all calendar events linked to this opportunity
   const calendarEvents = await prisma.calendarEvent.findMany({
     where: { opportunityId },
-    select: { attendees: true },
+    select: { id: true, attendees: true },
   });
 
   if (calendarEvents.length === 0) {
@@ -707,13 +711,14 @@ export async function getImportableAttendees(
       attendees: [],
       newCount: 0,
       existingCount: 0,
+      dismissedCount: 0,
       canEnrich: !!process.env.HUNTER_API_KEY,
     };
   }
 
-  // Extract all unique external attendees
+  // Extract all unique external attendees and track which events they appeared in
   const normalizedOrgDomain = organization.domain.toLowerCase().replace(/^www\./, "");
-  const allAttendees = new Set<string>();
+  const attendeeEventMap = new Map<string, Set<string>>(); // email -> Set of event IDs
 
   for (const event of calendarEvents) {
     for (const email of event.attendees) {
@@ -725,32 +730,90 @@ export async function getImportableAttendees(
         continue;
       }
 
-      allAttendees.add(email.toLowerCase());
+      const normalizedEmail = email.toLowerCase();
+      if (!attendeeEventMap.has(normalizedEmail)) {
+        attendeeEventMap.set(normalizedEmail, new Set());
+      }
+      attendeeEventMap.get(normalizedEmail)!.add(event.id);
     }
   }
 
-  if (allAttendees.size === 0) {
+  if (attendeeEventMap.size === 0) {
     return {
       attendees: [],
       newCount: 0,
       existingCount: 0,
+      dismissedCount: 0,
       canEnrich: !!process.env.HUNTER_API_KEY,
     };
   }
 
+  // Get dismissed attendees for this opportunity
+  const dismissedAttendees = await prisma.dismissedAttendee.findMany({
+    where: { opportunityId },
+    select: {
+      id: true,
+      attendeeEmail: true,
+      sourceCalendarEventId: true,
+    },
+  });
+
+  // Build a map of dismissed emails and their source event IDs
+  const dismissedMap = new Map<string, { id: string; sourceEventId: string | null }>();
+  for (const dismissed of dismissedAttendees) {
+    dismissedMap.set(dismissed.attendeeEmail.toLowerCase(), {
+      id: dismissed.id,
+      sourceEventId: dismissed.sourceCalendarEventId,
+    });
+  }
+
+  // Check for resurface: if dismissed attendee appears in a NEW event, auto-undismiss
+  const toUndismiss: string[] = [];
+  for (const [email, eventIds] of attendeeEventMap) {
+    const dismissed = dismissedMap.get(email);
+    if (dismissed) {
+      // Check if attendee appears in any event OTHER than the one they were dismissed from
+      const hasNewEvent = Array.from(eventIds).some(
+        (eventId) => eventId !== dismissed.sourceEventId
+      );
+      if (hasNewEvent) {
+        toUndismiss.push(dismissed.id);
+        dismissedMap.delete(email); // Remove from dismissed so they show up
+      }
+    }
+  }
+
+  // Auto-undismiss attendees who appeared in new events
+  if (toUndismiss.length > 0) {
+    await prisma.dismissedAttendee.deleteMany({
+      where: { id: { in: toUndismiss } },
+    });
+  }
+
   // Check which already exist as contacts
   const existingContacts = await findExistingContactsByEmail(
-    Array.from(allAttendees),
+    Array.from(attendeeEventMap.keys()),
     opportunityId
   );
 
   const attendees: ImportableAttendeesResult["attendees"] = [];
   let newCount = 0;
   let existingCount = 0;
+  let dismissedCount = 0;
 
-  for (const email of allAttendees) {
+  for (const [email, eventIds] of attendeeEventMap) {
+    // Skip dismissed attendees
+    if (dismissedMap.has(email)) {
+      dismissedCount++;
+      continue;
+    }
+
     const exists = existingContacts.has(email);
-    attendees.push({ email, alreadyExists: exists });
+    attendees.push({
+      email,
+      alreadyExists: exists,
+      sourceEventIds: Array.from(eventIds),
+    });
     if (exists) {
       existingCount++;
     } else {
@@ -770,6 +833,7 @@ export async function getImportableAttendees(
     attendees,
     newCount,
     existingCount,
+    dismissedCount,
     canEnrich: !!process.env.HUNTER_API_KEY,
   };
 }
@@ -802,6 +866,7 @@ export async function importContactsFromCalendarEvents(
   options?: {
     enrich?: boolean;
     provider?: EnrichmentProviderType;
+    selectedEmails?: string[]; // If provided, only import these emails
   }
 ): Promise<ImportContactsFromCalendarResult> {
   const result: ImportContactsFromCalendarResult = {
@@ -834,6 +899,11 @@ export async function importContactsFromCalendarEvents(
     return result;
   }
 
+  // Filter by selected emails if provided
+  const selectedEmailsSet = options?.selectedEmails
+    ? new Set(options.selectedEmails.map((e) => e.toLowerCase()))
+    : null;
+
   // Import each new attendee
   for (const attendee of preview.attendees) {
     if (attendee.alreadyExists) {
@@ -842,6 +912,11 @@ export async function importContactsFromCalendarEvents(
         email: attendee.email,
         status: "skipped",
       });
+      continue;
+    }
+
+    // Skip if not in selected emails (when selection is provided)
+    if (selectedEmailsSet && !selectedEmailsSet.has(attendee.email.toLowerCase())) {
       continue;
     }
 
@@ -917,4 +992,101 @@ export async function importContactsFromCalendarEvents(
  */
 function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
+/**
+ * Dismiss an attendee from import suggestions
+ * They will resurface if they appear in a new calendar invite
+ */
+export async function dismissAttendee(
+  opportunityId: string,
+  organizationId: string,
+  userId: string,
+  attendeeEmail: string,
+  sourceCalendarEventId?: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Verify opportunity belongs to organization
+    const opportunity = await prisma.opportunity.findFirst({
+      where: {
+        id: opportunityId,
+        organizationId,
+      },
+      select: { id: true },
+    });
+
+    if (!opportunity) {
+      return { success: false, error: "Opportunity not found or access denied" };
+    }
+
+    // Create or update dismissed attendee record
+    await prisma.dismissedAttendee.upsert({
+      where: {
+        opportunityId_attendeeEmail: {
+          opportunityId,
+          attendeeEmail: attendeeEmail.toLowerCase(),
+        },
+      },
+      create: {
+        opportunityId,
+        attendeeEmail: attendeeEmail.toLowerCase(),
+        sourceCalendarEventId,
+        dismissedBy: userId,
+        organizationId,
+      },
+      update: {
+        sourceCalendarEventId,
+        dismissedBy: userId,
+        dismissedAt: new Date(),
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[DismissAttendee] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
+}
+
+/**
+ * Undismiss an attendee so they show up in import suggestions again
+ */
+export async function undismissAttendee(
+  opportunityId: string,
+  organizationId: string,
+  attendeeEmail: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Verify opportunity belongs to organization
+    const opportunity = await prisma.opportunity.findFirst({
+      where: {
+        id: opportunityId,
+        organizationId,
+      },
+      select: { id: true },
+    });
+
+    if (!opportunity) {
+      return { success: false, error: "Opportunity not found or access denied" };
+    }
+
+    // Delete dismissed attendee record
+    await prisma.dismissedAttendee.deleteMany({
+      where: {
+        opportunityId,
+        attendeeEmail: attendeeEmail.toLowerCase(),
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("[UndismissAttendee] Error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 }

@@ -21,23 +21,26 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
 import { AddManualMeetingDialog } from "@/components/calendar/AddManualMeetingDialog";
-import { RefreshCw, Search, Lightbulb, Link2, X, UserPlus, Check, Loader2 } from "lucide-react";
+import { ContactForm } from "@/components/forms/ContactForm";
+import { RefreshCw, Search, Lightbulb, Link2, X, UserPlus, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { ActivityFilters } from "@/types/activity";
 import type { TimelineDateRange } from "@/types/timeline";
+import type { ContactCreateInput, ContactUpdateInput } from "@/lib/validations/contact";
 
 interface ImportableAttendee {
   email: string;
   alreadyExists: boolean;
+  sourceEventIds: string[];
 }
 
 interface ImportPreview {
   attendees: ImportableAttendee[];
   newCount: number;
   existingCount: number;
+  dismissedCount: number;
   canEnrich: boolean;
 }
 
@@ -69,7 +72,17 @@ export function ActivityToolbar({
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [enrichOnImport, setEnrichOnImport] = useState(false);
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  const [dismissingEmail, setDismissingEmail] = useState<string | null>(null);
+
+  // Manual contact form dialog state
+  const [isManualFormOpen, setIsManualFormOpen] = useState(false);
+  const [manualFormEmail, setManualFormEmail] = useState<string>("");
+  const [savingManualContact, setSavingManualContact] = useState(false);
+
+  // Check for importable attendees on mount
+  const [hasImportableAttendees, setHasImportableAttendees] = useState(false);
+  const [checkingImportable, setCheckingImportable] = useState(true);
 
   // Debounce search input
   useEffect(() => {
@@ -81,6 +94,27 @@ export function ActivityToolbar({
 
     return () => clearTimeout(timer);
   }, [searchInput, filters, onFiltersChange]);
+
+  // Check for importable attendees on mount and when contacts are imported
+  const checkImportableAttendees = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/v1/opportunities/${opportunityId}/contacts/import-from-calendar`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setHasImportableAttendees(data.newCount > 0);
+      }
+    } catch {
+      // Ignore errors, just don't show the button
+    } finally {
+      setCheckingImportable(false);
+    }
+  }, [opportunityId]);
+
+  useEffect(() => {
+    checkImportableAttendees();
+  }, [checkImportableAttendees]);
 
   const handleDateRangeChange = useCallback(
     (value: string) => {
@@ -121,8 +155,15 @@ export function ActivityToolbar({
       if (!response.ok) {
         throw new Error("Failed to load preview");
       }
-      const data = await response.json();
+      const data: ImportPreview = await response.json();
       setImportPreview(data);
+      // Pre-select all new (non-existing) attendees
+      const newEmails = new Set(
+        data.attendees
+          .filter((a) => !a.alreadyExists)
+          .map((a) => a.email)
+      );
+      setSelectedEmails(newEmails);
     } catch (err) {
       console.error("Failed to load import preview:", err);
       toast.error("Failed to load attendee preview");
@@ -134,12 +175,119 @@ export function ActivityToolbar({
 
   const handleOpenImportDialog = useCallback(() => {
     setIsImportDialogOpen(true);
-    setEnrichOnImport(false);
     setImportPreview(null);
+    setSelectedEmails(new Set());
     loadImportPreview();
   }, [loadImportPreview]);
 
-  const handleImport = useCallback(async () => {
+  // Toggle email selection
+  const toggleEmailSelection = useCallback((email: string) => {
+    setSelectedEmails((prev) => {
+      const next = new Set(prev);
+      if (next.has(email)) {
+        next.delete(email);
+      } else {
+        next.add(email);
+      }
+      return next;
+    });
+  }, []);
+
+  // Dismiss an attendee
+  const handleDismissAttendee = useCallback(
+    async (email: string, sourceEventId?: string) => {
+      setDismissingEmail(email);
+      try {
+        const response = await fetch(
+          `/api/v1/opportunities/${opportunityId}/contacts/dismiss-attendee`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, sourceCalendarEventId: sourceEventId }),
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to dismiss attendee");
+        }
+
+        // Remove from selection
+        setSelectedEmails((prev) => {
+          const next = new Set(prev);
+          next.delete(email);
+          return next;
+        });
+
+        // Reload preview
+        await loadImportPreview();
+        toast.success("Attendee dismissed");
+      } catch (err) {
+        console.error("Failed to dismiss attendee:", err);
+        toast.error("Failed to dismiss attendee");
+      } finally {
+        setDismissingEmail(null);
+      }
+    },
+    [opportunityId, loadImportPreview]
+  );
+
+  // Open manual contact form for a single email
+  const handleAddManually = useCallback((email: string) => {
+    setManualFormEmail(email);
+    setIsManualFormOpen(true);
+  }, []);
+
+  // Handle manual contact form submission
+  const handleManualContactSubmit = useCallback(
+    async (data: ContactCreateInput | ContactUpdateInput) => {
+      setSavingManualContact(true);
+      try {
+        const response = await fetch(
+          `/api/v1/opportunities/${opportunityId}/contacts`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to create contact");
+        }
+
+        toast.success("Contact created successfully");
+        setIsManualFormOpen(false);
+        setManualFormEmail("");
+
+        // Remove from selection and reload preview
+        setSelectedEmails((prev) => {
+          const next = new Set(prev);
+          next.delete(manualFormEmail);
+          return next;
+        });
+
+        // Reload preview and update button visibility
+        await loadImportPreview();
+        await checkImportableAttendees();
+        onContactsImported?.();
+      } catch (err) {
+        console.error("Failed to create contact:", err);
+        toast.error(err instanceof Error ? err.message : "Failed to create contact");
+      } finally {
+        setSavingManualContact(false);
+      }
+    },
+    [opportunityId, manualFormEmail, loadImportPreview, checkImportableAttendees, onContactsImported]
+  );
+
+  // Import selected contacts with enrichment
+  const handleImportWithEnrich = useCallback(async () => {
+    if (selectedEmails.size === 0) {
+      toast.error("Please select at least one contact to import");
+      return;
+    }
+
     setImporting(true);
     try {
       const response = await fetch(
@@ -147,7 +295,10 @@ export function ActivityToolbar({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ enrich: enrichOnImport }),
+          body: JSON.stringify({
+            enrich: true,
+            selectedEmails: Array.from(selectedEmails),
+          }),
         }
       );
 
@@ -169,6 +320,7 @@ export function ActivityToolbar({
           );
         }
         onContactsImported?.();
+        await checkImportableAttendees();
       } else {
         toast.info("No new contacts to import");
       }
@@ -180,7 +332,7 @@ export function ActivityToolbar({
     } finally {
       setImporting(false);
     }
-  }, [opportunityId, enrichOnImport, onContactsImported]);
+  }, [opportunityId, selectedEmails, onContactsImported, checkImportableAttendees]);
 
   const hasActiveFilters =
     filters.hasInsights !== null ||
@@ -262,8 +414,8 @@ export function ActivityToolbar({
           <span className="sr-only">Refresh</span>
         </Button>
 
-        {/* Import Attendees button - only show when there are events */}
-        {totalCount > 0 && (
+        {/* Import Attendees button - only show when there are new attendees to import */}
+        {!checkingImportable && hasImportableAttendees && (
           <Button
             variant="outline"
             size="sm"
@@ -329,11 +481,11 @@ export function ActivityToolbar({
 
       {/* Import Attendees Dialog */}
       <Dialog open={isImportDialogOpen} onOpenChange={setIsImportDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Import Meeting Attendees</DialogTitle>
             <DialogDescription>
-              Import external attendees from calendar events as contacts.
+              Select attendees to import as contacts. You can add them manually or import with enrichment.
             </DialogDescription>
           </DialogHeader>
 
@@ -343,73 +495,85 @@ export function ActivityToolbar({
             </div>
           ) : importPreview ? (
             <div className="space-y-4">
-              {importPreview.attendees.length === 0 ? (
+              {importPreview.attendees.filter((a) => !a.alreadyExists).length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No external attendees found in calendar events.
+                  {importPreview.dismissedCount > 0
+                    ? `No new attendees to import. ${importPreview.dismissedCount} attendee${importPreview.dismissedCount !== 1 ? "s" : ""} dismissed.`
+                    : "All attendees already exist as contacts."}
                 </p>
               ) : (
                 <>
-                  <div className="max-h-60 overflow-y-auto space-y-2 border rounded-md p-3">
-                    {importPreview.attendees.map((attendee) => (
-                      <div
-                        key={attendee.email}
-                        className={`flex items-center gap-2 text-sm ${
-                          attendee.alreadyExists ? "text-muted-foreground" : ""
-                        }`}
-                      >
-                        {attendee.alreadyExists ? (
-                          <Check className="h-4 w-4 text-green-600 flex-shrink-0" />
-                        ) : (
-                          <div className="w-4 h-4 rounded-full border-2 flex-shrink-0" />
-                        )}
-                        <span className="truncate">{attendee.email}</span>
-                        {attendee.alreadyExists && (
-                          <span className="text-xs text-muted-foreground flex-shrink-0">
-                            (exists)
-                          </span>
-                        )}
-                      </div>
-                    ))}
+                  <div className="max-h-72 overflow-y-auto space-y-1 border rounded-md p-2">
+                    {importPreview.attendees
+                      .filter((a) => !a.alreadyExists)
+                      .map((attendee) => (
+                        <div
+                          key={attendee.email}
+                          className="flex items-center gap-2 text-sm py-1.5 px-1 rounded hover:bg-muted/50 group"
+                        >
+                          <Checkbox
+                            id={`attendee-${attendee.email}`}
+                            checked={selectedEmails.has(attendee.email)}
+                            onCheckedChange={() => toggleEmailSelection(attendee.email)}
+                            disabled={importing || dismissingEmail === attendee.email}
+                          />
+                          <label
+                            htmlFor={`attendee-${attendee.email}`}
+                            className="flex-1 truncate cursor-pointer"
+                          >
+                            {attendee.email}
+                          </label>
+                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={() => handleAddManually(attendee.email)}
+                              disabled={importing || dismissingEmail === attendee.email}
+                            >
+                              Add
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                              onClick={() =>
+                                handleDismissAttendee(
+                                  attendee.email,
+                                  attendee.sourceEventIds[0]
+                                )
+                              }
+                              disabled={importing || dismissingEmail === attendee.email}
+                            >
+                              {dismissingEmail === attendee.email ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <X className="h-3.5 w-3.5" />
+                              )}
+                              <span className="sr-only">Dismiss</span>
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                   </div>
 
-                  <p className="text-sm text-muted-foreground">
-                    {importPreview.newCount > 0 ? (
-                      <>
-                        <strong>{importPreview.newCount}</strong> new contact
-                        {importPreview.newCount !== 1 ? "s" : ""} will be imported
-                        {importPreview.existingCount > 0 && (
-                          <> ({importPreview.existingCount} already exist)</>
-                        )}
-                      </>
-                    ) : (
-                      "All attendees already exist as contacts."
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <span>
+                      {selectedEmails.size} of{" "}
+                      {importPreview.attendees.filter((a) => !a.alreadyExists).length} selected
+                    </span>
+                    {importPreview.dismissedCount > 0 && (
+                      <span className="text-xs">
+                        {importPreview.dismissedCount} dismissed
+                      </span>
                     )}
-                  </p>
-
-                  {importPreview.newCount > 0 && importPreview.canEnrich && (
-                    <div className="flex items-center space-x-2 pt-2 border-t">
-                      <Checkbox
-                        id="enrichOnImport"
-                        checked={enrichOnImport}
-                        onCheckedChange={(checked) =>
-                          setEnrichOnImport(checked === true)
-                        }
-                        disabled={importing}
-                      />
-                      <Label
-                        htmlFor="enrichOnImport"
-                        className="text-sm font-normal cursor-pointer"
-                      >
-                        Also enrich contacts (LinkedIn, title, bio)
-                      </Label>
-                    </div>
-                  )}
+                  </div>
                 </>
               )}
             </div>
           ) : null}
 
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={() => setIsImportDialogOpen(false)}
@@ -417,28 +581,60 @@ export function ActivityToolbar({
             >
               Cancel
             </Button>
-            <Button
-              onClick={handleImport}
-              disabled={
-                importing ||
-                loadingPreview ||
-                !importPreview ||
-                importPreview.newCount === 0
-              }
-            >
-              {importing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Importing...
-                </>
-              ) : (
-                <>
-                  Import {importPreview?.newCount || 0} Contact
-                  {importPreview?.newCount !== 1 ? "s" : ""}
-                </>
-              )}
-            </Button>
+            {importPreview && selectedEmails.size === 1 && (
+              <Button
+                variant="outline"
+                onClick={() => handleAddManually(Array.from(selectedEmails)[0])}
+                disabled={importing || loadingPreview}
+              >
+                <UserPlus className="h-4 w-4 mr-1.5" />
+                Add Manually
+              </Button>
+            )}
+            {importPreview && importPreview.canEnrich && (
+              <Button
+                onClick={handleImportWithEnrich}
+                disabled={
+                  importing ||
+                  loadingPreview ||
+                  selectedEmails.size === 0
+                }
+              >
+                {importing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Importing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-1.5" />
+                    Import & Enrich ({selectedEmails.size})
+                  </>
+                )}
+              </Button>
+            )}
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Contact Form Dialog */}
+      <Dialog open={isManualFormOpen} onOpenChange={setIsManualFormOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Contact</DialogTitle>
+            <DialogDescription>
+              Create a new contact for {manualFormEmail}
+            </DialogDescription>
+          </DialogHeader>
+          <ContactForm
+            onSubmit={handleManualContactSubmit}
+            onCancel={() => {
+              setIsManualFormOpen(false);
+              setManualFormEmail("");
+            }}
+            initialData={{ email: manualFormEmail }}
+            submitLabel={savingManualContact ? "Creating..." : "Create Contact"}
+          />
         </DialogContent>
       </Dialog>
     </div>

@@ -55,7 +55,10 @@ export async function GET(
 /**
  * POST /api/v1/opportunities/[id]/contacts/import-from-calendar
  * Import contacts from calendar event attendees
- * Body: { enrich?: boolean } - whether to also enrich after importing
+ * Body: {
+ *   enrich?: boolean - whether to also enrich after importing
+ *   selectedEmails?: string[] - if provided, only import these emails
+ * }
  */
 export async function POST(
   request: NextRequest,
@@ -82,9 +85,15 @@ export async function POST(
 
     // Parse request body for options
     let enrich = false;
+    let selectedEmails: string[] | undefined;
     try {
       const body = await request.json();
       enrich = body.enrich === true;
+      if (Array.isArray(body.selectedEmails)) {
+        selectedEmails = body.selectedEmails.filter(
+          (e: unknown) => typeof e === "string"
+        );
+      }
     } catch {
       // No body or invalid JSON, use defaults
     }
@@ -101,7 +110,7 @@ export async function POST(
     const result = await importContactsFromCalendarEvents(
       opportunityId,
       user.organization.id,
-      { enrich }
+      { enrich, selectedEmails }
     );
 
     return NextResponse.json(result);
